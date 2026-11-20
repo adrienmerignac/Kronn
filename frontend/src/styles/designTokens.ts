@@ -122,8 +122,10 @@ export const DESIGN_TOKEN_GROUPS: readonly DesignTokenGroup[] = [
 export const DESIGN_TOKENS: readonly DesignToken[] = DESIGN_TOKEN_GROUPS.flatMap(g => g.tokens);
 
 /** The breakpoints in px, for `matchMedia` and stylesheets: a custom property
- *  cannot be read inside `@media`. Equal to `--kr-bp-*` (checked by the test). */
-export const BREAKPOINTS = { sm: 560, md: 760, lg: 900 } as const;
+ *  cannot be read inside `@media`. Equal to `--kr-bp-*` (checked by the test).
+ *  A breakpoint is the first width of the wider layout, as in `useIsMobile(bp)`
+ *  (narrower than bp): a stylesheet writes `@media (max-width: <bp - 1>px)`. */
+export const BREAKPOINTS = { sm: 640, md: 768, lg: 900 } as const;
 
 /** The root size the rem text scale is written against. */
 export const ROOT_FONT_PX = 16;

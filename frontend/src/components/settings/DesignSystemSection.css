@@ -145,8 +145,8 @@
   white-space: nowrap;
 }
 
-/* Same width as --kr-bp-md: a custom property cannot be read in @media. */
-@media (max-width: 760px) {
+/* Narrower than --kr-bp-md (768px): a custom property cannot be read in @media. */
+@media (max-width: 767px) {
   .ds-preview-cell,
   .ds-table thead th:last-child {
     display: none;

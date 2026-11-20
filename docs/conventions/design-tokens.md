@@ -8,8 +8,8 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
 - **Values:** `frontend/src/styles/tokens.css`, `:root` block "Design scales"
   and "Semantic colours". Light themes (`light`, `sakura`, `euronews`) override
   the code and diff text colours in one shared block.
-  `[src: file: frontend/src/styles/tokens.css:111-163]`
-  `[src: file: frontend/src/styles/tokens.css:285-322]`
+  `[src: file: frontend/src/styles/tokens.css:111-164]`
+  `[src: file: frontend/src/styles/tokens.css:286-323]`
 - **Typed table:** `frontend/src/styles/designTokens.ts` lists every token of
   a scale with the i18n key of its use line (`designSystem.use.<name>`).
   `[src: file: frontend/src/styles/designTokens.ts:45-119#DESIGN_TOKEN_GROUPS]`
@@ -25,7 +25,7 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
 | Text | `--kr-type-sm` … `--kr-type-2xl` (12, 13, 14, 16, 20 px) | rem on a 16 px root; 0.75rem is the floor |
 | Spacing | `--kr-space-1` … `--kr-space-8` | 4 px grid |
 | Radius | `--kr-radius-control`, `-surface`, `-overlay` | 4, 8, 12 px; a pill stays `--kr-radius-pill` |
-| Breakpoint | `--kr-bp-sm`, `-md`, `-lg` | 560, 760, 900 px |
+| Breakpoint | `--kr-bp-sm`, `-md`, `-lg` | 640, 768, 900 px (count below) |
 | Duration | `--kr-duration-fast`, `-base`, `-slow` | 120, 150, 300 ms |
 | Weight | `--kr-weight-regular` … `-bold` | 400–700, the faces `reset.css` loads |
 | Control height | `--kr-control-h-sm`, `-md`, `-lg` | 28, 34, 44 px, used as `min-height` |
@@ -41,8 +41,14 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
   page does not show it.
   `[src: file: frontend/src/styles/__tests__/designTokens.test.ts:43]`
 - **Breakpoints in `@media`:** a custom property cannot be read inside a
-  media query; write the same px value and, in scripts, use `BREAKPOINTS`.
-  `[src: file: frontend/src/styles/designTokens.ts:126#BREAKPOINTS]`
+  media query. A breakpoint is the first width of the wider layout, as in
+  `useIsMobile(bp)`: a stylesheet writes `@media (max-width: <bp - 1>px)`,
+  a script uses `BREAKPOINTS`; `useIsMobile()` defaults to `BREAKPOINTS.md`.
+  `[src: file: frontend/src/styles/designTokens.ts:128#BREAKPOINTS]`
+  `[src: file: frontend/src/hooks/useMediaQuery.ts:5#useIsMobile]`
+- **Why 640 / 768 / 900** (count of 2026-11-21, all `@media (max-width)`, no `min-width`; `useIsMobile` arguments): small widths — 640 px ×13 + `useIsMobile(641)` ×1, 560 ×11, 700 ×12, 720 ×6, 680 ×4; middle — 760 px ×15 and the `useIsMobile()` default 768 ×8 call sites + 767 px ×1; large — 900 px ×10 + `useIsMobile(900)` ×1, then 980/1050 ×2, `useIsMobile(1024/1100)` ×1.
+  640 and 900 are the most used in their range. 760 and 768 are one threshold 8 px apart (24 uses); 768 is kept because the hook default can then read the token with no behaviour change, while 760 would leave CSS and JS split.
+  This lot moves no screen: the 15 rules at 760 px and the 13 at 640 px move to `<bp - 1>px` with their screens (KT-1880 to KT-1886).
 - **Legacy names stay valid.** `--kr-sp-*` and `--kr-r-*` that sit on a scale
   are mapped to it (`--kr-sp-4: var(--kr-space-2)`); the others, and every
   `--kr-fs-*` (px), keep their values. A test pins them.

@@ -139,11 +139,12 @@
   --kr-radius-surface: 8px;  /* cards, panels, popovers */
   --kr-radius-overlay: 12px; /* dialogs, drawers */
 
-  /* Breakpoints: three window widths. A custom property cannot be read
-     inside @media, so a stylesheet writes the same px value and scripts
-     read BREAKPOINTS from src/styles/designTokens.ts. */
-  --kr-bp-sm: 560px;         /* phone: one column */
-  --kr-bp-md: 760px;         /* narrow window: side panels stack */
+  /* Breakpoints: three window widths, each the first width of the wider
+     layout. A custom property cannot be read inside @media, so a stylesheet
+     writes @media (max-width: <bp - 1>px) and scripts read BREAKPOINTS from
+     src/styles/designTokens.ts (useIsMobile() defaults to the md one). */
+  --kr-bp-sm: 640px;         /* phone: one column */
+  --kr-bp-md: 768px;         /* narrow window: side panels stack */
   --kr-bp-lg: 900px;         /* laptop: master-detail collapses */
 
   /* Durations of transitions and animations. */
