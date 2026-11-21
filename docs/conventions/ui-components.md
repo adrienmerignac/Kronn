@@ -33,7 +33,7 @@ fails if a component lacks one of the three.
 | `FormFooter` | The end of a form: `blockers` (what still holds the action), then Cancel (`onCancel`), then the action (`submitLabel`, `tone` primary / danger, `busy`), on the right, `pinned` to the bottom of what scrolls (default). Without `onSubmit` the action submits the form around it. | a held action stays focusable |
 | `Notice` | A message inside the page it concerns (see [feedback-channels.md](feedback-channels.md)): `tone` info / warning / danger / success, optional `title`, one `action` (`{ label, onClick }`), `onDismiss` adds a cross named "Dismiss". Tone on the icon, the inline-start border and the tint; text in `--kr-text-primary`. `role="alert"` for danger only, `status` otherwise. | native |
 | `EmptyState` | `kind` firstUse (its `action`, the primary button, is required), noResult (`onClear`, required, "Clear the filters" unless `clearLabel`), nothingSelected (no action); `title`, `description`, `icon`. The type refuses a case without its way out. | native |
-| `LoadingState` | `size` sm (a ring beside the text, inline) / md (the mark over its sentence, a panel; default) / lg (a whole page); `fullscreen` (the window, lg), `phase`, `onRetry`. md and lg keep the cold-start screen of `index.html` instead of drawing a second one. Same file: `Skeleton`, `kind` list (`rows`) / detail, one named busy status, shapes hidden from assistive technology. | — |
+| `LoadingState` | `size` sm (a ring beside the text, inline) / md (the mark over its sentence, a panel; default) / lg (a whole page); `fullscreen` (the window, lg), `phase`, `onRetry`. md and lg keep the cold-start screen of `index.html` instead of drawing a second one, unless `holdsBootScreen={false}` (a loader shown as content). Same file: `Skeleton`, `kind` list (`rows`) / detail, one named busy status, shapes hidden from assistive technology. | — |
 
 `Menu` and `Tooltip` render into `document.body` at a fixed position
 (`anchor.ts`), so a container with `overflow: hidden` does not clip them.
@@ -157,7 +157,12 @@ Escape closes one layer, the innermost first
   `ui/LoadingState` (and `BootHold`) for its ten users; the sizes replace the
   14 sizes of `<Loader2>` as screens move (lots 2-5). Every animation stops
   under `prefers-reduced-motion`, which the test reads from the stylesheet
-  `[src: file: frontend/src/components/ui/LoadingState.tsx:38#LoadingState]`.
+  `[src: file: frontend/src/components/ui/LoadingState.tsx:43#LoadingState]`.
+  A loader shown as content, never waiting for anything (the gallery's
+  demos), passes `holdsBootScreen={false}`: mounted for good, md and lg would
+  otherwise hold the cold-start screen and leave Settings behind it when it
+  is the first page opened
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:479]`.
 - **Variants** live in `feedbackKinds.ts` (`NOTICE_TONES`,
   `EMPTY_STATE_KINDS`, `LOADING_SIZES`, `SKELETON_KINDS`), so the component
   files export components only (fast refresh).

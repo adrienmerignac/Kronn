@@ -25,6 +25,11 @@ export interface LoadingStateProps {
   onRetry?: () => void;
   /** Full window (start-up) rather than the page area; implies lg. */
   fullscreen?: boolean;
+  /** md and lg wait behind the cold-start screen (default). False for a
+   *  loader shown as content, such as a gallery demo: it draws at once and
+   *  never holds that screen, which would otherwise stay up while it is
+   *  mounted. */
+  holdsBootScreen?: boolean;
   className?: string;
 }
 
@@ -33,13 +38,13 @@ export interface LoadingStateProps {
  * with a plain sentence under it; during a cold start they draw nothing and
  * keep the screen index.html painted, only changing its sentence, so loaders
  * never hand over to one another on screen. sm is inline and never waits for
- * that screen.
+ * that screen, nor does a loader shown as content (`holdsBootScreen={false}`).
  */
 export function LoadingState({
-  size = 'md', phase = 'opening', message, onRetry, fullscreen = false, className,
+  size = 'md', phase = 'opening', message, onRetry, fullscreen = false, holdsBootScreen = true, className,
 }: LoadingStateProps) {
   const shown: LoadingSize = fullscreen ? 'lg' : size;
-  const defers = shown !== 'sm';
+  const defers = shown !== 'sm' && holdsBootScreen;
   const [deferToBoot, setDeferToBoot] = useState(() => defers && bootScreenActive());
 
   useLayoutEffect(() => {

@@ -15,6 +15,7 @@ import { STATUS_TONES } from '../../ui/statusTones';
 import { DESIGN_TOKEN_GROUPS, DESIGN_TOKENS } from '../../../styles/designTokens';
 import { loadThemes } from '../../../styles/themeAudit';
 import { dictionaries } from '../../../lib/i18n/testing';
+import { armBootScreen, bootScreenActive, resetBootScreenForTests } from '../../../lib/bootScreen';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const t = (key: string) => key;
@@ -294,6 +295,26 @@ describe('DesignSystemSection — index and components (KT-1880)', () => {
     const loading = screen.getByRole('region', { name: 'LoadingState' });
     expect([...loading.querySelectorAll('.ui-loading-state')].map(l => l.getAttribute('data-size'))).toEqual(['sm', 'md', 'lg']);
     expect([...loading.querySelectorAll('.ui-skeleton')].map(s => s.getAttribute('data-kind'))).toEqual(['list', 'detail']);
+  });
+
+  it('lets the cold-start screen finish when Settings is the first page opened (KT-1883)', async () => {
+    // What index.html paints before any script runs.
+    resetBootScreenForTests();
+    const boot = document.createElement('div');
+    boot.id = 'kronn-boot';
+    boot.innerHTML = '<span data-boot-text></span><button data-boot-retry hidden></button>';
+    document.body.prepend(boot);
+    try {
+      render(<DesignSystemSection t={t} />);
+      armBootScreen();
+      // The md and lg demos are content: drawn at once, holding nothing.
+      const loading = screen.getByRole('region', { name: 'LoadingState' });
+      expect([...loading.querySelectorAll('.ui-loading-state')].map(l => l.getAttribute('data-size'))).toEqual(['sm', 'md', 'lg']);
+      await waitFor(() => expect(bootScreenActive()).toBe(false));
+    } finally {
+      document.getElementById('kronn-boot')?.remove();
+      resetBootScreenForTests();
+    }
   });
 
   it('passes axe on the feedback components of the gallery (KT-1883)', async () => {

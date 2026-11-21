@@ -1,0 +1,57 @@
+/* KT-1883 — where toasts appear (owner decision of 2026-11-21).
+   From --kr-bp-sm (640px) up: bottom left, 16px from the left and the bottom,
+   growing upwards, newest at the bottom; a toast is at most 320px wide, so it
+   stays inside the list column (358px at 1440px) and covers neither the bell
+   at the top right nor the composer's Send, Add a file and Quick Prompt.
+   Under --kr-bp-sm, where every corner covers something: at the top, just
+   under the app's top bar (Dashboard publishes its height as --app-bar-h),
+   full width less the 16px margins, never over the bar where the bell is.
+   Tested in hooks/__tests__/toastStack.test.ts. */
+.kr-toast-stack {
+  position: fixed;
+  left: var(--kr-space-4);
+  bottom: var(--kr-space-4);
+  z-index: var(--kr-z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--kr-space-2);
+  pointer-events: none;
+}
+
+.kr-toast-stack .kr-toast {
+  max-width: 320px;
+  min-width: min(240px, calc(100vw - 2 * var(--kr-space-4)));
+  pointer-events: auto;
+  animation: kr-toast-in-left var(--kr-duration-slow) ease-out;
+}
+
+@keyframes kr-toast-in-left {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes kr-toast-in-top {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 639px) {
+  .kr-toast-stack {
+    top: calc(var(--app-bar-h, 0px) + var(--kr-space-2));
+    bottom: auto;
+    left: var(--kr-space-4);
+    right: var(--kr-space-4);
+    align-items: stretch;
+  }
+
+  .kr-toast-stack .kr-toast {
+    max-width: none;
+    min-width: 0;
+    animation-name: kr-toast-in-top;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kr-toast-stack .kr-toast { animation: none; }
+}

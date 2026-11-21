@@ -210,22 +210,19 @@ describe('useToast — a persistent toast is never evicted (KT-1883)', () => {
     expect(screen.queryByText('Save failed: disk full')).toBeNull();
   });
 
-  it('stacks the toasts at the bottom right, away from the bell and the header actions at the top', () => {
+  it('leaves the placement to toastStack.css: no inline position or width (KT-1883)', () => {
     render(<ToastDemo run={t => t('Saved', 'success')} />);
     act(() => { screen.getByText('fire').click(); });
     const stack = document.querySelector('.kr-toast-stack') as HTMLElement;
     expect(stack).toContainElement(screen.getByText('Saved'));
-    expect(stack.style.position).toBe('fixed');
-    expect(stack.style.bottom).toBe('16px');
-    expect(stack.style.right).toBe('16px');
-    expect(stack.style.top).toBe('');
+    for (const prop of ['position', 'top', 'right', 'bottom', 'left']) expect(stack.style.getPropertyValue(prop), prop).toBe('');
+    const toast = document.querySelector('.kr-toast') as HTMLElement;
+    for (const prop of ['max-width', 'min-width', 'animation']) expect(toast.style.getPropertyValue(prop), prop).toBe('');
   });
 
-  it('keeps a toast inside a 400 px window', () => {
-    render(<ToastDemo run={t => t('A long message that would otherwise run off the edge of a narrow window', 'info')} />);
+  it('puts the newest toast at the bottom of the stack', () => {
+    render(<ToastDemo run={t => { t('First', 'info'); t('Second', 'info'); }} />);
     act(() => { screen.getByText('fire').click(); });
-    const toast = document.querySelector('.kr-toast') as HTMLElement;
-    expect(toast.style.maxWidth).toBe('min(420px, calc(100vw - 32px))');
-    expect(toast.style.minWidth).toBe('min(240px, calc(100vw - 32px))');
+    expect([...document.querySelectorAll('.kr-toast')].map(e => e.textContent)).toEqual(['First', 'Second']);
   });
 });

@@ -3,6 +3,7 @@ import { useT } from '../lib/I18nContext';
 import { isServerFailureMessage } from '../lib/notifications';
 import { ToastItem } from './ToastItem';
 import type { Toast, ToastFn, ToastType } from './toastTypes';
+import './toastStack.css';
 
 export type { ToastFn } from './toastTypes';
 
@@ -15,8 +16,6 @@ const AUTO_DISMISS_MS: Record<ToastType, number> = {
   // Not used when persistent — see useToast below.
   error: 0,
 };
-
-let styleInjected = false;
 
 /** Coalesce window for identical (message, type) toasts. 1.5s is wider
  *  than the typical WS broadcast burst from a multi-agent flow but
@@ -106,39 +105,15 @@ export function useToast() {
     }
   }, [dismiss, t]);
 
-  const ToastContainer = useCallback(() => {
-    if (!styleInjected) styleInjected = true;
-    return (
-      <>
-        <style>{`
-          @keyframes toastSlideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-          }
-        `}</style>
-        {/* KT-1883 — bottom right: the bell and the detail header actions sit at
-            the top right, and a toast there covered them. Newest at the bottom. */}
-        <div
-          className="kr-toast-stack"
-          style={{
-            position: 'fixed',
-            bottom: 16,
-            right: 16,
-            alignItems: 'flex-end',
-            zIndex: 'var(--kr-z-toast)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            pointerEvents: 'none',
-          }}
-        >
-          {toasts.map(item => (
-            <ToastItem key={item.id} toast={item} onDismiss={() => dismiss(item.id)} />
-          ))}
-        </div>
-      </>
-    );
-  }, [toasts, dismiss]);
+  const ToastContainer = useCallback(() => (
+    // KT-1883 — placement in toastStack.css: bottom left from --kr-bp-sm up,
+    // under the app's top bar below it; newest at the bottom.
+    <div className="kr-toast-stack">
+      {toasts.map(item => (
+        <ToastItem key={item.id} toast={item} onDismiss={() => dismiss(item.id)} />
+      ))}
+    </div>
+  ), [toasts, dismiss]);
 
   return { toast, ToastContainer };
 }

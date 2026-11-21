@@ -133,6 +133,16 @@ describe('LoadingState', () => {
     act(() => finishBootScreen());
     expect(screen.getByRole('status')).toHaveTextContent('Chargement…');
   });
+
+  it('shown as content, draws at once and never holds the start-up screen (KT-1883)', () => {
+    mountBootScreen();
+    render(<><LoadingState size="md" message="md" holdsBootScreen={false} /><LoadingState size="lg" message="lg" holdsBootScreen={false} /></>);
+    expect(screen.getAllByRole('status').map(s => s.textContent)).toEqual(['md', 'lg']);
+    expect(bootText()).toBe('Starting Kronn…');
+
+    act(() => { armBootScreen(); vi.advanceTimersByTime(150); });
+    expect(bootScreenActive()).toBe(false);
+  });
 });
 
 describe('BootHold', () => {

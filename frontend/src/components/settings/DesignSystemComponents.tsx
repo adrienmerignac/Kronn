@@ -466,7 +466,8 @@ function EmptyStateDemo({ t }: { t: T }) {
 }
 
 /** KT-1883 — LoadingState in its three sizes, then the list and detail
- *  skeletons. */
+ *  skeletons. The demos stay mounted: they are content, so they must not hold
+ *  the cold-start screen when Settings is the first page opened. */
 function LoadingStateDemo({ t }: { t: T }) {
   const message = t('designSystem.demo.loadingTasks');
   return (
@@ -475,10 +476,10 @@ function LoadingStateDemo({ t }: { t: T }) {
         <LoadingState size="sm" message={message} />
       </Row>
       <Row label={t('designSystem.demo.size.md')}>
-        <div className="ds-demo-frame"><LoadingState size="md" message={message} /></div>
+        <div className="ds-demo-frame"><LoadingState size="md" message={message} holdsBootScreen={false} /></div>
       </Row>
       <Row label={t('designSystem.demo.size.lg')}>
-        <div className="ds-demo-frame"><LoadingState size="lg" message={message} /></div>
+        <div className="ds-demo-frame"><LoadingState size="lg" message={message} holdsBootScreen={false} /></div>
       </Row>
       <Row label={t('designSystem.demo.skeleton.list')}>
         <div className="ds-demo-frame"><Skeleton kind="list" label={message} /></div>
