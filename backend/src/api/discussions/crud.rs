@@ -442,7 +442,7 @@ pub async fn create(
         },
         None => None,
     };
-    // KT-1993 — an exact model pinned at creation, checked by the Quick Prompt rule.
+    // KT-1993 — an exact model pinned at creation, checked by `normalize_exact_model`.
     let explicit_model = match req
         .model
         .as_deref()
@@ -914,7 +914,7 @@ pub async fn update(
     let agent_handoffs_unlimited = req.agent_handoffs_unlimited;
     let attach_agents = req.attach_agents;
     let execution_variable_retention_days = req.execution_variable_retention_days;
-    // KT-1993 — `Some(Some(id))` is checked by the Quick Prompt rule; `Some(None)`
+    // KT-1993 — `Some(Some(id))` is checked by `normalize_exact_model`; `Some(None)`
     // clears; absent leaves the stored model alone.
     let new_model = match req.model {
         Some(Some(model)) => match crate::models::setup::normalize_exact_model(&model) {
@@ -1064,7 +1064,7 @@ pub async fn update(
             }
             // KT-1993 — applied last, so an explicit model wins over the clears the
             // agent, connection and tier updates above just made. A tier sent
-            // without a model leaves the exact model: choosing a mode is choosing
+            // without a model drops the exact model: choosing a mode is choosing
             // the tier, not the model.
             match (&new_model, tier.is_some()) {
                 (Some(model), _) => {
@@ -1657,7 +1657,13 @@ mod tests {
     async fn exact_model_create_refuses_an_invalid_id_and_creates_nothing() {
         let state = state_with_disc("exact-refuse-create").await;
         let too_long = "m".repeat(crate::models::setup::MAX_EXACT_MODEL_CHARS + 1);
-        for bad in ["   ", "bad\nmodel", too_long.as_str()] {
+        for bad in [
+            "   ",
+            "bad\nmodel",
+            too_long.as_str(),
+            "--dangerously-skip-permissions",
+            " -c ",
+        ] {
             let response = create(
                 State(state.clone()),
                 Json(exact_model_create_request(Some(bad))),
@@ -1721,13 +1727,15 @@ mod tests {
     async fn exact_model_update_refuses_an_invalid_id_and_keeps_the_stored_one() {
         let state = state_with_disc("exact-refuse-update").await;
         exact_model_seed(&state, "exact-refuse-update", "claude-kept").await;
-        let error = exact_model_update(
-            &state,
-            "exact-refuse-update",
-            serde_json::json!({ "model": "bad\u{7}model" }),
-        )
-        .await;
-        assert!(error.contains("model"), "clear error: {error}");
+        for bad in ["bad\u{7}model", "--dangerously-skip-permissions", " -c "] {
+            let error = exact_model_update(
+                &state,
+                "exact-refuse-update",
+                serde_json::json!({ "model": bad }),
+            )
+            .await;
+            assert!(error.contains("model"), "clear error for {bad:?}: {error}");
+        }
         assert_eq!(
             exact_model_stored(&state, "exact-refuse-update")
                 .await
@@ -1836,8 +1844,19 @@ mod tests {
         );
     }
 
+    async fn exact_model_loaded(state: &AppState, id: &str) -> crate::models::Discussion {
+        let id = id.to_string();
+        state
+            .db
+            .with_conn(move |conn| crate::db::discussions::get_discussion(conn, &id))
+            .await
+            .expect("loaded")
+            .expect("discussion exists")
+    }
+
     #[tokio::test]
     async fn exact_model_run_resolves_the_exact_model_and_not_the_tier() {
+        use crate::api::discussions::streaming::turn_exact_model;
         let state = state_with_disc("exact-run").await;
         let response = create(
             State(state.clone()),
@@ -1845,30 +1864,93 @@ mod tests {
         )
         .await;
         let discussion_id = response.0.data.expect("discussion created").id;
-        let discussion = state
-            .db
-            .with_conn(move |conn| crate::db::discussions::get_discussion(conn, &discussion_id))
-            .await
-            .expect("loaded")
-            .expect("discussion exists");
+        let discussion = exact_model_loaded(&state, &discussion_id).await;
         assert_eq!(discussion.tier, ModelTier::Reasoning);
-        // The run's model resolution: an explicit model wins over the tier.
+        // The dispatch's choice (streaming.rs): the discussion's exact model wins over its tier.
+        let resolved = turn_exact_model(discussion.model.as_deref(), None, None);
+        assert_eq!(resolved.as_deref(), Some("claude-exact-run"));
         let tier_only = crate::agents::runner::effective_model_flag(
             None,
             &AgentType::ClaudeCode,
             discussion.tier,
             None,
         );
-        let resolved = crate::agents::runner::effective_model_flag(
-            discussion.model.as_deref(),
+        let flag = crate::agents::runner::effective_model_flag(
+            resolved.as_deref(),
             &AgentType::ClaudeCode,
             discussion.tier,
             None,
         );
-        assert_eq!(resolved.as_deref(), Some("claude-exact-run"));
-        assert_ne!(
-            resolved, tier_only,
-            "the tier alone would run another model"
+        assert_eq!(flag.as_deref(), Some("claude-exact-run"));
+        assert_ne!(flag, tier_only, "the tier alone would run another model");
+    }
+
+    #[tokio::test]
+    async fn exact_model_run_a_per_message_tier_override_ignores_it() {
+        use crate::api::discussions::streaming::turn_exact_model;
+        let state = state_with_disc("exact-run-override").await;
+        let response = create(
+            State(state.clone()),
+            Json(exact_model_create_request(Some("claude-exact-override"))),
+        )
+        .await;
+        let discussion_id = response.0.data.expect("discussion created").id;
+        let discussion = exact_model_loaded(&state, &discussion_id).await;
+        let resolved =
+            turn_exact_model(discussion.model.as_deref(), Some(ModelTier::Economy), None);
+        assert_eq!(
+            resolved, None,
+            "a one-off tier drops the exact model for this turn"
+        );
+    }
+
+    #[tokio::test]
+    async fn exact_model_run_a_fallback_pin_wins_over_the_exact_model() {
+        use crate::api::discussions::streaming::turn_exact_model;
+        use crate::core::agent_fallback::Pin;
+        let state = state_with_disc("exact-run-pin").await;
+        let response = create(
+            State(state.clone()),
+            Json(exact_model_create_request(Some("claude-exact-discussion"))),
+        )
+        .await;
+        let discussion_id = response.0.data.expect("discussion created").id;
+        let discussion = exact_model_loaded(&state, &discussion_id).await;
+        let pin = Pin {
+            from_agent: AgentType::Vibe,
+            to_agent: AgentType::ClaudeCode,
+            model: Some("claude-fallback-link".into()),
+            tier: ModelTier::Default,
+            hops: 1,
+        };
+        assert_eq!(
+            turn_exact_model(discussion.model.as_deref(), None, Some(&pin)).as_deref(),
+            Some("claude-fallback-link"),
+            "a continued turn runs on the link's own model"
+        );
+        assert_eq!(
+            turn_exact_model(
+                discussion.model.as_deref(),
+                Some(ModelTier::Economy),
+                Some(&pin)
+            )
+            .as_deref(),
+            Some("claude-fallback-link"),
+            "the fallback pin outranks a tier override too"
+        );
+    }
+
+    #[test]
+    fn exact_model_normalize_refuses_a_leading_dash_and_keeps_inner_spaces() {
+        use crate::models::setup::normalize_exact_model;
+        for bad in ["-c", "--dangerously-skip-permissions", "  -c  "] {
+            let error = normalize_exact_model(bad).expect_err("a dash-led id is refused");
+            assert!(error.contains("'-'"), "clear error: {error}");
+        }
+        assert_eq!(
+            normalize_exact_model("  model with space  ").as_deref(),
+            Ok("model with space"),
+            "inner spaces are one argv token, kept"
         );
     }
 

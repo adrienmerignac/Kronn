@@ -12627,8 +12627,9 @@ tier?: ModelTier | null,
  */
 agent?: AgentType | null,
 /**
- * KT-1993 — the exact model. `Some(Some(id))` = set (validated like a
- * Quick Prompt model), `Some(None)` = clear (the tier applies again),
+ * KT-1993 — the exact model. `Some(Some(id))` = set (validated by
+ * `normalize_exact_model`: trimmed, one line, at most 200 characters, no
+ * leading `-`), `Some(None)` = clear (the tier applies again),
  * absent = no change. Changing `agent` or `connection_id`, or sending a
  * `tier`, without a model clears the stored model.
  */

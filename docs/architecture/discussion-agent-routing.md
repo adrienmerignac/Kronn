@@ -167,8 +167,8 @@ on the root turn, or no marker), computed from `message_targets`.
 [src: file: backend/src/api/discussions/crud.rs:608-620#initial_participants]
 [src: file: backend/src/api/discussions/messaging.rs:115-158#enqueue_dispatches_for_trigger]
 [src: file: backend/src/api/discussions/crud.rs:1057-1061#attach_discussion_participants]
-[src: file: backend/src/api/discussions/streaming.rs:2269-2381#independent_sibling_notice]
-[src: file: backend/src/api/discussions/streaming.rs:2162-2217#discussion_at_dispatch_trigger]
+[src: file: backend/src/api/discussions/streaming.rs:2290-2402#independent_sibling_notice]
+[src: file: backend/src/api/discussions/streaming.rs:2183-2238#discussion_at_dispatch_trigger]
 [src: file: backend/src/api/discussions/streaming.rs:2191-2226#thread_under_trigger]
 [src: file: backend/src/db/discussions.rs:2042-2066#already_scheduled]
 
@@ -269,6 +269,40 @@ Two distinctions the reason must not blur, and does not:
   second producer of the generic string survived the first fix. `strings` on the built
   binary, not a source grep, is what proved a second one existed.
 [src: file: backend/src/api/discussions/streaming.rs:1270-1315#AgentExecutionOutcome] [src: file: backend/src/api/discussions/streaming.rs:1513-1528#finish_tracked_preflight]
+
+## Exact model of a discussion (KT-1993)
+
+A discussion can pin one exact model id (the picker's "Custom" choice) instead of
+the model its tier maps to.
+
+- **Where it is stored.** `discussions.model`, nullable. It is set at creation by
+  `CreateDiscussionRequest.model`, or inherited from the Quick Prompt that launched
+  the discussion, where an explicit request model wins.
+  [src: file: backend/src/models/discussions.rs:241] [src: file: backend/src/api/discussions/crud.rs:446] [src: file: backend/src/api/discussions/crud.rs:468]
+- **Run time.** It wins over the tier. Two cases drop it: a per-message tier override
+  drops it for that turn, and a fallback pin replaces it with the link's own model.
+  The choice is `turn_exact_model`, called once per turn.
+  [src: file: backend/src/api/discussions/streaming.rs:2171] [src: file: backend/src/api/discussions/streaming.rs:3047]
+  The id reaches the CLI as the token after `--model`.
+  [src: file: backend/src/agents/runner.rs:13989]
+- **Update field, three states** (as `connection_id`): absent keeps the stored model,
+  `null` clears it so the tier applies again, a string sets it. The field is applied
+  last in the update transaction, so a model sent with an agent change wins over that
+  change's clear. [src: file: backend/src/models/discussions.rs:703] [src: file: backend/src/api/discussions/crud.rs:919] [src: file: backend/src/api/discussions/crud.rs:1069]
+- **Clearing rules**, enforced by the server when no model is sent: a change of agent
+  clears it, a change of connection clears it, and a `tier` in the request clears it
+  even when the tier is the same one. The first two are SQL `CASE` expressions that
+  fire only on a real change.
+  [src: file: backend/src/db/discussions.rs:1194] [src: file: backend/src/db/discussions.rs:1226] [src: file: backend/src/api/discussions/crud.rs:1077]
+- **Validation** (`normalize_exact_model`): trimmed, not empty, one line of at most
+  200 characters, and not starting with `-`, because the CLI would read a leading dash
+  as an option (`-c`, `--dangerously-skip-permissions`). Inner spaces are kept: each id
+  is one argv token, not a shell line. A refused id returns an error and writes nothing.
+  [src: file: backend/src/models/setup.rs:1788] [src: file: backend/src/models/setup.rs:1800]
+- **Unknown ids** are accepted. At launch `preflight_resolve` passes an id absent from
+  the catalogue through unchanged. Only an id that disappeared from the live catalogue
+  is replaced by a same-agent model or refused.
+  [src: file: backend/src/core/model_catalog/mod.rs:1378] [src: file: backend/src/core/model_catalog/mod.rs:1384]
 
 ## Persistence and interruption
 
