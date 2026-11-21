@@ -3663,6 +3663,43 @@ pub fn effective_model_flag(
     }
 }
 
+/// KT-1998 — the model an agent CLI launch receives, resolved like
+/// [`effective_model_flag`]. A value starting with `-` is refused: the CLI
+/// reads the token after `--model` as an option. Saves refuse it already;
+/// this is the last check, for rows saved before that rule and hand-edited
+/// config. No other model is substituted.
+pub fn launch_model_flag(
+    model_override: Option<&str>,
+    agent_type: &AgentType,
+    tier: ModelTier,
+    model_tiers: Option<&ModelTiersConfig>,
+) -> Result<Option<String>, String> {
+    let model = effective_model_flag(model_override, agent_type, tier, model_tiers);
+    let Some(value) = model.as_deref() else {
+        return Ok(None);
+    };
+    if crate::models::setup::refuse_option_like_model(value).is_ok() {
+        return Ok(model);
+    }
+    let source = if model_override.is_some_and(|m| !m.trim().is_empty()) {
+        "the model pinned on this run (discussion, Quick Prompt or workflow step)".to_string()
+    } else if configured_model_flag(agent_type, tier, model_tiers).is_some() {
+        format!(
+            "the {} tier model of {agent_type:?} in Settings → Agents",
+            tier.as_str()
+        )
+    } else {
+        format!(
+            "the {} tier model the catalogue assigns to {agent_type:?}",
+            tier.as_str()
+        )
+    };
+    Err(format!(
+        "Agent launch refused: the model {value:?} ({source}) starts with '-', so the agent CLI \
+         would read it as an option. Set a model id there."
+    ))
+}
+
 /// True for an agent whose CLI has a verified per-run effort transport.
 /// Codex accepts `-c model_reasoning_effort=<value>` and Claude Code accepts
 /// `--effort <level>`; the catalogue remains authoritative for which values a
@@ -4509,12 +4546,14 @@ pub async fn start_agent_with_config(config: AgentStartConfig<'_>) -> Result<Age
     }
 
     // Resolve model: explicit per-step/per-QP override wins, else tier → model.
-    let model_flag = effective_model_flag(
+    // Every CLI route below (native ACP, adapted ACP, direct CLI) takes this
+    // value, so the dash check is made here once (KT-1998).
+    let model_flag = launch_model_flag(
         config.model_override,
         config.agent_type,
         config.tier,
         config.model_tiers,
-    );
+    )?;
     provenance::resolve_model(config.provenance.as_ref(), model_flag.as_deref(), None);
     // KT-646 — resolve reasoning effort the same way: explicit override wins,
     // else the tier's configured preset, else no flag (CLI default). Gated to

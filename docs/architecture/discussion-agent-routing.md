@@ -284,7 +284,7 @@ the model its tier maps to.
   The choice is `turn_exact_model`, called once per turn.
   [src: file: backend/src/api/discussions/streaming.rs:2171] [src: file: backend/src/api/discussions/streaming.rs:3047]
   The id reaches the CLI as the token after `--model`.
-  [src: file: backend/src/agents/runner.rs:13989]
+  [src: file: backend/src/agents/runner.rs:14028]
 - **Update field, three states** (as `connection_id`): absent keeps the stored model,
   `null` clears it so the tier applies again, a string sets it. The field is applied
   last in the update transaction, so a model sent with an agent change wins over that
@@ -299,6 +299,16 @@ the model its tier maps to.
   as an option (`-c`, `--dangerously-skip-permissions`). Inner spaces are kept: each id
   is one argv token, not a shell line. A refused id returns an error and writes nothing.
   [src: file: backend/src/models/setup.rs:1788] [src: file: backend/src/models/setup.rs:1800]
+- **Every stored model id, and the runner as a last check (KT-1998).** The same rule
+  applies wherever a model id is saved: Quick Prompt and workflow step
+  `agent_settings.model`, shadow and merge agents, tier slots, the three tier models of
+  an HTTP connection, and agent and connection fallback links. A blank optional slot
+  still means "no model"; a manual catalogue id keeps its own 256-character rule and
+  takes only the dash rule. `launch_model_flag` resolves the model every CLI route
+  (native ACP, adapted ACP, direct CLI) receives and refuses a dash-led one, naming the
+  value and where it comes from, for rows saved before the rule and hand-edited config;
+  no other model is substituted.
+  [src: file: backend/src/models/setup.rs:1817] [src: file: backend/src/models/setup.rs:1829] [src: file: backend/src/models/setup.rs:1838] [src: file: backend/src/api/workflows.rs:451] [src: file: backend/src/agents/runner.rs:3671] [src: file: backend/src/agents/runner.rs:4551]
 - **Unknown ids** are accepted. At launch `preflight_resolve` passes an id absent from
   the catalogue through unchanged. Only an id that disappeared from the live catalogue
   is replaced by a same-agent model or refused.

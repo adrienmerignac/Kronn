@@ -441,6 +441,29 @@ pub fn validate_launch_variables(
 fn validate_required_fields_per_type(steps: &[WorkflowStep]) -> Result<(), String> {
     for s in steps {
         validate_step_required_fields(s)?;
+        validate_step_models(s)?;
+    }
+    Ok(())
+}
+
+/// KT-1998 — every model id a step saves (its own, each shadow's, the merge
+/// pass's) goes through the shared rule `models::setup::check_optional_model`.
+fn validate_step_models(step: &WorkflowStep) -> Result<(), String> {
+    let name = &step.name;
+    crate::models::check_agent_settings_model(step.agent_settings.as_ref())
+        .map_err(|error| format!("Step `{name}`: {error}"))?;
+    let shadow_models = step
+        .shadows
+        .iter()
+        .map(|shadow| (shadow.id.as_str(), shadow.agent.as_ref()))
+        .chain(
+            step.shadow_merge
+                .iter()
+                .map(|merge| ("merge", merge.agent.as_ref())),
+        );
+    for (shadow, agent) in shadow_models {
+        crate::models::setup::check_optional_model(agent.and_then(|a| a.model.as_deref()))
+            .map_err(|error| format!("Step `{name}`, shadow `{shadow}`: model: {error}"))?;
     }
     Ok(())
 }
@@ -9182,6 +9205,98 @@ mod tests {
             "exec_allowlist": ["bash", "terraform", "aws", "python3"], "steps": steps
         }))
         .unwrap()
+    }
+
+    /// KT-1998 — a workflow save refuses a dash-led model on a step, on a
+    /// shadow or on the merge pass, and writes nothing; agents and humans alike.
+    #[tokio::test]
+    async fn model_id_guard_workflow_step_and_shadow_save_refuse_a_dash_led_model() {
+        let state = agent_state();
+        let stored = |state: AppState| async move {
+            state
+                .db
+                .with_conn(crate::db::workflows::list_workflows)
+                .await
+                .unwrap()
+        };
+        let base = || WorkflowStep {
+            name: "ask".into(),
+            step_type: StepType::Agent,
+            agent: AgentType::OpenCode,
+            prompt_template: "Say hello".into(),
+            ..Default::default()
+        };
+        let with_model = |model: &str| {
+            let mut step = base();
+            step.agent_settings = Some(AgentSettings {
+                model: Some(model.into()),
+                ..AgentSettings::default()
+            });
+            step
+        };
+        let shadowed = |model: &str| {
+            let mut step = base();
+            step.shadows = vec![crate::models::StepShadow {
+                id: "alt".into(),
+                agent: Some(crate::models::ShadowAgent {
+                    agent: AgentType::GeminiCli,
+                    model: Some(model.into()),
+                    connection_id: None,
+                    reasoning_effort: None,
+                }),
+                ..Default::default()
+            }];
+            step
+        };
+        let merged = |model: &str| {
+            let mut step = shadowed("gemini-2.5-pro");
+            step.shadow_merge = Some(crate::models::ShadowMerge {
+                agent: Some(crate::models::ShadowAgent {
+                    agent: AgentType::ClaudeCode,
+                    model: Some(model.into()),
+                    connection_id: None,
+                    reasoning_effort: None,
+                }),
+                ..Default::default()
+            });
+            step
+        };
+        for (writer, step) in [
+            (WorkflowWriter::Agent, with_model("--help")),
+            (WorkflowWriter::Human, with_model(" -c")),
+            (WorkflowWriter::Human, shadowed("--yolo")),
+            (WorkflowWriter::Human, merged("-p")),
+        ] {
+            let request = exec_request(serde_json::to_value(vec![step]).unwrap());
+            let Json(refused) = create_as(state.clone(), request, writer).await;
+            let error = refused.error.expect("a dash-led model is refused");
+            assert!(error.contains("must not start with '-'"), "{error}");
+        }
+        assert!(
+            stored(state.clone()).await.is_empty(),
+            "create wrote nothing"
+        );
+
+        let request = exec_request(serde_json::to_value(vec![with_model("gpt-5")]).unwrap());
+        let Json(created) = create_as(state.clone(), request, WorkflowWriter::Human).await;
+        let saved = created.data.expect("a plain id is saved");
+        let Json(refused) = update_as(
+            state.clone(),
+            saved.id.clone(),
+            serde_json::from_value(serde_json::json!({"steps": [with_model("--help")]})).unwrap(),
+            WorkflowWriter::Human,
+        )
+        .await;
+        assert!(refused.error.expect("update refuses").contains("'-'"));
+        let kept = stored(state.clone()).await;
+        assert_eq!(
+            kept[0].steps[0]
+                .agent_settings
+                .as_ref()
+                .and_then(|s| s.model.as_deref()),
+            Some("gpt-5"),
+            "update wrote nothing"
+        );
     }
 
     /// R6-01: a `KRONN:WORKFLOW_READY` proposal accepted by a click is an

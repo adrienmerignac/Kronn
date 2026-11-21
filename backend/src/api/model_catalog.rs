@@ -46,6 +46,9 @@ async fn validate_manual_request(
     {
         return Err("model_id must contain 1 to 256 printable characters".into());
     }
+    // KT-1998 — a catalogue id can be assigned to a tier and reach `--model`.
+    crate::models::setup::refuse_option_like_model(&request.model_id)
+        .map_err(|error| format!("model_id: {error}"))?;
     if request.display_name.trim().is_empty()
         || request.display_name.len() > 256
         || request.display_name.chars().any(char::is_control)
@@ -297,5 +300,39 @@ pub async fn delete_manual(
             ApiErrorCode::Conflict,
             error.to_string(),
         )),
+    }
+}
+
+#[cfg(test)]
+mod model_id_guard_tests {
+    use super::*;
+    use crate::models::AgentType;
+
+    /// KT-1998 — a manual catalogue id that starts with a dash is refused
+    /// and not stored: a catalogue id can be assigned to a tier.
+    #[tokio::test]
+    async fn model_id_guard_manual_catalogue_refuses_a_dash_led_model() {
+        let db = std::sync::Arc::new(crate::db::Database::open_in_memory().expect("db"));
+        let state = AppState::new_defaults(
+            std::sync::Arc::new(tokio::sync::RwLock::new(
+                crate::core::config::default_config(),
+            )),
+            db,
+            crate::DEFAULT_MAX_CONCURRENT_AGENTS,
+        );
+        let target = store::agent_runtime_target_id(&AgentType::OpenCode);
+        let before = state.db.with_conn(store::list_all).await.unwrap().len();
+        let request: UpsertManualModelRequest = serde_json::from_value(serde_json::json!({
+            "runtime_target_id": target,
+            "agent_type": "OpenCode",
+            "model_id": "--help",
+            "display_name": "Help",
+        }))
+        .unwrap();
+        let Json(refused) = create_manual(State(state.clone()), Json(request)).await;
+        let error = refused.error.expect("a dash-led id is refused");
+        assert!(error.contains("must not start with '-'"), "{error}");
+        let after = state.db.with_conn(store::list_all).await.unwrap().len();
+        assert_eq!(before, after, "nothing is written");
     }
 }

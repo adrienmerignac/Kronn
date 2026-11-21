@@ -985,6 +985,9 @@ pub async fn set_model_tiers(
     State(state): State<AppState>,
     Json(req): Json<ModelTiersConfig>,
 ) -> Json<ApiResponse<()>> {
+    if let Err(error) = crate::models::setup::check_model_tiers(&req) {
+        return Json(ApiResponse::err(format!("Model tiers: {error}")));
+    }
     let mut config = state.config.write().await;
     config.agents.model_tiers = req;
     match config::save(&config).await {
@@ -6715,6 +6718,62 @@ debug_mode = false
         for invalid in ["red", "#fff", "#12345678", "123456", "#12gg56"] {
             assert!(normalize_mention_color(Some(invalid)).is_err(), "{invalid}");
         }
+    }
+
+    /// KT-1998 — a tier slot holding a dash-led id is refused and nothing is
+    /// stored; a blank slot still means "no model".
+    #[tokio::test]
+    async fn model_id_guard_tier_settings_refuse_a_dash_led_model() {
+        let state = test_state();
+        for slot in 0..4 {
+            let mut tiers = ModelTiersConfig::default();
+            let bad = Some("--help".to_string());
+            match slot {
+                0 => tiers.open_code.economy = bad,
+                1 => tiers.gemini_cli.default = bad,
+                2 => tiers.claude_code.reasoning = bad,
+                _ => tiers.ollama.decision = bad,
+            }
+            let Json(response) = set_model_tiers(State(state.clone()), Json(tiers)).await;
+            let error = response.error.expect("a dash-led tier model is refused");
+            assert!(error.contains("must not start with '-'"), "{error}");
+        }
+        let stored = state.config.read().await.agents.model_tiers.clone();
+        assert_eq!(
+            serde_json::to_value(&stored).unwrap(),
+            serde_json::to_value(config::default_config().agents.model_tiers).unwrap(),
+            "nothing is written"
+        );
+        let mut blank = ModelTiersConfig::default();
+        blank.codex.economy = Some("  ".into());
+        crate::models::setup::check_model_tiers(&blank).expect("blank is no model");
+    }
+
+    /// KT-1998 — an agent fallback whose model starts with a dash is refused
+    /// by the shared rule and the row is not stored.
+    #[tokio::test]
+    async fn model_id_guard_agent_fallback_refuses_a_dash_led_model() {
+        let state = test_state();
+        let before = serde_json::to_value(&state.config.read().await.agents).unwrap();
+        let Json(response) = set_agent_fallback(
+            State(state.clone()),
+            Json(SetAgentFallbackRequest {
+                agent: AgentType::ClaudeCode,
+                mode: FallbackMode::Standard,
+                fallback: Some(AgentFallback {
+                    agent: AgentType::Codex,
+                    model: Some(" -c".into()),
+                    mode: None,
+                }),
+            }),
+        )
+        .await;
+        let error = response
+            .error
+            .expect("a dash-led fallback model is refused");
+        assert!(error.contains("must not start with '-'"), "{error}");
+        let after = serde_json::to_value(&state.config.read().await.agents).unwrap();
+        assert_eq!(before, after, "nothing is written");
     }
 }
 

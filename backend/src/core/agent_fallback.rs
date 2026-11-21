@@ -329,7 +329,7 @@ pub enum ChainError {
         from: AgentType,
         to: AgentType,
     },
-    BadModel(&'static str),
+    BadModel(String),
     /// The fallback's mode is not of the kind of the mode it replaces: text goes
     /// to text, decision to decision, image to image, video to video.
     WrongKind {
@@ -376,7 +376,7 @@ impl std::fmt::Display for ChainError {
                 display_name(from),
                 display_name(from),
             ),
-            ChainError::BadModel(why) => write!(f, "The fallback model {why}."),
+            ChainError::BadModel(why) => write!(f, "The fallback model is refused: {why}."),
             ChainError::WrongKind { mode, target } => write!(
                 f,
                 "A {} fallback must be a {} model; {} is not one.",
@@ -540,14 +540,7 @@ pub fn check_shape(
             }
         }
         if let Some(model) = &link.model {
-            if model.trim().is_empty() {
-                return Err(ChainError::BadModel("is empty"));
-            }
-            if model.chars().count() > 200 || model.chars().any(char::is_control) {
-                return Err(ChainError::BadModel(
-                    "must be one line of at most 200 characters",
-                ));
-            }
+            crate::models::setup::normalize_exact_model(model).map_err(ChainError::BadModel)?;
         }
     }
     Ok(())

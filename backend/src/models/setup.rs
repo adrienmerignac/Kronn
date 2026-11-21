@@ -1807,10 +1807,59 @@ pub fn normalize_exact_model(value: &str) -> Result<String, String> {
             "model must be one line of at most {MAX_EXACT_MODEL_CHARS} characters"
         ));
     }
-    if model.starts_with('-') {
+    refuse_option_like_model(model)?;
+    Ok(model.to_string())
+}
+
+/// KT-1998 — the dash rule alone, shared by [`normalize_exact_model`], the
+/// manual catalogue (which keeps its own length rule) and the runner's last
+/// check before a command line is built. Leading spaces are ignored.
+pub fn refuse_option_like_model(model: &str) -> Result<(), String> {
+    if model.trim_start().starts_with('-') {
         return Err("model is an agent option, not a model id: it must not start with '-'".into());
     }
-    Ok(model.to_string())
+    Ok(())
+}
+
+/// KT-1998 — an optional model id a save carries (a Quick Prompt or workflow
+/// step `agent_settings.model`, a shadow, a tier slot, a connection slot).
+/// `None` and a blank value mean "no model" and pass, as they did before:
+/// every reader treats them as unset. Any other value must pass
+/// [`normalize_exact_model`]. The stored value is not rewritten.
+pub fn check_optional_model(value: Option<&str>) -> Result<(), String> {
+    match value {
+        Some(model) if !model.trim().is_empty() => normalize_exact_model(model).map(|_| ()),
+        _ => Ok(()),
+    }
+}
+
+/// KT-1998 — every model slot of the tier settings, checked by
+/// [`check_optional_model`]. The effort slots are not model ids.
+pub fn check_model_tiers(tiers: &ModelTiersConfig) -> Result<(), String> {
+    let agents = [
+        ("claude_code", &tiers.claude_code),
+        ("codex", &tiers.codex),
+        ("open_code", &tiers.open_code),
+        ("gemini_cli", &tiers.gemini_cli),
+        ("kiro", &tiers.kiro),
+        ("vibe", &tiers.vibe),
+        ("copilot_cli", &tiers.copilot_cli),
+        ("ollama", &tiers.ollama),
+        ("lite_llm", &tiers.lite_llm),
+        ("nvidia", &tiers.nvidia),
+    ];
+    for (agent, slots) in agents {
+        for (slot, model) in [
+            ("economy", &slots.economy),
+            ("default", &slots.default),
+            ("reasoning", &slots.reasoning),
+            ("decision", &slots.decision),
+        ] {
+            check_optional_model(model.as_deref())
+                .map_err(|error| format!("{agent}.{slot}: {error}"))?;
+        }
+    }
+    Ok(())
 }
 
 /// Abstract model capability tier. Kronn maps each tier to a concrete --model flag per agent.

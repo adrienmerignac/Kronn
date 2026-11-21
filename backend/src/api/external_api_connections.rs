@@ -220,6 +220,24 @@ fn clean(value: Option<String>) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
+/// KT-1998 — the three tier models of a connection through the shared rule
+/// `models::setup::check_optional_model`; a blank slot is still "no model".
+fn check_tier_models(
+    economy: Option<&str>,
+    default: Option<&str>,
+    reasoning: Option<&str>,
+) -> Result<(), String> {
+    for (slot, model) in [
+        ("economy_model", economy),
+        ("default_model", default),
+        ("reasoning_model", reasoning),
+    ] {
+        crate::models::setup::check_optional_model(model)
+            .map_err(|error| format!("{slot}: {error}"))?;
+    }
+    Ok(())
+}
+
 fn validate_credential_format(
     preset: ExternalApiConnectionPreset,
     api_key: Option<&str>,
@@ -1882,6 +1900,13 @@ pub async fn create(
     if let Err(message) = validate_credential_format(req.origin_preset, req.api_key.as_deref()) {
         return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
     }
+    if let Err(message) = check_tier_models(
+        req.economy_model.as_deref(),
+        req.default_model.as_deref(),
+        req.reasoning_model.as_deref(),
+    ) {
+        return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
+    }
 
     let now = Utc::now();
     let credential_slug = credential_slug_for(&mention_alias);
@@ -2015,6 +2040,13 @@ async fn update_inner(
         }
     };
     if let Err(message) = validate_credential_format(req.origin_preset, req.api_key.as_deref()) {
+        return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
+    }
+    if let Err(message) = check_tier_models(
+        req.economy_model.as_deref(),
+        req.default_model.as_deref(),
+        req.reasoning_model.as_deref(),
+    ) {
         return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
     }
 
@@ -2194,6 +2226,77 @@ pub async fn delete(
 #[cfg(all(test, feature = "full-tests"))]
 mod tests {
     use super::*;
+
+    /// KT-1998 — create and update refuse a dash-led tier model with the
+    /// shared rule, before anything is written.
+    #[tokio::test]
+    async fn model_id_guard_connection_models_refuse_a_dash_led_model() {
+        let db = std::sync::Arc::new(crate::db::Database::open_in_memory().expect("db"));
+        let state = AppState::new_defaults(
+            std::sync::Arc::new(tokio::sync::RwLock::new(config::default_config())),
+            db,
+            crate::DEFAULT_MAX_CONCURRENT_AGENTS,
+        );
+        let request = |slot: &str, model: &str| -> UpsertConnectionRequest {
+            let mut body = serde_json::json!({
+                "display_name": "Proxy", "mention_alias": "proxy",
+                "endpoint": "https://proxy.example/v1", "origin_preset": "other",
+                "economy_model": null, "default_model": null, "reasoning_model": null,
+            });
+            body[slot] = serde_json::Value::String(model.into());
+            serde_json::from_value(body).unwrap()
+        };
+        for slot in ["economy_model", "default_model", "reasoning_model"] {
+            let Json(refused) = create(State(state.clone()), Json(request(slot, "--help"))).await;
+            let error = refused.error.expect("a dash-led model is refused");
+            assert!(error.contains(slot) && error.contains("'-'"), "{error}");
+        }
+        let rows = state.db.with_conn(store::list).await.unwrap();
+        assert!(rows.is_empty(), "create wrote nothing");
+
+        let existing = ExternalApiConnection {
+            id: "conn-1".into(),
+            display_name: "Proxy".into(),
+            mention_alias: "proxy".into(),
+            endpoint: Some("https://proxy.example/v1".into()),
+            credential_slug: "conn-proxy-1".into(),
+            origin_preset: ExternalApiConnectionPreset::Other,
+            economy_model: None,
+            default_model: Some("gpt-5".into()),
+            reasoning_model: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            image_model: None,
+            video_model: None,
+            decision_model: None,
+            tools_enabled: None,
+            media_endpoint: None,
+        };
+        let row = existing.clone();
+        state
+            .db
+            .with_conn(move |conn| store::insert(conn, &row))
+            .await
+            .unwrap();
+        let Json(refused) = update_inner(
+            state.clone(),
+            "conn-1".into(),
+            request("default_model", " -c"),
+        )
+        .await;
+        assert!(refused.error.expect("update refuses").contains("'-'"));
+        let kept = state
+            .db
+            .with_conn(|conn| store::get(conn, "conn-1"))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            kept.default_model.as_deref(),
+            Some("gpt-5"),
+            "update wrote nothing"
+        );
+    }
 
     #[test]
     fn http_error_hint_names_the_model_that_failed() {

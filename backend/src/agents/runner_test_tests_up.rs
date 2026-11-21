@@ -13269,6 +13269,126 @@ fn kiro_command_structure() {
     assert_eq!(args.last().unwrap(), "review code");
 }
 
+// ─── KT-1998: a dash-led model never reaches a command line ────────────────
+
+/// One family: a pinned and a tier model starting with `-` are refused with
+/// an error naming the value and its source; a plain id passes and, when the
+/// family's builder emits `--model`, comes right after it.
+fn model_id_guard_family(agent: AgentType, emits_model_flag: bool) {
+    let pinned = launch_model_flag(Some("--help"), &agent, ModelTier::Default, None)
+        .expect_err("a pinned dash-led model is refused");
+    assert!(pinned.contains("\"--help\""), "{agent:?}: {pinned}");
+    assert!(pinned.contains("pinned on this run"), "{agent:?}: {pinned}");
+
+    let mut tiers = ModelTiersConfig::default();
+    let slot = match agent {
+        AgentType::ClaudeCode => &mut tiers.claude_code,
+        AgentType::Codex => &mut tiers.codex,
+        AgentType::OpenCode => &mut tiers.open_code,
+        AgentType::GeminiCli => &mut tiers.gemini_cli,
+        AgentType::Kiro => &mut tiers.kiro,
+        AgentType::Vibe => &mut tiers.vibe,
+        AgentType::CopilotCli => &mut tiers.copilot_cli,
+        other => panic!("{other:?} is not a CLI family"),
+    };
+    slot.economy = Some(" -c".into());
+    let tier = launch_model_flag(None, &agent, ModelTier::Economy, Some(&tiers))
+        .expect_err("a dash-led tier model is refused");
+    assert!(tier.contains("economy tier model"), "{agent:?}: {tier}");
+    assert!(tier.contains("starts with '-'"), "{agent:?}: {tier}");
+
+    let model = launch_model_flag(Some("model-x"), &agent, ModelTier::Default, None)
+        .expect("a plain id passes");
+    assert_eq!(model.as_deref(), Some("model-x"));
+    let (_, _, args, _, _, _) =
+        crate::agents::runner::agent_command(&agent, "prompt", false, "", model.as_deref());
+    let at = args.iter().position(|a| a == "--model");
+    if emits_model_flag {
+        let at = at.expect("--model is emitted");
+        assert_eq!(args[at + 1], "model-x", "{agent:?}");
+    } else {
+        // The model reaches this family through the ACP session, not argv.
+        assert!(at.is_none(), "{agent:?}: {args:?}");
+    }
+}
+
+#[test]
+fn model_id_guard_runner_claude_code() {
+    model_id_guard_family(AgentType::ClaudeCode, true);
+}
+
+#[test]
+fn model_id_guard_runner_codex() {
+    model_id_guard_family(AgentType::Codex, true);
+}
+
+#[test]
+fn model_id_guard_runner_open_code() {
+    model_id_guard_family(AgentType::OpenCode, false);
+}
+
+#[test]
+fn model_id_guard_runner_gemini_cli() {
+    model_id_guard_family(AgentType::GeminiCli, true);
+}
+
+#[test]
+fn model_id_guard_runner_kiro() {
+    model_id_guard_family(AgentType::Kiro, false);
+}
+
+#[test]
+fn model_id_guard_runner_vibe() {
+    model_id_guard_family(AgentType::Vibe, true);
+}
+
+#[test]
+fn model_id_guard_runner_copilot_cli() {
+    model_id_guard_family(AgentType::CopilotCli, true);
+}
+
+/// The guard sits where every CLI route takes its model: a launch with a
+/// dash-led model is refused before any transport is touched, on every
+/// family, whatever route (native ACP, adapted ACP, direct CLI) it would take.
+#[tokio::test]
+async fn model_id_guard_start_agent_refuses_before_any_transport() {
+    let project = tempfile::tempdir().unwrap();
+    let tokens = crate::models::setup::TokensConfig {
+        anthropic: None,
+        openai: None,
+        google: None,
+        keys: Vec::new(),
+        disabled_overrides: Vec::new(),
+    };
+    for agent in [
+        AgentType::ClaudeCode,
+        AgentType::Codex,
+        AgentType::OpenCode,
+        AgentType::GeminiCli,
+        AgentType::Kiro,
+        AgentType::Vibe,
+        AgentType::CopilotCli,
+    ] {
+        let _saved = crate::core::config::test_saved_access::set(&agent, true);
+        let fixture = Arc::new(NativeRouteFixture {
+            created: std::sync::atomic::AtomicUsize::new(0),
+            resumed: std::sync::atomic::AtomicUsize::new(0),
+            prompts: Mutex::new(Vec::new()),
+        });
+        let result = start_agent_with_config(AgentStartConfig {
+            full_access: true,
+            model_override: Some("--help"),
+            test_acp_transport: Some(fixture.clone()),
+            ..AgentStartConfig::new(&agent, project.path().to_str().unwrap(), "hello", &tokens)
+        })
+        .await;
+        let error = result.err().expect("a dash-led model is refused");
+        assert!(error.contains("starts with '-'"), "{agent:?}: {error}");
+        assert_eq!(fixture.created.load(std::sync::atomic::Ordering::SeqCst), 0);
+        assert!(fixture.prompts.lock().unwrap().is_empty());
+    }
+}
+
 // ─── agent_command: model flag injection ────────────────────────────────────
 
 #[test]
