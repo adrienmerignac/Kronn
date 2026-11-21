@@ -26,8 +26,13 @@ const THEME_NAMES = ['dark', 'arcade', 'light', 'matrix', 'gotham', 'sakura', 'e
 
 /** The body of every `@media (pointer: coarse)` block of a stylesheet. */
 function coarseBlocks(text: string): string[] {
+  return mediaBlocks(text, /@media\s*\(pointer:\s*coarse\)\s*\{/g);
+}
+
+/** The body of every block of `text` whose opening `re` (global, ending on
+ *  its `{`) matches. */
+function mediaBlocks(text: string, re: RegExp): string[] {
   const blocks: string[] = [];
-  const re = /@media\s*\(pointer:\s*coarse\)\s*\{/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
     let depth = 1;
@@ -41,6 +46,12 @@ function coarseBlocks(text: string): string[] {
     blocks.push(text.slice(start, i - 1));
   }
   return blocks;
+}
+
+/** The rules of `block`: each selector of its list, and its declarations. */
+function rulesOf(block: string): { selectors: string[]; body: string }[] {
+  return [...block.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .map(([, sel, body]) => ({ selectors: sel.split(',').map(s => s.trim()), body }));
 }
 
 /** Declarations of the rules of `block` whose selector list holds `selector`. */
@@ -79,6 +90,38 @@ describe('components/ui stylesheets', () => {
     const queries = CSS.flatMap(({ file, text }) => [...text.matchAll(BREAKPOINT_QUERY)].map(m => ({ file, px: Number(m[1]) })));
     expect(queries.map(q => q.file)).toEqual(expect.arrayContaining(['Dialog.css', 'Drawer.css']));
     for (const { file, px } of queries) expect(BREAKPOINT_EDGES.has(px), `${file}: max-width ${px}px`).toBe(true);
+  });
+
+  it('keeps ConfirmDialog a card under sm: it takes none of the full-screen rules of Dialog (KT-1881)', () => {
+    const SM_QUERY = /@media\s*\(max-width:\s*639px\)\s*\{/g;
+    const narrowRules = (file: string) =>
+      mediaBlocks(CSS.find(c => c.file === file)!.text, SM_QUERY).flatMap(rulesOf);
+    const panel = (extra: string, size: string) => {
+      const el = document.createElement('div');
+      el.className = `ui-overlay-panel ui-dialog ${extra}`.trim();
+      el.setAttribute('data-size', size);
+      return el;
+    };
+    const matches = (el: Element, selectors: string[]) => selectors.some(sel => el.matches(sel));
+    const FULL_SCREEN = /(?:^|;)\s*(?:width:\s*100%|height:\s*100%|max-height:\s*none|margin:\s*0|border-radius:\s*0)\s*(?:;|$)/;
+
+    const dialogFullScreen = narrowRules('Dialog.css').filter(r => FULL_SCREEN.test(r.body));
+    expect(dialogFullScreen.length, 'Dialog.css fills the screen under sm').toBeGreaterThan(0);
+    for (const size of ['sm', 'md', 'lg']) {
+      expect(matches(panel('', size), dialogFullScreen.flatMap(r => r.selectors)), `Dialog ${size} fills the screen`).toBe(true);
+      const confirm = panel('ui-confirm-dialog', size);
+      for (const { file } of CSS) {
+        for (const rule of narrowRules(file).filter(r => matches(confirm, r.selectors))) {
+          expect(rule.body, `${file} ${rule.selectors.join(', ')}: ConfirmDialog ${size}`).not.toMatch(FULL_SCREEN);
+        }
+      }
+      // A card as wide as the window minus --kr-space-4 on each side, never
+      // taller than the window minus the same margin.
+      const own = narrowRules('ConfirmDialog.css').filter(r => matches(confirm, r.selectors)).map(r => r.body).join(';');
+      expect(own, `ConfirmDialog ${size} margin`).toMatch(/margin:\s*var\(--kr-space-4\)/);
+      expect(own, `ConfirmDialog ${size} width`).toMatch(/width:\s*calc\(100%\s*-\s*2\s*\*\s*var\(--kr-space-4\)\)/);
+      expect(own, `ConfirmDialog ${size} max-height`).toMatch(/max-height:\s*calc\(100dvh\s*-\s*2\s*\*\s*var\(--kr-space-4\)\)/);
+    }
   });
 
   it('take text sizes, durations and z-index from their tokens', () => {

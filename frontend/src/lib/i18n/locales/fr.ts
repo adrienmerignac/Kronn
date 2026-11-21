@@ -4081,7 +4081,7 @@ const fr: TranslationDict = {
   'designSystem.use.overlay-w-lg': 'Un tableau, une comparaison, un aperçu.',
   'designSystem.caption.dialog': 'Nommé par son titre. Le focus reste à l’intérieur ; Échap, la croix ou un clic à l’extérieur le ferme et le focus revient au bouton qui l’a ouvert. Plein écran sur un téléphone.',
   'designSystem.caption.drawer': 'Un panneau latéral sur toute la hauteur de la fenêtre, avec le même clavier et la même fermeture qu’un dialogue. Plein écran sur un téléphone.',
-  'designSystem.caption.confirmDialog': 'À la place de la confirmation du navigateur : une question, ce qui se passe, et l’action nommée par son verbe et son objet. Le focus part sur Annuler.',
+  'designSystem.caption.confirmDialog': 'À la place de la confirmation du navigateur : une question, ce qui se passe, et l’action nommée par son verbe et son objet. Le focus part sur Annuler. Sur un téléphone, il reste une carte.',
   'designSystem.demo.sizes': 'Tailles',
   'designSystem.demo.openIn': '{0} — {1}, {2} px',
   'designSystem.demo.openDialog': 'Ouvrir le dialogue',

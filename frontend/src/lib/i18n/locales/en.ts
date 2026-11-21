@@ -4071,7 +4071,7 @@ const en: TranslationDict = {
   'designSystem.use.overlay-w-lg': 'A table, a comparison, a preview.',
   'designSystem.caption.dialog': 'Named by its title. The focus stays inside; Escape, the cross or a click outside closes it and the focus goes back to the button that opened it. Full screen on a phone.',
   'designSystem.caption.drawer': 'A side panel the full height of the window, with the same keyboard and closing as a dialog. Full screen on a phone.',
-  'designSystem.caption.confirmDialog': 'In place of the browser confirmation: a question, what happens, and the action named with its verb and its object. The focus starts on Cancel.',
+  'designSystem.caption.confirmDialog': 'In place of the browser confirmation: a question, what happens, and the action named with its verb and its object. The focus starts on Cancel. On a phone it stays a card.',
   'designSystem.demo.sizes': 'Sizes',
   'designSystem.demo.openIn': '{0} — {1}, {2} px',
   'designSystem.demo.openDialog': 'Open the dialog',

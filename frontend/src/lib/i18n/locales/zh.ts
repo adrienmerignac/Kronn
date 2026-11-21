@@ -4039,7 +4039,7 @@ const zh: TranslationDict = {
   "designSystem.use.overlay-w-lg": "表格、对比、预览。",
   "designSystem.caption.dialog": "以标题命名。焦点停留在内部；按 Esc、点击叉号或点击外部即可关闭，焦点回到打开它的按钮。在手机上全屏显示。",
   "designSystem.caption.drawer": "占满窗口高度的侧边面板，键盘操作和关闭方式与对话框相同。在手机上全屏显示。",
-  "designSystem.caption.confirmDialog": "取代浏览器的确认框：一个问题、会发生什么，以及用动词和对象命名的操作。焦点先落在“取消”上。",
+  "designSystem.caption.confirmDialog": "取代浏览器的确认框：一个问题、会发生什么，以及用动词和对象命名的操作。焦点先落在“取消”上。在手机上它仍是一张卡片。",
   "designSystem.demo.sizes": "尺寸",
   "designSystem.demo.openIn": "{0} — {1}，{2} px",
   "designSystem.demo.openDialog": "打开对话框",

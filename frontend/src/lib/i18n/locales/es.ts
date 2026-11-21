@@ -4071,7 +4071,7 @@ const es: TranslationDict = {
   'designSystem.use.overlay-w-lg': 'Una tabla, una comparación, una vista previa.',
   'designSystem.caption.dialog': 'Nombrado por su título. El foco se queda dentro; Escape, la cruz o un clic fuera lo cierra y el foco vuelve al botón que lo abrió. Pantalla completa en un teléfono.',
   'designSystem.caption.drawer': 'Un panel lateral de toda la altura de la ventana, con el mismo teclado y el mismo cierre que un diálogo. Pantalla completa en un teléfono.',
-  'designSystem.caption.confirmDialog': 'En lugar de la confirmación del navegador: una pregunta, lo que ocurre y la acción nombrada con su verbo y su objeto. El foco empieza en Cancelar.',
+  'designSystem.caption.confirmDialog': 'En lugar de la confirmación del navegador: una pregunta, lo que ocurre y la acción nombrada con su verbo y su objeto. El foco empieza en Cancelar. En un teléfono sigue siendo una tarjeta.',
   'designSystem.demo.sizes': 'Tamaños',
   'designSystem.demo.openIn': '{0} — {1}, {2} px',
   'designSystem.demo.openDialog': 'Abrir el diálogo',

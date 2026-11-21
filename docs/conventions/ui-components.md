@@ -51,6 +51,15 @@ Escape closes one layer, the innermost first
   [design-tokens.md](design-tokens.md)). Under the first breakpoint (639 px
   and less) both fill the screen. A component stylesheet writes no px length
   but a 1 or 2 px line and a `@media (max-width: <bp - 1>px)`.
+- **A `ConfirmDialog` stays a card on a phone.** It is a short question, not
+  content: under the first breakpoint it does not fill the screen but stays
+  centred, as wide as the window minus `--kr-space-4` on each side, as tall
+  as its content (never taller than the window minus that margin; a long
+  message scrolls), the scrim visible around it. Its two buttons stack full
+  width when they do not fit on one line, Cancel first
+  `[src: file: frontend/src/components/ui/ConfirmDialog.css:22]`. The
+  stylesheet test checks that it takes none of the full-screen rules of
+  `Dialog`.
 - **Tested once for both.** `describeOverlayContract` runs the same checks
   on `Dialog` and `Drawer` (role and name, initial focus, Tab, Escape, cross,
   scrim, nested layers, axe on the open layer)
