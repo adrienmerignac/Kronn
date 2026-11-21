@@ -53,7 +53,7 @@ export function Menu<L extends string>({
   const [open, setOpen] = useState(false);
   /** Index in `entries` of the item to focus; -1 when there is none. */
   const [focus, setFocus] = useState(-1);
-  const style = useAnchoredStyle(triggerRef, menuRef, open, 'bottom', align);
+  const { style, placed } = useAnchoredStyle(triggerRef, menuRef, open, 'bottom', align);
 
   const entries = destructiveItem ? [...items, destructiveItem] : [...items];
   const enabled = entries.map((entry, i) => (entry.disabled ? -1 : i)).filter(i => i >= 0);
@@ -67,14 +67,15 @@ export function Menu<L extends string>({
     if (returnFocus) triggerRef.current?.focus();
   }, []);
 
-  // Focus the asked item once the menu is in the document, and scroll it into
-  // view when the menu is cut down to the room of the window.
+  // Focus the asked item once the menu is placed: before that it is hidden to
+  // be measured, and a browser refuses focus on a hidden element. Then scroll
+  // it into view, inside the max-height the placement may have set.
   useLayoutEffect(() => {
-    if (!open || focus < 0) return;
+    if (!open || !placed || focus < 0) return;
     const item = itemRefs.current[focus];
     item?.focus({ preventScroll: true });
     item?.scrollIntoView?.({ block: 'nearest' });
-  }, [open, focus]);
+  }, [open, placed, focus]);
 
   // A press outside the trigger and the menu closes it, focus stays where it lands.
   useEffect(() => {

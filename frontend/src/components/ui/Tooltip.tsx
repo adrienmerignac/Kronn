@@ -30,7 +30,7 @@ export function Tooltip({ content, children, placement = 'top', describe = true 
   const tipRef = useRef<HTMLSpanElement>(null);
   const closeTimer = useRef<number | null>(null);
   const [open, setOpen] = useState(false);
-  const style = useAnchoredStyle(anchorRef, tipRef, open, placement, 'center');
+  const { style } = useAnchoredStyle(anchorRef, tipRef, open, placement, 'center');
 
   const cancelClose = useCallback(() => {
     if (closeTimer.current !== null) {

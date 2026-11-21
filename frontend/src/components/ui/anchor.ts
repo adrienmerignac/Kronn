@@ -56,6 +56,13 @@ export function anchoredStyle(
  *  origin, so its width is not squeezed by a previous place. */
 const UNPLACED: CSSProperties = { position: 'fixed', top: 0, left: 0, visibility: 'hidden' };
 
+export interface Anchored {
+  style: CSSProperties;
+  /** False while the layer waits to be measured, hidden: a browser refuses
+   *  focus on it until then, so focus a child only once this is true. */
+  placed: boolean;
+}
+
 /** The style of the layer `layerRef` anchored to `anchorRef`, kept in place
  *  while `open`. The layer is measured in a layout effect, before the browser
  *  paints, so it never shows at a wrong place. */
@@ -65,7 +72,7 @@ export function useAnchoredStyle(
   open: boolean,
   placement: Placement,
   align: Align,
-): CSSProperties {
+): Anchored {
   const [style, setStyle] = useState<CSSProperties>(UNPLACED);
   useLayoutEffect(() => {
     if (!open) return;
@@ -95,5 +102,5 @@ export function useAnchoredStyle(
       setStyle(UNPLACED);
     };
   }, [anchorRef, layerRef, open, placement, align]);
-  return style;
+  return { style, placed: style !== UNPLACED };
 }

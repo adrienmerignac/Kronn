@@ -87,6 +87,28 @@ describe('Menu', () => {
     expect(screen.getByRole('menuitem', { name: 'Rename' })).toHaveFocus();
   });
 
+  it('focuses an item only once the menu is visible (a browser refuses focus on a hidden element)', async () => {
+    const seen: string[] = [];
+    const focus = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (this: HTMLElement, options?: FocusOptions) {
+      const layer = this.closest<HTMLElement>('[role="menu"]');
+      if (layer) {
+        const computed = getComputedStyle(layer);
+        seen.push(`${this.textContent} visibility=${layer.style.visibility || computed.visibility} display=${layer.style.display || computed.display}`);
+      }
+      focus.call(this, options);
+    });
+    const { user, trigger } = setup();
+    act(() => trigger.focus());
+    await user.keyboard('{Enter}');
+    await user.keyboard('{ArrowDown}');
+    expect(seen.length).toBeGreaterThan(0);
+    for (const entry of seen) {
+      expect(entry).not.toMatch(/visibility=hidden|display=none/);
+    }
+    expect(seen.at(-1)).toMatch(/^Duplicate /);
+  });
+
   it('moves with the arrows, wraps, skips a disabled item, and goes Home and End', async () => {
     const { user, trigger } = setup({}, true);
     await user.click(trigger);
