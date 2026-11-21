@@ -116,7 +116,7 @@ CLI tiers. No embedded model list participates in the display helper anymore.
 [src: file: frontend/src/lib/constants.ts:60-75#modelForAgentTier]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:12-49#resolveCatalogTier]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:77-88#catalogTierEntry]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:141-151#resolvedTier]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:570-580#resolvedTier]
 
 The shared picker keeps an unavailable configured entry disabled. A failed
 snapshot read reports the error and retains previous data as cached, not live.
@@ -146,8 +146,8 @@ refetches the catalogue. An unknown configured ID remains searchable, and a
 known unavailable choice remains disabled; accessible descriptions retain the
 model, provenance and unavailable state after filtering.
 [src: file: frontend/src/lib/modelCatalogSelection.ts:53-62#matchesCatalogSearch]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:162-168#visibleChoices]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:358-393#tierOptions]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:589-595#visibleChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:542-577#tierOptions]
 
 The search field is outside the menu, within a portalled non-modal dialog.
 Arrow keys move among enabled choices; Home/End retain their caret behavior in
@@ -155,11 +155,11 @@ search and navigate choices when an option has focus. Escape inside the picker
 does not propagate to its parent form. Closing with Escape or completing an
 asynchronous selection restores trigger focus. Reopening clears the query,
 an empty result is explicit, and the popup's height is bounded by the viewport.
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:170-195#navigateChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:562-587#navigateChoices]
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:197-214#updatePopoverPosition]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:104-109#restoreFocusRef]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:319-325#setQuery]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:342-362#createPortal]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:424-429#restoreFocusRef]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:669-675#setQuery]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:692-712#createPortal]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.catalog.test.tsx:168-205#reports]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.catalog.test.tsx:229-256#closes]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.accessibility.test.tsx:40-76#repositions]
@@ -252,7 +252,7 @@ Unavailable known entries remain disabled. Clearing an override is explicit
 and leaves tier resolution to the caller/backend.
 [src: file: frontend/src/components/ModelCatalogPicker.tsx:21-71#ModelCatalogPicker]
 [src: file: frontend/src/components/workflows/QuickPromptForm.tsx:309-315#ModelCatalogPicker]
-[src: file: frontend/src/components/workflows/WorkflowWizard.tsx:4543-4558#ModelCatalogPicker]
+[src: file: frontend/src/components/workflows/WorkflowWizard.tsx:4545-4560#ModelCatalogPicker]
 
 Reasoning choices come from the effective model's `reasoning_modes`, not a
 fixed low/medium/high list. An existing value absent from that list is retained
@@ -306,7 +306,7 @@ configuration. The callback updates only the compensation step, not the main
 pipeline. Search, exact connection namespaces, provenance and unavailable tiers
 therefore share the existing picker behavior.
 [src: file: frontend/src/components/workflows/WorkflowWizard.tsx:334-363#renderAgentTierPicker]
-[src: file: frontend/src/components/workflows/WorkflowWizard.tsx:5025-5028#updateRb]
+[src: file: frontend/src/components/workflows/WorkflowWizard.tsx:5029-5032#updateRb]
 [src: file: frontend/src/components/workflows/WorkflowWizard.tsx:334-338#renderAgentTierPicker]
 [src: file: frontend/src/components/workflows/__tests__/WorkflowWizard.coverage.test.tsx:984-1048#recover]
 
