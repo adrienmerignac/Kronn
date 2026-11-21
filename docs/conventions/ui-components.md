@@ -240,27 +240,55 @@ modes are props, not copies: the trigger `variant` (`chip`, `compact`,
 `field`), `multiple` (several targets, the list stays open) and `exactModel`
 (an agent and a model id, the catalogue's or one typed in the search, or
 « = principal », with the principal's own model greyed).
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:356#variant]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:379#multiple]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:390#exactModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:418#variant]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:441#multiple]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:452#exactModel]`
 Its popover is in `<body>` on the popover layer, above every dialog, and opens
 on its search field. It is placed from its rendered size, measured on open,
 when the search or the catalogue changes it, and on resize: it stays inside
 the window and never covers its trigger; opened above, its bottom is anchored
-to the trigger. Never place it from an estimated size.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:450#place]`
+to the trigger. Never place it from an estimated size. It is 480 px wide at
+most, never wider than the window.
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:512#place]`
 Availability always goes through
 `AgentAvailabilityBadge` (`unavailable` and `disabled` block the choice,
-`needs-full-access` and `not-listed` only warn).
-`[src: file: frontend/src/lib/agentAvailability.ts:10#AgentAvailabilityState]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:56#AgentAvailabilityBadge]`
+`needs-full-access` and `not-listed` only warn, `catalog` is the neutral
+« Détecté », « Cache à revérifier », « Configuration migrée »).
+`[src: file: frontend/src/lib/agentAvailability.ts:14#AgentAvailabilityState]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:58#AgentAvailabilityBadge]`
+
+**A row with tier choices** (field and chip modes, the API assistants, the @
+palette: one implementation, `AgentPickerTierChoices`) is one line per agent
+at desktop widths. On the left: the dot, the agent's name, its kind or role,
+and ONE state badge. On the right: the tiers, one-line buttons (icon and
+name, 26 px high) on equal tracks shared by every row, so Éco / Standard /
+Avancé line up from row to row. The state the tiers share (more than half of
+them) is written once, in the row's badge; a tier carries its own state, as a
+second line, only when it differs. The row's badge is the more serious of the
+agent's own state and that shared one. Every tier keeps its full state in its
+tooltip and its accessible description. The assistants' « agent default » is
+a fourth track with a short visible label (`agentPicker.defaultTier`, « Défaut
+»), its full name in its tooltip and accessible name. Under 420 px of viewport
+the tiers go on their own line under the agent, in equal parts. Nothing in a
+row is cut with an ellipsis: text wraps.
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:120#AgentPickerTierChoices]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:112#tierRowState]`
+`[src: file: frontend/src/lib/agentAvailability.ts:62#sharedTierState]`
+`[src: file: frontend/src/lib/agentAvailability.ts:82#rowAvailability]`
+
 A menu a text field drives (the composer's @ menu) renders
 `AgentPickerPalette` and keeps its own keys. The palette is a listbox: give it
 an `id`, spread `agentPaletteFieldAria` on the field (`aria-controls`,
 `aria-expanded`, `aria-activedescendant` while open); it keeps the highlighted
-row in view and its tier choices are no Tab stops.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:203#AgentPickerPalette]`
-`[src: file: frontend/src/lib/agentPickerPalette.ts:10#agentPaletteFieldAria]`
+row in view and its tier choices are no Tab stops. Give it a `boundary`: its
+height is then measured from its anchored edge to that area's far edge, minus
+`--kr-space-2`, and it scrolls inside. The composer's boundary is the message
+list (`composerMentionBoundary`), so the menu never slides under the
+discussion header or a banner.
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:231#AgentPickerPalette]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:250#boundary]`
+`[src: file: frontend/src/lib/agentPickerPalette.ts:21#agentPaletteFieldAria]`
+`[src: file: frontend/src/lib/agentPickerPalette.ts:11#composerMentionBoundary]`
 The API assistants go through `AssistantAgentPicker` (installed agents,
 external connections, tiers); a reopened conversation shows the connection
 and tier it runs on (`assistantChoiceFromDiscussion`).

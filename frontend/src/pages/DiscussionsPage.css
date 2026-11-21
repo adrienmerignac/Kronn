@@ -5465,8 +5465,10 @@ button.disc-contact-open {
 
 /* KT-1885 — the @ menu is the shared agent picker's palette: its rows, tier
    choices and availability badges; it only keeps its place above the field.
-   It shows as many rows as the menu it replaced (which had no height limit),
-   bounded by the window; the new discussion form sets its own height inline. */
+   Its height is measured (ChatInput's `boundary`): from the composer's top to
+   the message list's top, so it never slides under the header or a banner,
+   and it scrolls inside. This cap only holds until that measure runs. The
+   new discussion form measures its own room against its layout. */
 .disc-mention-popover.kr-agent-switch-palette {
   width: min(480px, calc(100vw - 2 * var(--kr-space-6)));
   max-height: calc(100vh - 2 * var(--kr-space-8));

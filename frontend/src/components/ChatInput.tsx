@@ -46,7 +46,7 @@ import { useModelCatalogSnapshot } from '../hooks/useModelCatalogSnapshot';
 import { useTargetReachability, reachabilityKey } from '../hooks/useTargetReachability';
 import { composerTargetWarning, formatWarningDate, type ComposerTargetWarning } from '../lib/composerTargetWarnings';
 import { AgentPickerPalette, type AgentPickerPaletteRow } from './AgentSwitchPicker';
-import { agentPaletteFieldAria } from '../lib/agentPickerPalette';
+import { agentPaletteFieldAria, composerMentionBoundary } from '../lib/agentPickerPalette';
 import { MENTION_TIER_CHOICES, nextMentionTierIndex } from '../lib/mentionTierSelection';
 import { detectTriggeredSkills } from '../lib/autoTriggers';
 import {
@@ -1535,6 +1535,7 @@ export function ChatInput({
             <AgentPickerPalette
               id={mentionListId}
               className="disc-mention-popover"
+              boundary={() => composerMentionBoundary(chatInputRef.current)}
               ariaLabel={t('disc.mentionAgents')}
               status={catalogError ? t('modelCatalog.loadError') : undefined}
               t={t}

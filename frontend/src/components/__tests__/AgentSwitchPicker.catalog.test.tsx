@@ -49,15 +49,16 @@ describe('AgentSwitchPicker — configured identity and catalogue provenance', (
   it('uses the explicit tier override before a different catalogue assignment', async () => {
     await show('operator-choice');
     await screen.findByText('modelCatalog.provenance.live');
-    expect(screen.getByRole('menuitem', { name: /Claude Code.*reasoning/ }))
-      .toHaveAttribute('title', 'reasoning · operator-choice');
+    // KT-1885 — the tooltip names the model, then the tier's catalogue state.
+    expect(screen.getByRole('menuitem', { name: /Claude Code.*reasoning/ }).getAttribute('title'))
+      .toMatch(/^reasoning · operator-choice(?: — |$)/);
   });
 
   it('never silently substitutes the catalogue assignment for an unknown configured model', async () => {
     await show('operator-model-not-in-catalog');
     await waitFor(() => expect(list).toHaveBeenCalled());
     expect(screen.getByRole('menuitem', { name: /Claude Code.*reasoning/ }))
-      .toHaveAttribute('title', 'reasoning · operator-model-not-in-catalog');
+      .toHaveAttribute('title', 'reasoning · operator-model-not-in-catalog — modelCatalog.notInCatalog');
   });
 
   it('labels a stale live entry as cached instead of presenting a fresh discovery', async () => {
@@ -123,10 +124,10 @@ describe('AgentSwitchPicker — configured identity and catalogue provenance', (
     const trigger = screen.getByRole('button', { name: 'Choose' });
     expect(trigger).toHaveAttribute('title', 'Choose · default · saved-explicit-model');
     await act(async () => { fireEvent.click(trigger); });
-    expect(screen.getByRole('menuitem', { name: /Claude Code.*default/ }))
-      .toHaveAttribute('title', 'default · saved-explicit-model');
-    expect(screen.getByRole('menuitem', { name: /Claude Code.*reasoning/ }))
-      .toHaveAttribute('title', 'reasoning · operator-choice');
+    expect(screen.getByRole('menuitem', { name: /Claude Code.*default/ }).getAttribute('title'))
+      .toMatch(/^default · saved-explicit-model(?: — |$)/);
+    expect(screen.getByRole('menuitem', { name: /Claude Code.*reasoning/ }).getAttribute('title'))
+      .toMatch(/^reasoning · operator-choice(?: — |$)/);
   });
 
   it('searches labels, exact connection identities and model IDs without refetching or selecting', async () => {
@@ -160,8 +161,8 @@ describe('AgentSwitchPicker — configured identity and catalogue provenance', (
     await show('operator-未知-model');
     fireEvent.change(screen.getByRole('searchbox', { name: 'agentPicker.search' }),
       { target: { value: '未知' } });
-    expect(screen.getByRole('menuitem', { name: /Claude Code.*reasoning/ }))
-      .toHaveAttribute('title', 'reasoning · operator-未知-model');
+    expect(screen.getByRole('menuitem', { name: /Claude Code.*reasoning/ }).getAttribute('title'))
+      .toMatch(/^reasoning · operator-未知-model(?: — |$)/);
   });
 
   it('reports no matches and resets the query when reopened', async () => {

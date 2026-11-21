@@ -255,9 +255,10 @@ describe('ChatHeader — shared agent switcher', () => {
     );
 
     fireEvent.click(trigger);
+    // KT-1885 — the tooltip names the model, then the tier's catalogue state.
     expect(screen.getByRole('menuitem', {
       name: 'Codex · disc.tier.reasoning',
-    })).toHaveAttribute('title', 'disc.tier.reasoning · gpt-company-review');
+    }).getAttribute('title')).toMatch(/^disc\.tier\.reasoning · gpt-company-review(?: — |$)/);
   });
 
   /// KT-1935 — the role used to replace the model on the button. Now the

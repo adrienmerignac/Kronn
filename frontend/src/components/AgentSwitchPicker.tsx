@@ -20,7 +20,8 @@ import {
 } from '../lib/constants';
 import { agentTransport, type AgentTransport } from '../lib/shadowMerge';
 import {
-  availabilityBlocks, tierAvailability, type AgentAvailability, type AgentAvailabilityState,
+  availabilityBlocks, rowAvailability, sameAvailability, sharedTierState, tierAvailability, tierChoiceState,
+  type AgentAvailability, type AgentAvailabilityState,
 } from '../lib/agentAvailability';
 import { SearchField } from './ui/SearchField';
 import { agentModelLabel } from './workflows/shadowRowModel';
@@ -51,6 +52,7 @@ const AVAILABILITY_TEST_IDS: Record<AgentAvailabilityState, string> = {
   unavailable: 'agent-unavailable',
   disabled: 'agent-disabled',
   'not-listed': 'agent-not-listed',
+  catalog: 'agent-catalog-state',
 };
 
 export function AgentAvailabilityBadge({ availability, placement = 'inline' }: {
@@ -102,21 +104,49 @@ export interface AgentPickerTierChoicesProps {
   t: Translate;
 }
 
+/**
+ * KT-1885 — the state a row's tiers share, written once next to the agent
+ * (`rowAvailability`); `AgentPickerTierChoices` derives the same one, so a
+ * tier only carries a state that differs from it.
+ */
+function tierRowState(
+  tiers: readonly (ModelTier | null)[],
+  resolve: (tier: ModelTier) => ResolvedCatalogTier,
+  t: Translate,
+): AgentAvailability | null {
+  return sharedTierState(tiers.flatMap(tier => tier === null ? [] : [tierChoiceState(resolve(tier), t)]));
+}
+
 export function AgentPickerTierChoices({
   targetLabel, tiers, currentTier, keyboardTier, resolve, tierLabel, modelLabel, titleFor, defaultLabel, onSelect,
   disabled = false, disableCurrent = false, keepFocus = false, itemRole, ariaLabel, t,
 }: AgentPickerTierChoicesProps) {
   const id = useId();
+  const shared = tierRowState(tiers, resolve, t);
   return (
-    <span className="kr-agent-switch-tier-choices" aria-label={ariaLabel}>
+    <span
+      className="kr-agent-switch-tier-choices"
+      aria-label={ariaLabel}
+      style={{ '--agent-switch-tier-count': tiers.length } as CSSProperties}
+    >
       {tiers.map(tier => {
         const selected = tier === (currentTier ?? null) && (tier !== null || currentTier === null);
         const label = tier === null ? defaultLabel : tierLabel(tier);
+        // « Modèle par défaut de l'agent » stays the name; the button shows « Défaut ».
+        const visibleLabel = tier === null ? t('agentPicker.defaultTier') : label;
         const resolution = tier === null ? null : resolve(tier);
         const availability = tierAvailability(resolution, t);
+        const state = tier === null ? null : tierChoiceState(resolution, t);
+        // Written once on the row when the tiers share it; here only when this tier differs.
+        const ownState = state && !sameAvailability(state, shared) ? state : null;
         const blocked = availabilityBlocks(availability);
         const name = tier === null ? label : titleFor?.(tier) ?? `${label} · ${modelLabel(tier)}`;
-        const title = [name, resolution?.notice, resolution?.refusal].filter(Boolean).join(' — ');
+        const title = [
+          name,
+          state && state.state !== 'not-listed' ? state.label : '',
+          resolution?.notice,
+          resolution?.refusal,
+        ].filter(Boolean).join(' — ');
         const provenance = resolution?.entry && resolution.provenance
           ? t(`modelCatalog.provenance.${resolution.provenance}`)
           : resolution?.configured ? t('modelCatalog.notInCatalog') : '';
@@ -150,7 +180,7 @@ export function AgentPickerTierChoices({
           >
             <span className="kr-agent-switch-tier-label">
               {tier !== null && <span aria-hidden="true">{MODEL_TIER_ICONS[tier]}</span>}
-              <span>{label}</span>
+              <span>{visibleLabel}</span>
             </span>
             <span id={descriptionId} hidden>
               {[title, resolution?.entry?.model_id, provenance,
@@ -163,9 +193,7 @@ export function AgentPickerTierChoices({
                 resolution?.entry ? t('modelCatalog.lastChecked', resolution.entry.last_checked_at) : '',
               ].filter(Boolean).join(' · ')}
             </span>
-            {availability
-              ? <AgentAvailabilityBadge availability={availability} placement="tier" />
-              : provenance && <span className="kr-agent-switch-catalog-meta">{provenance}</span>}
+            {ownState && <AgentAvailabilityBadge availability={ownState} placement="tier" />}
             {selected && <Check size={8} aria-hidden="true" />}
           </button>
         );
@@ -200,7 +228,7 @@ export interface AgentPickerPaletteRow {
  * moves the highlight with its own keys; the rows, the tier choices and the
  * availability badges are the picker's.
  */
-export function AgentPickerPalette({ id, rows, status, ariaLabel, className, style, placement, listRef, t }: {
+export function AgentPickerPalette({ id, rows, status, ariaLabel, className, style, placement, listRef, boundary, t }: {
   /**
    * The list's id: its rows are `agentPaletteOptionId(id, row.key)`, which the
    * text field names in `aria-activedescendant` (see `agentPaletteFieldAria`).
@@ -214,6 +242,12 @@ export function AgentPickerPalette({ id, rows, status, ariaLabel, className, sty
   /** Which side of its field the list opens on, for the caller's CSS. */
   placement?: 'above' | 'below';
   listRef?: Ref<HTMLDivElement>;
+  /**
+   * The area the list must stay in (the message list above the composer):
+   * its height is measured against that area's edge on its open side, minus
+   * `--kr-space-2`, and it scrolls inside. Without one, the window bounds it.
+   */
+  boundary?: () => Element | null | undefined;
   t: Translate;
 }) {
   const fallbackId = useId();
@@ -231,6 +265,30 @@ export function AgentPickerPalette({ id, rows, status, ariaLabel, className, sty
     const row = ownRef.current?.querySelector<HTMLElement>('[data-highlighted="true"]');
     row?.scrollIntoView?.({ block: 'nearest' });
   }, [highlightedKey]);
+  // Never taller than the room it really has: from its anchored edge to the
+  // boundary's far edge (or the window's), so its first row is always visible.
+  const boundaryRef = useRef(boundary);
+  boundaryRef.current = boundary;
+  const fit = useCallback(() => {
+    const node = ownRef.current;
+    if (!node || !boundaryRef.current) return;
+    const own = node.getBoundingClientRect();
+    const area = boundaryRef.current()?.getBoundingClientRect();
+    const room = placement === 'below'
+      ? Math.min(area?.bottom ?? window.innerHeight, window.innerHeight) - own.top - VIEWPORT_PADDING
+      : own.bottom - Math.max(area?.top ?? 0, 0) - VIEWPORT_PADDING;
+    node.style.maxHeight = `${Math.max(0, Math.floor(room))}px`;
+  }, [placement]);
+  // On every render: the query, the rows and the field's own height move it.
+  useLayoutEffect(() => {
+    fit();
+  });
+  const bounded = Boolean(boundary);
+  useEffect(() => {
+    if (!bounded) return;
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [fit, bounded]);
   return (
     <div
       ref={setRef}
@@ -244,6 +302,10 @@ export function AgentPickerPalette({ id, rows, status, ariaLabel, className, sty
       {status &&<div role="status" className="kr-agent-switch-status">{status}</div>}
       {rows.map((row, index) => {
         const blocked = availabilityBlocks(row.availability);
+        const badge = rowAvailability(
+          row.availability,
+          row.tiers ? tierRowState(row.tiers.tiers ?? TIER_CHOICES, row.tiers.resolve, t) : null,
+        );
         return (
           <Fragment key={row.key}>
             {row.group && row.group !== rows[index - 1]?.group && (
@@ -279,7 +341,7 @@ export function AgentPickerPalette({ id, rows, status, ariaLabel, className, sty
                   {row.label}
                 </span>
                 {row.detail && <span className="kr-agent-switch-palette-detail">{row.detail}</span>}
-                <AgentAvailabilityBadge availability={row.availability} />
+                <AgentAvailabilityBadge availability={badge} />
                 {row.trailing}
               </button>
               {row.tiers && (
@@ -773,8 +835,10 @@ function TierPicker({
                       className="kr-agent-switch-option-dot"
                       style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }}
                     />
-                    {targetLabel(target)}
-                    <AgentAvailabilityBadge availability={badge} />
+                    <span className="kr-agent-switch-tier-name">{targetLabel(target)}</span>
+                    <AgentAvailabilityBadge
+                      availability={rowAvailability(badge, tierRowState(tierOptions, tier => resolvedTier(target, tier), t))}
+                    />
                   </span>
                   <AgentPickerTierChoices
                     targetLabel={targetLabel(target)}

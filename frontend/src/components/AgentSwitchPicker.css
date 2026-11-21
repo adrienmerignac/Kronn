@@ -119,7 +119,8 @@
   flex-direction: column;
   width: max-content;
   min-width: 170px;
-  max-width: calc(100vw - 16px);
+  /* KT-1885 — 480px at most (a tier row stays one line there), never wider than the window. */
+  max-width: min(480px, calc(100vw - 2 * var(--kr-space-2)));
   padding: 4px;
   border: 1px solid var(--kr-border);
   border-radius: var(--kr-r-md);
@@ -185,13 +186,16 @@
   flex: 0 0 auto;
 }
 
+/* KT-1885 — a row with tier choices (the field and chip modes, the API
+   assistants, the @ palette): the agent on the left, its tiers on the right
+   in equal tracks, one line at desktop widths. Every row of a list has the
+   same tiers in the same tracks, so Éco / Standard / Avancé line up. */
 .kr-agent-switch-tier-row {
   display: grid;
-  grid-template-columns: minmax(112px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--kr-sp-2);
-  min-height: 41px;
-  padding: 5px 6px 5px 8px;
+  gap: var(--kr-space-2);
+  padding: var(--kr-space-1) var(--kr-space-2);
   border-radius: var(--kr-r-sm);
 }
 
@@ -199,33 +203,47 @@
   background: var(--kr-bg-hover);
 }
 
+/* The dot, the name and ONE state badge; the badge goes under the name
+   rather than being cut when the row is narrow. */
 .kr-agent-switch-tier-agent {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  gap: 0 var(--kr-space-2);
   min-width: 0;
   color: var(--kr-text-secondary);
-  font-size: var(--kr-fs-xs);
+  font-size: var(--kr-type-sm);
   font-weight: 650;
+  line-height: 1.25;
 }
 
+.kr-agent-switch-tier-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Equal tracks wide enough for « Avancé · Advanced · Avanzado » with its
+   icon; a longer tier name widens its track instead of being cut. The
+   count comes from the component (3 tiers, 4 with the agent's default). */
 .kr-agent-switch-tier-choices {
-  display: inline-flex;
-  gap: 3px;
+  --agent-switch-tier-track: 88px;
+  display: grid;
+  grid-template-columns: repeat(var(--agent-switch-tier-count, 3), minmax(var(--agent-switch-tier-track), max-content));
+  gap: var(--kr-space-1);
 }
 
-/* KT-1885 — a tier choice: its icon and name on one line, then the
-   catalogue's state, which wraps rather than being cut. Never under 24px. */
+/* A tier choice: icon and name on one line, 26px high. Only a tier whose
+   state differs from its row's carries that state, as a wrapped second line. */
 .kr-agent-switch-tier-option {
   position: relative;
   display: inline-flex;
   flex-direction: column;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  min-width: 76px;
-  max-width: 128px;
-  min-height: var(--kr-space-6);
-  padding: var(--kr-space-1) var(--kr-space-2);
+  width: 100%;
+  min-height: calc(var(--kr-space-6) + var(--kr-space-1) / 2);
+  padding: 0 var(--kr-space-1);
   border: 1px solid var(--kr-border-ghost);
   border-radius: var(--kr-r-sm);
   background: var(--kr-bg-surface);
@@ -244,6 +262,11 @@
   white-space: nowrap;
 }
 
+.kr-agent-switch-tier-option > .kr-agent-switch-catalog-meta {
+  max-width: calc(var(--agent-switch-tier-track) - 2 * var(--kr-space-1) - 2px);
+  padding-bottom: var(--kr-space-1);
+}
+
 .kr-agent-switch-badge {
   flex-shrink: 0;
   padding: 0 5px;
@@ -260,6 +283,13 @@
 .kr-agent-switch-badge[data-state='disabled'] {
   background: rgba(var(--kr-danger-rgb), 0.12);
   color: var(--kr-danger);
+}
+
+/* What the catalogue says of the model (« Détecté », « Cache à revérifier »): neutral. */
+.kr-agent-switch-badge[data-state='catalog'] {
+  background: var(--kr-bg-subtle);
+  color: var(--kr-text-tertiary);
+  font-weight: 500;
 }
 
 .kr-agent-switch-catalog-meta {
@@ -414,13 +444,14 @@
   overscroll-behavior: contain;
 }
 
-/* The tier choices sit after the agent, and go under it only when the row is too narrow. */
+/* The same row as the picker's tier rows: the agent on the left, its tiers
+   on the right in the shared tracks. */
 .kr-agent-switch-palette-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--kr-space-1) var(--kr-space-2);
-  padding: var(--kr-space-1);
+  padding: var(--kr-space-1) var(--kr-space-2);
   border-radius: var(--kr-r-sm);
 }
 
@@ -430,16 +461,17 @@
 
 .kr-agent-switch-palette-main {
   display: flex;
-  flex: 1 1 140px;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--kr-space-2);
+  gap: 0 var(--kr-space-2);
   min-width: 0;
-  padding: var(--kr-space-1);
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--kr-text-secondary);
   font-family: inherit;
   font-size: var(--kr-type-sm);
+  line-height: 1.25;
   text-align: left;
   cursor: pointer;
 }
@@ -450,29 +482,26 @@
 }
 
 .kr-agent-switch-palette-label {
+  min-width: 0;
   font-weight: 700;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
+/* The agent's kind, whole: it wraps under the name rather than being cut. */
 .kr-agent-switch-palette-detail {
   min-width: 0;
-  overflow: hidden;
   color: var(--kr-text-tertiary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
+/* Under 420px the tiers go on their own line under the agent, in equal parts. */
 @media (max-width: 419px) {
-  .kr-agent-switch-tier-row {
-    grid-template-columns: 1fr;
+  .kr-agent-switch-tier-row,
+  .kr-agent-switch-palette-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .kr-agent-switch-tier-choices {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .kr-agent-switch-tier-option {
-    width: 100%;
+    grid-template-columns: repeat(var(--agent-switch-tier-count, 3), minmax(0, 1fr));
   }
 }

@@ -640,6 +640,8 @@ const DEMO_PICKER_TARGETS: AgentSwitchTarget[] = [
  *  how an unavailable agent reads in every mode. */
 function AgentSwitchPickerDemo({ t }: { t: T }) {
   const [field, setField] = useState<{ agent: AgentType; tier: ModelTier }>({ agent: 'ClaudeCode', tier: 'default' });
+  const [withDefault, setWithDefault] = useState<{ agent: AgentType; tier: ModelTier | null }>({ agent: 'ClaudeCode', tier: null });
+  const tierLabels = { economy: t('disc.tier.economy'), default: t('disc.tier.default'), reasoning: t('disc.tier.reasoning') };
   const [chip, setChip] = useState<AgentType>('Codex');
   const [many, setMany] = useState<AgentSwitchTarget[]>([{ agent: 'ClaudeCode' }, { agent: 'Codex' }]);
   const [exact, setExact] = useState<ShadowAgent | undefined>(undefined);
@@ -657,11 +659,23 @@ function AgentSwitchPickerDemo({ t }: { t: T }) {
             variant="field"
             currentAgent={field.agent}
             currentTier={field.tier}
-            tierLabels={{ economy: t('disc.tier.economy'), default: t('disc.tier.default'), reasoning: t('disc.tier.reasoning') }}
+            tierLabels={tierLabels}
             defaultModelLabel={t('disc.defaultAgentModel')}
             onTargetSelectionChange={async (target, tier) => setField({ agent: target.agent, tier })}
           />
         </div>
+      </Row>
+      {/* The API assistants' list: a fourth track, « Défaut », the agent's own model. */}
+      <Row label={t('designSystem.demo.agentWithDefault')}>
+        <AgentSwitchPicker
+          {...common}
+          currentAgent={withDefault.agent}
+          currentTier={withDefault.tier}
+          tierLabels={tierLabels}
+          defaultModelLabel={t('disc.defaultAgentModel')}
+          onTargetSelectionChange={async (target, tier) => setWithDefault({ agent: target.agent, tier })}
+          onDefaultTierSelection={async target => setWithDefault({ agent: target.agent, tier: null })}
+        />
       </Row>
       <Row label={t('designSystem.demo.agentChip')}>
         <AgentSwitchPicker {...common} compact currentAgent={chip} onChange={async agent => setChip(agent)} />

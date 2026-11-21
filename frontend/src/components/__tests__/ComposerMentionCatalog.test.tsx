@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApiMock } from '../../test/apiMock';
@@ -42,15 +43,19 @@ function familyConfig(): ModelTiersConfig {
     kiro: empty(), copilot_cli: empty(), ollama: empty(), nvidia: empty(),
     lite_llm: { economy: 'foreign-family', default: 'foreign-family', reasoning: 'foreign-family' } };
 }
-async function showChat(savedModel?: string, connectionPatch: Partial<ExternalApiConnectionView> = {}) {
+async function showChat(
+  savedModel?: string,
+  connectionPatch: Partial<ExternalApiConnectionView> = {},
+  wrap: (input: ReactNode) => ReactNode = input => input,
+) {
   const onSend = vi.fn();
   const discussion = { id: 'catalog-mentions', agent: 'LiteLlm', connection_id: 'team-a', tier: 'default',
     model: savedModel, participants: ['LiteLlm'], messages: [], language: 'fr', skill_ids: [], directive_ids: [] } as unknown as Discussion;
-  render(<ChatInput discussion={discussion} agents={[agent]} externalConnections={[{ ...connection, ...connectionPatch }]} modelTiers={familyConfig()}
+  render(<>{wrap(<ChatInput discussion={discussion} agents={[agent]} externalConnections={[{ ...connection, ...connectionPatch }]} modelTiers={familyConfig()}
     sending={false} disabled={false} ttsEnabled={false} ttsState="idle" worktreeError={null}
     availableSkills={[]} availableDirectives={[]} onSend={onSend} onStop={vi.fn()} onOrchestrate={vi.fn()}
     onTtsToggle={vi.fn()} onWorktreeErrorDismiss={vi.fn()} onWorktreeRetry={vi.fn()}
-    isAgentRestricted={() => false} toast={vi.fn()} t={t} />);
+    isAgentRestricted={() => false} toast={vi.fn()} t={t} />)}</>);
   const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
   await act(async () => { fireEvent.change(textarea, { target: { value: '@litellm' } }); });
   return { textarea, onSend };
@@ -160,7 +165,11 @@ describe('composer mentions — shared exact catalogue contract', () => {
     await showNew();
     expect(tierButton('reasoning')).toHaveAttribute('title', expect.stringContaining('Modèle équipe A'));
     expect(tierButton('reasoning')).toHaveAccessibleDescription(expect.stringContaining('modelCatalog.provenance.cached'));
-    expect(within(tierButton('reasoning')).getByText('modelCatalog.provenance.cached')).toBeVisible();
+    // KT-1885 — the row's tiers share it: written once, next to the agent, not in each tier.
+    const row = tierButton('reasoning').closest<HTMLElement>('[role="option"]')!;
+    expect(within(row).getAllByText('modelCatalog.provenance.cached')).toHaveLength(1);
+    expect(within(row).getByTestId('agent-catalog-state')).toHaveTextContent('modelCatalog.provenance.cached');
+    expect(within(tierButton('reasoning')).queryByText('modelCatalog.provenance.cached')).toBeNull();
   });
 
   it('keeps the principal saved override for untouched insertion but resolves explicit tier choices independently', async () => {
@@ -270,6 +279,53 @@ describe('composer mentions — shared exact catalogue contract', () => {
     await act(async () => { fireEvent.change(textarea, { target: { value: '@lite' } }); });
     expect(await screen.findByText('modelCatalog.loadError')).toBeVisible();
     expect(tierButton('reasoning')).toHaveAccessibleDescription(expect.stringContaining('modelCatalog.provenance.cached'));
+  });
+});
+
+// KT-1885 review 2 — the @ menu is never taller than the room it has: from the
+// composer's top up to the message list's top (under the discussion header and
+// its banners), minus --kr-space-2; it scrolls inside.
+describe('composer mentions — the @ menu stays in the message area (KT-1885 review 2)', () => {
+  const rect = (top: number, bottom: number) => ({
+    top, bottom, left: 0, right: 480, width: 480, height: bottom - top, x: 0, y: top, toJSON: () => ({}),
+  }) as DOMRect;
+
+  it('measures its height from the composer up to the message list, and again when the window resizes', async () => {
+    let composerTop = 700;
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('disc-messages')) return rect(180, composerTop);
+      // Anchored above the composer (bottom: 100%): its bottom is the composer's top minus its margin.
+      if (this.classList.contains('kr-agent-switch-palette')) return rect(composerTop - 900, composerTop - 4);
+      return rect(0, 0);
+    });
+    try {
+      await showChat(undefined, {}, input => (
+        <div className="disc-messages-col">
+          <div className="disc-messages" />
+          {input}
+        </div>
+      ));
+      const menu = screen.getByRole('listbox', { name: 'disc.mentionAgents' });
+      // 696 (its bottom) − 180 (the message list's top) − 8.
+      expect(menu.style.maxHeight).toBe('508px');
+      composerTop = 600;
+      await act(async () => { window.dispatchEvent(new Event('resize')); });
+      expect(menu.style.maxHeight).toBe('408px');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('outside a discussion column, the window bounds it', async () => {
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('kr-agent-switch-palette') ? rect(-200, 500) : rect(0, 0);
+    });
+    try {
+      await showChat();
+      expect(screen.getByRole('listbox', { name: 'disc.mentionAgents' }).style.maxHeight).toBe('492px');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
