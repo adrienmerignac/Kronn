@@ -9,7 +9,7 @@
 //     + files visible, and does NOT jump into a diff
 //   - clicking a file explicitly still opens its diff, expanded or not
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { I18nProvider } from '../../lib/I18nContext';
 import type { ReactElement } from 'react';
 
@@ -63,6 +63,7 @@ vi.mock('../../lib/api', async () => {
 });
 
 import { GitPanel } from '../GitPanel';
+import { SidePanelShell } from '../SidePanelShell';
 
 const wrap = (ui: ReactElement) => render(<I18nProvider>{ui}</I18nProvider>);
 
@@ -104,5 +105,35 @@ describe('GitPanel — expand view', () => {
       expect(container.querySelector('.git-diff-pre')?.textContent).toContain('old');
     });
     expect(container.querySelector('.git-diff-pre')?.textContent).toContain('new');
+  });
+
+  it('inside the side panel, hands its actions and the open path to the one header (KT-1884)', async () => {
+    const { container } = wrap(
+      <SidePanelShell
+        ariaLabel="Panels"
+        title="My discussion"
+        railLabel="Panels"
+        items={[{ id: 'git', label: 'Git', icon: null }]}
+        activeId="git"
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+        closeLabel="Close"
+      >
+        <GitPanel discussionId="d1" />
+      </SidePanelShell>,
+    );
+    await screen.findByTestId('git-commit-history');
+    const header = container.querySelector('.ui-drawer-header') as HTMLElement;
+    expect(container.querySelector('.git-header')).toBeNull();
+    expect(within(header).getByTestId('git-expand-toggle')).toBeInTheDocument();
+    expect(header.querySelector('.git-icon-btn')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('backend/src/api/orchestration.rs'));
+    await waitFor(() => expect(header.querySelector('.git-back-btn')).toBeInTheDocument());
+    expect(header.querySelector('.side-panel-shell-meta')).toHaveTextContent('backend/src/api/orchestration.rs');
+    expect(container.querySelectorAll('.git-back-btn')).toHaveLength(1);
+    fireEvent.click(header.querySelector('.git-back-btn')!);
+    await waitFor(() => expect(header.querySelector('.git-back-btn')).toBeNull());
+    expect(header.querySelector('.git-icon-btn')).toBeInTheDocument();
   });
 });

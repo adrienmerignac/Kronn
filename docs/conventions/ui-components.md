@@ -5,7 +5,9 @@ buttons, tab styles, menus and native `title=` tooltips. No screen is migrated
 in KT-1880; the screens move to them in lots 2-5. KT-1882 adds the form
 components (`Field`, `Select`, `Switch`, `FormFooter`); lot 5 migrates the
 forms to them. KT-1883 adds the feedback components (`Notice`,
-`EmptyState`, `LoadingState` with its `Skeleton`). Pairs with
+`EmptyState`, `LoadingState` with its `Skeleton`). KT-1884 adds the six
+header kinds (`ListHeader`, `DetailHeader`, `TabHeader`, `SectionHeader`,
+`DrawerHeader`, `CardHeader`), see [header-kinds.md](header-kinds.md). Pairs with
 [design-tokens.md](design-tokens.md) and [ui-text.md](ui-text.md).
 
 ## Where they live
@@ -13,7 +15,7 @@ forms to them. KT-1883 adds the feedback components (`Notice`,
 One folder, one file per component, with its stylesheet and its test next to
 it (`Button.tsx`, `Button.css`, `Button.test.tsx`). `stylesheets.test.ts`
 fails if a component lacks one of the three.
-`[src: file: frontend/src/components/ui/stylesheets.test.ts:180]`
+`[src: file: frontend/src/components/ui/stylesheets.test.ts:182]`
 
 | Component | Use | Keyboard |
 |---|---|---|
@@ -34,6 +36,7 @@ fails if a component lacks one of the three.
 | `Notice` | A message inside the page it concerns (see [feedback-channels.md](feedback-channels.md)): `tone` info / warning / danger / success, optional `title`, one `action` (`{ label, onClick }`), `onDismiss` adds a cross named "Dismiss". Tone on the icon, the inline-start border and the tint; text in `--kr-text-primary`. `role="alert"` for danger only, `status` otherwise. | native |
 | `EmptyState` | `kind` firstUse (its `action`, the primary button, is required), noResult (`onClear`, required, "Clear the filters" unless `clearLabel`), nothingSelected (no action); `title`, `description`, `icon`. The type refuses a case without its way out. | native |
 | `LoadingState` | `size` sm (a ring beside the text, inline) / md (the mark over its sentence, a panel; default) / lg (a whole page); `fullscreen` (the window, lg), `phase`, `onRetry`. md and lg keep the cold-start screen of `index.html` instead of drawing a second one, unless `holdsBootScreen={false}` (a loader shown as content); the hold follows the current props, so a loader that turns sm or stops holding releases that screen and draws itself. Same file: `Skeleton`, `kind` list (`rows`) / detail, one named status (not marked busy, so its label is read), shapes hidden from assistive technology. | — |
+| `ListHeader`, `DetailHeader`, `TabHeader`, `SectionHeader`, `DrawerHeader`, `CardHeader` | One header per kind, one heading each at a fixed level (h1; h2 for detail, drawer, card; h3 for tab, section), slots `leading` / `title` / `meta` / `status` / `description` / `actions`, `compact`; `DrawerHeader` adds `onClose` + `closeLabel` (the last control), `titleId` names a drawer or a card. Which goes where: [header-kinds.md](header-kinds.md). | native |
 
 `Menu` and `Tooltip` render into `document.body` at a fixed position
 (`anchor.ts`), so a container with `overflow: hidden` does not clip them.
@@ -162,10 +165,24 @@ Escape closes one layer, the innermost first
   demos), passes `holdsBootScreen={false}`: mounted for good, md and lg would
   otherwise hold the cold-start screen and leave Settings behind it when it
   is the first page opened
-  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:479]`.
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:485]`.
 - **Variants** live in `feedbackKinds.ts` (`NOTICE_TONES`,
   `EMPTY_STATE_KINDS`, `LOADING_SIZES`, `SKELETON_KINDS`), so the component
   files export components only (fast refresh).
+
+## Header kinds (KT-1884)
+
+- **One frame.** The six share `headerFrame.tsx` and `headerFrame.css`; each
+  kind's own stylesheet sets only its title sizes (from the text scale,
+  smaller when `compact`) and its padding. `describeHeaderContract` runs the
+  same checks on each (one heading at its level in both forms, slot order,
+  sizes, no `position` or `z-index`, axe)
+  `[src: file: frontend/src/test/headerContract.tsx:32#describeHeaderContract]`.
+- **Variants** live in `headerKinds.ts` (`HEADER_LEVELS`, `HEADER_KINDS`).
+- **In the gallery** each kind shows its normal and compact form (the compact
+  one with a long title, to show it ellipsize). A demo renders its real
+  heading, so the gallery's own `h4` after an `h1` or `h2` demo is the one
+  `heading-order` jump its axe test allows.
 
 ## Rules
 

@@ -306,6 +306,27 @@
   border-radius: var(--kr-radius-surface);
 }
 
+/* KT-1884 — a header demo takes the whole row and may shrink below its
+   title: the title ellipsizes, the actions stay inside the frame (400px). */
+.ds-demo-header-frame {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ds-demo-header-frame > .ui-tab-header,
+.ds-demo-header-frame > .ui-section-header {
+  padding-inline: var(--kr-space-3);
+}
+
+.ds-demo-header-frame > .ui-section-header {
+  padding-block-start: var(--kr-space-2);
+}
+
+.ds-demo-card {
+  padding: var(--kr-space-3);
+}
+
 .ds-demo-frame > .ui-loading-state[data-size="md"],
 .ds-demo-frame > .ui-loading-state[data-size="lg"] {
   min-height: calc(var(--kr-space-8) * 5);

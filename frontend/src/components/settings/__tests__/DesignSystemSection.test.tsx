@@ -12,6 +12,7 @@ import { DesignSystemSection, DESIGN_SYSTEM_SECTION_ID } from '../DesignSystemSe
 import { describeViolations, runAxe } from '../../../test/axe';
 import { GALLERY_COMPONENTS } from '../designSystemGallery';
 import { STATUS_TONES } from '../../ui/statusTones';
+import { HEADER_KINDS, HEADER_LEVELS } from '../../ui/headerKinds';
 import { DESIGN_TOKEN_GROUPS, DESIGN_TOKENS } from '../../../styles/designTokens';
 import { loadThemes } from '../../../styles/themeAudit';
 import { dictionaries } from '../../../lib/i18n/testing';
@@ -323,6 +324,77 @@ describe('DesignSystemSection — index and components (KT-1880)', () => {
       const results = await act(() => runAxe(screen.getByRole('region', { name })));
       expect(describeViolations(results), name).toEqual([]);
     }
+  });
+
+  const HEADER_ENTRIES = [
+    ['ListHeader', 'list'], ['DetailHeader', 'detail'], ['TabHeader', 'tab'],
+    ['SectionHeader', 'section'], ['DrawerHeader', 'drawer'], ['CardHeader', 'card'],
+  ] as const;
+
+  it('shows each header kind in its normal and compact form, each with one heading at its level (KT-1884)', () => {
+    render(<DesignSystemSection t={t} />);
+    expect(HEADER_KINDS).toEqual(HEADER_ENTRIES.map(([, kind]) => kind));
+    for (const [name, kind] of HEADER_ENTRIES) {
+      const section = screen.getByRole('region', { name });
+      const headers = [...section.querySelectorAll<HTMLElement>('.ui-header')];
+      expect(headers.map(h => h.getAttribute('data-kind')), name).toEqual([kind, kind]);
+      expect(headers.map(h => h.hasAttribute('data-compact')), name).toEqual([false, true]);
+      for (const header of headers) {
+        const headings = within(header).getAllByRole('heading');
+        expect(headings, name).toHaveLength(1);
+        expect(headings[0].tagName, name).toBe(`H${HEADER_LEVELS[kind]}`);
+        expect(header.querySelector('.ui-header-actions'), `${name} actions`).toBeTruthy();
+      }
+      const rows = [...section.querySelectorAll('.ds-demo-label')].map(l => l.textContent);
+      expect(rows, name).toEqual(['designSystem.demo.header.normal', 'designSystem.demo.header.compact']);
+    }
+  });
+
+  it('names the drawer and the card from their header, and closes the drawer from its last control (KT-1884)', async () => {
+    const user = userEvent.setup();
+    render(<DesignSystemSection t={t} />);
+    const drawer = screen.getByRole('region', { name: 'DrawerHeader' });
+    for (const group of within(drawer).getAllByRole('group')) {
+      expect(group).toHaveAccessibleName();
+      const buttons = within(group).getAllByRole('button');
+      expect(buttons.at(-1)).toHaveAccessibleName('ui.overlay.close');
+    }
+    await user.click(within(drawer).getAllByRole('button', { name: 'ui.overlay.close' })[0]);
+    expect(screen.getByTestId('ds-drawer-header-closed')).toHaveAttribute('data-count', '1');
+
+    const cards = within(screen.getByRole('region', { name: 'CardHeader' })).getAllByRole('article');
+    expect(cards.map(card => card.querySelector('.ui-header-status [data-tone]')?.getAttribute('data-tone')))
+      .toEqual(['success', 'success']);
+    for (const card of cards) expect(card).toHaveAccessibleName();
+  });
+
+  it('passes axe on the header kinds of the gallery (KT-1884)', async () => {
+    render(<main><DesignSystemSection t={t} /></main>);
+    for (const [name] of HEADER_ENTRIES) {
+      const results = await act(() => runAxe(screen.getByRole('region', { name })));
+      // A demo renders its real heading (an h1 for ListHeader): the gallery's
+      // own h4 entry title that follows an h1 or h2 demo is the one jump
+      // allowed. A jump inside a demo, or on any other node, still fails.
+      const own = results.violations.filter(v => !(
+        v.id === 'heading-order' && v.nodes.every(n => String(n.target[0]).startsWith('#ds-c-'))
+      ));
+      expect(describeViolations({ ...results, violations: own }), name).toEqual([]);
+    }
+  });
+
+  it('lets a header demo shrink to a 400px window: the title ellipsizes inside its frame (KT-1884)', () => {
+    const css = readFileSync(join(SRC, 'components', 'settings', 'DesignSystemSection.css'), 'utf8');
+    const frame = css.match(/\.ds-demo-header-frame\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(frame).toMatch(/min-width:\s*0/);
+    expect(frame).toMatch(/overflow:\s*hidden/);
+    const shared = readFileSync(join(SRC, 'components', 'ui', 'headerFrame.css'), 'utf8');
+    const title = shared.match(/\.ui-header-title\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(title).toMatch(/text-overflow:\s*ellipsis/);
+    expect(title).toMatch(/white-space:\s*nowrap/);
+    const identity = shared.match(/\.ui-header-identity\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(identity).toMatch(/min-width:\s*0/);
+    const actions = shared.match(/\.ui-header-actions\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(actions).toMatch(/flex-shrink:\s*0/);
   });
 
   it('turns each token row into a block under md, keeping its preview and its name on one line', () => {
