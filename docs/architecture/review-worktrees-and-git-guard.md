@@ -52,7 +52,7 @@ It is never force-removed, and only a `<slug>--review-<id>` directory directly u
 
 [src: file: backend/src/core/worktree.rs:2060-2126#create_review_worktree]
 [src: file: backend/src/core/worktree.rs:2144-2176#release_review_worktree]
-[src: file: backend/src/api/discussions/crud.rs:839-870#provision_review_workspace]
+[src: file: backend/src/api/discussions/crud.rs:854-885#provision_review_workspace]
 
 ## Agents cannot move a main checkout
 

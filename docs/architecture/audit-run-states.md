@@ -439,7 +439,7 @@ committed provenance nor a matching timestamp replaces this local proof.
 Historical runs without fingerprints require a new audit before signoff.
 [src: file: backend/src/core/audit_documents.rs:11-45#capture]
 [src: file: backend/src/core/audit_documents.rs:51-65#verify]
-[src: file: backend/src/db/discussions.rs:1895-1932#insert_native_agent_message_with_audit_documents]
+[src: file: backend/src/db/discussions.rs:1906-1943#insert_native_agent_message_with_audit_documents]
 [src: file: backend/src/api/discussions/streaming.rs:5231-5253#validation_documents]
 [src: file: backend/src/db/sql/260_audit_document_fingerprints.sql:1-3#final_doc_fingerprints_json]
 

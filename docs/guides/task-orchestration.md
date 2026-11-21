@@ -235,9 +235,9 @@ guards: only attached, not-already-scheduled targets can run, delegation depth
 remains bounded and local handoffs retain a fixed ceiling. A typed wake to a
 joined CLI never silently substitutes a native responder.
 [src: file: backend/src/models/setup.rs:1070-1086#agent_handoff_paid_limit]
-[src: file: backend/src/db/discussions.rs:1703-1704#MAX_AGENT_HANDOFF_DEPTH]
-[src: file: backend/src/db/discussions.rs:1711-1746#agent_handoff_root]
-[src: file: backend/src/db/discussions.rs:1921-1961#cli_mention_targets]
+[src: file: backend/src/db/discussions.rs:1714-1715#MAX_AGENT_HANDOFF_DEPTH]
+[src: file: backend/src/db/discussions.rs:1722-1757#agent_handoff_root]
+[src: file: backend/src/db/discussions.rs:1931-1971#cli_mention_targets]
 [src: file: backend/src/db/discussions.rs:2020-2063#already_scheduled]
 
 ### Warming, queueing and which clock applies

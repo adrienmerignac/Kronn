@@ -14,7 +14,7 @@ responders may all be Codex without being interchangeable:
 `message_targets` preserves those identities in textual order.
 `messages.target_agent` and `target_agents` remain compatibility projections
 for older clients and peers.
-[src: file: backend/src/models/discussions.rs:754-780#MessageTargetKind]
+[src: file: backend/src/models/discussions.rs:770-796#MessageTargetKind]
 [src: file: backend/src/db/sql/099_typed_message_targets.sql:1-37#message_targets]
 
 The composer parses prose once and submits the typed target list. The backend
@@ -121,11 +121,11 @@ New and migrated sessions start both cursors at the room's current tip.
 [src: file: frontend/src/hooks/useMessageQueue.ts:13-26#QueuedMessage]
 [src: file: frontend/src/hooks/useMessageQueue.ts:162-258#processingDiscsRef]
 [src: file: frontend/src/hooks/useMessageQueue.ts:260-280#enqueue]
-[src: file: backend/src/db/discussions.rs:1321-1341#insert_user_message_with_dispatches]
+[src: file: backend/src/db/discussions.rs:1332-1352#insert_user_message_with_dispatches]
 [src: file: backend/src/db/agent_dispatch.rs:1106-1255#recover_after_restart]
-[src: file: backend/src/db/discussions.rs:3571-3573#DispatchInProgress]
+[src: file: backend/src/db/discussions.rs:3581-3583#DispatchInProgress]
 [src: file: backend/src/api/discussions/messaging.rs:1105-1113#DispatchInProgress]
-[src: file: backend/src/db/discussions.rs:3521-3783#revise_message_with_dispatch]
+[src: file: backend/src/db/discussions.rs:3531-3793#revise_message_with_dispatch]
 [src: file: backend/src/api/federation.rs:16-73#federate_message]
 [src: file: backend/src/api/federation.rs:126-171#federate_message_revision]
 [src: file: backend/src/api/ws.rs:1206-1214#resolved_targets]
@@ -163,14 +163,14 @@ reach the others; "parallel" keeps the fan-out above. A native reply's prose
 mention that launched nobody is annotated with its reason (already scheduled
 on the root turn, or no marker), computed from `message_targets`.
 [src: file: frontend/src/lib/agentDelegation.ts:62-149#detectDelegation]
-[src: file: backend/src/db/discussions.rs:1778-1822#native_agents_scheduled_for_root_turn]
-[src: file: backend/src/api/discussions/crud.rs:596-608#initial_participants]
+[src: file: backend/src/db/discussions.rs:1789-1833#native_agents_scheduled_for_root_turn]
+[src: file: backend/src/api/discussions/crud.rs:608-620#initial_participants]
 [src: file: backend/src/api/discussions/messaging.rs:115-158#enqueue_dispatches_for_trigger]
-[src: file: backend/src/api/discussions/crud.rs:1032-1036#attach_discussion_participants]
+[src: file: backend/src/api/discussions/crud.rs:1057-1061#attach_discussion_participants]
 [src: file: backend/src/api/discussions/streaming.rs:2269-2381#independent_sibling_notice]
 [src: file: backend/src/api/discussions/streaming.rs:2162-2217#discussion_at_dispatch_trigger]
 [src: file: backend/src/api/discussions/streaming.rs:2191-2226#thread_under_trigger]
-[src: file: backend/src/db/discussions.rs:2032-2056#already_scheduled]
+[src: file: backend/src/db/discussions.rs:2042-2066#already_scheduled]
 
 ## Joined agent turn (MCP)
 
@@ -188,7 +188,7 @@ transaction. Exact CLI identities create no local runner: the addressed session
 receives the Agent turn through its next poll, while every unrelated CLI skips
 it and advances its cursor. Bulk imports, historical appends, duplicates and
 appends without a live JOIN session never start a runner.
-[src: file: backend/src/db/discussions.rs:1559-1578#insert_message_with_targets_and_dispatches]
+[src: file: backend/src/db/discussions.rs:1570-1589#insert_message_with_targets_and_dispatches]
 [src: file: backend/src/api/disc_invite.rs:1694-1713#addressed_to_caller]
 
 Every verified live MCP append also records its exact author session in
@@ -244,7 +244,7 @@ dedupe key (execution workers, resume completions, human turns, question
 answers) are neither absorbed nor absorbing. Server-authored orchestration
 events post with zero dispatch; they do not queue a turn.
 [src: file: backend/src/db/agent_dispatch.rs:343-410#enqueue_coalescing_peer_wake]
-[src: file: backend/src/db/discussions.rs:1601-1679#insert_message_with_targets_and_dispatches_within_tx]
+[src: file: backend/src/db/discussions.rs:1612-1690#insert_message_with_targets_and_dispatches_within_tx]
 
 ## When a start is refused
 
@@ -277,7 +277,7 @@ Two distinctions the reason must not blur, and does not:
   New-discussion `@alias` routing is persisted on the initial user message
   before its independent dispatches start, so every responder resolves its own tier;
   targets without an override inherit the discussion tier.
-  [src: file: backend/src/api/discussions/crud.rs:673-716#replace_message_targets]
+  [src: file: backend/src/api/discussions/crud.rs:685-732#replace_message_targets]
   [src: file: backend/src/api/discussions/runtime.rs:790-809#dispatch_target_tier]
 - `message_cli_authors` records the exact local CLI author for verified live MCP
   appends, enabling deterministic `reply_to` routing across same-provider peers.
@@ -287,7 +287,7 @@ Two distinctions the reason must not blur, and does not:
 - A backend restart resets a claimed durable job to pending for the boot drain.
 - A watchdog timeout is a completed failed attempt, not a restart. Its message
   names the elapsed deadline and offers an explicit retry.
-[src: file: backend/src/db/discussions.rs:1514-1557#insert_message_with_targeted_dispatch]
+[src: file: backend/src/db/discussions.rs:1525-1568#insert_message_with_targeted_dispatch]
   [src: file: backend/src/api/discussions/messaging.rs:115-158#enqueue_dispatches_for_trigger]
 [src: file: backend/src/db/agent_dispatch.rs:1106-1255#recover_after_restart]
 [src: file: backend/src/api/discussions/streaming.rs:658-674#timeout_notice]

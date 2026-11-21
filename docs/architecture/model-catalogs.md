@@ -187,7 +187,7 @@ alongside each tier's model (`economy_effort`/`default_effort`/
 deserializes every new field to `None`. Without an execution override or a
 preset, no effort flag is sent: the runtime's own default applies, never a
 silently assigned `high`/`max`.
-[src: file: backend/src/models/setup.rs:1820-1850#ModelTierConfig]
+[src: file: backend/src/models/setup.rs:1844-1874#ModelTierConfig]
 
 Resolution is a single precedence, mirrored on `effective_model_flag`:
 `runner::resolve_reasoning_effort` — explicit per-step/per-QP
@@ -258,8 +258,8 @@ was formerly inert; ignoring it silently would claim a setting was applied
 when it was not. QPs with no effort or only whitespace keep the old behavior.
 [src: file: backend/src/db/discussion_effort.rs:9-54#UnresolvedQuickPromptEffort]
 [src: file: backend/src/db/sql/176_discussion_effort_snapshots.sql:1-8#discussion_effort_snapshots]
-[src: file: backend/src/api/discussions/crud.rs:653-675#capture]
-[src: file: backend/src/api/discussions/crud.rs:817-825#UnresolvedQuickPromptEffort]
+[src: file: backend/src/api/discussions/crud.rs:665-687#capture]
+[src: file: backend/src/api/discussions/crud.rs:833-841#UnresolvedQuickPromptEffort]
 [src: file: backend/src/api/discussions/streaming.rs:4182-4235#for_run]
 [src: file: backend/src/db/discussion_effort.rs:56-76#for_run]
 
