@@ -209,10 +209,20 @@ Escape closes one layer, the innermost first
 
 ## The gallery
 
-Settings → appearance → "Design system" (`/config#design-system`) shows each
-component under its own heading, with its variants and states, after the
-tokens, in the current theme. An index at the top lists the tokens, then one
-entry per component. Adding a component: add it to `GALLERY_COMPONENTS`, a
+Settings → appearance → "Design system" opens a sub-page of its own
+(KT-1987): a section header with the way back to Settings, an index (the
+tokens, then one entry per component), then two tabs. Tokens is
+`/config/design-system`; Components, `/config/design-system/components`,
+shows each component under its own heading, with its variants and states, in
+the current theme. An entry's address is its tab plus the heading in the hash
+(`/config/design-system/components#ds-c-menu`). The old `/config#design-system`
+and the old `/config#ds-…` entry anchors still land on the right tab and entry:
+the table is `DESIGN_SYSTEM_ANCHOR_TABS`.
+`[src: file: frontend/src/lib/routes.ts:164#DESIGN_SYSTEM_ANCHOR_TABS]`
+`[src: file: frontend/src/lib/routes.ts:181#legacyDesignSystemLocation]`
+The route is its own chunk, never preloaded, so Settings does not load the
+gallery.
+`[src: file: frontend/src/routes/lazyRoutes.ts:17#DesignSystemRoute]` Adding a component: add it to `GALLERY_COMPONENTS`, a
 demo in `DesignSystemComponents.tsx`, and its `designSystem.caption.<id>` in
 the four locales; the gallery test fails if a component of the folder is
 missing.
