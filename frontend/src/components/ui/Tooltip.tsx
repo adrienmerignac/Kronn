@@ -27,9 +27,10 @@ export interface TooltipProps {
 export function Tooltip({ content, children, placement = 'top', describe = true }: TooltipProps) {
   const id = useId();
   const anchorRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
   const closeTimer = useRef<number | null>(null);
   const [open, setOpen] = useState(false);
-  const style = useAnchoredStyle(anchorRef, open, placement, 'center');
+  const style = useAnchoredStyle(anchorRef, tipRef, open, placement, 'center');
 
   const cancelClose = useCallback(() => {
     if (closeTimer.current !== null) {
@@ -77,6 +78,7 @@ export function Tooltip({ content, children, placement = 'top', describe = true 
       {cloneElement(children, { 'aria-describedby': describedBy })}
       {open && createPortal(
         <span
+          ref={tipRef}
           id={id}
           role="tooltip"
           className="ui-tooltip"

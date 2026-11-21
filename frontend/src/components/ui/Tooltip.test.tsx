@@ -7,7 +7,7 @@ import { Tooltip, TOOLTIP_CLOSE_DELAY_MS } from './Tooltip';
 
 const tip = () => document.querySelector('[role="tooltip"]');
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('Tooltip', () => {
   it('is closed at first and leaves the anchor without a description', () => {
@@ -78,6 +78,29 @@ describe('Tooltip', () => {
     await userEvent.setup().tab();
     expect(button.getAttribute('aria-describedby')).toMatch(/^own \S+$/);
     expect(button).toHaveAccessibleDescription('Own hint Runs every hour');
+  });
+
+  it('stays inside the window on an anchor at its right edge', async () => {
+    // jsdom lays nothing out: the anchor sits in the top-right corner of the
+    // 1024 x 768 window, the tooltip is 120 x 28.
+    const box = { top: 4, bottom: 28, left: 1000, right: 1024 };
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const r = this.classList.contains('ui-tooltip-anchor') ? box : { top: 0, bottom: 0, left: 0, right: 0 };
+      return { ...r, x: r.left, y: r.top, width: r.right - r.left, height: r.bottom - r.top, toJSON: () => r } as DOMRect;
+    });
+    const isTip = (el: Element) => el.getAttribute('role') === 'tooltip';
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return isTip(this) ? 120 : 0;
+    });
+    vi.spyOn(Element.prototype, 'scrollHeight', 'get').mockImplementation(function (this: Element) {
+      return isTip(this) ? 28 : 0;
+    });
+    render(<Tooltip content="Settings"><button type="button">S</button></Tooltip>);
+    await userEvent.setup().tab();
+    const el = tip() as HTMLElement;
+    // No room above the anchor: below it, and pulled left of the right edge.
+    expect(el.style.top).toBe(`${28 + 4}px`);
+    expect(el.style.left).toBe(`${1024 - 8 - 120}px`);
   });
 
   it('is rendered in <body>, so a clipped container does not hide it', async () => {

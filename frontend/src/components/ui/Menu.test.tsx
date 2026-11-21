@@ -1,6 +1,6 @@
 // KT-1880 — Menu: the WAI-ARIA menu button, and a destructive action that
 // can only be the last entry.
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Menu, type MenuItem } from './Menu';
@@ -22,6 +22,27 @@ const setup = (over: Partial<Record<'rename' | 'duplicate' | 'archive' | 'remove
 };
 
 const menu = () => screen.queryByRole('menu');
+
+/** jsdom lays nothing out: give the trigger a box and the menu a size, in the
+ *  1024 x 768 window jsdom reports. */
+function mockGeometry(trigger: Omit<DOMRect, 'x' | 'y' | 'width' | 'height' | 'toJSON'>, menuSize: { width: number; height: number }) {
+  const isMenu = (el: Element) => el.getAttribute('role') === 'menu';
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const r = this.getAttribute('aria-haspopup') === 'menu' ? trigger : { top: 0, bottom: 0, left: 0, right: 0 };
+    return { ...r, x: r.left, y: r.top, width: r.right - r.left, height: r.bottom - r.top, toJSON: () => r } as DOMRect;
+  });
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+    return isMenu(this) ? menuSize.width : 0;
+  });
+  vi.spyOn(Element.prototype, 'scrollHeight', 'get').mockImplementation(function (this: Element) {
+    return isMenu(this) ? menuSize.height : 0;
+  });
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  delete (Element.prototype as Partial<Element>).scrollIntoView;
+});
 const names = () => screen.getAllByRole('menuitem').map(i => i.textContent);
 
 describe('Menu', () => {
@@ -136,6 +157,34 @@ describe('Menu', () => {
     fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Open' }), { key: 'Escape' });
     expect(menu()).toBeNull();
     expect(onKeyDown).not.toHaveBeenCalledWith('Escape');
+  });
+
+  it('stays inside the window: flips above a trigger at the bottom, clamped to the side', async () => {
+    // The trigger sits in the bottom-right corner of the 1024 x 768 window.
+    mockGeometry({ top: 730, bottom: 762, left: 990, right: 1022 }, { width: 160, height: 155 });
+    const { user, trigger } = setup();
+    await user.click(trigger);
+    expect(menu()!.style.top).toBe(`${730 - 4 - 155}px`);
+    // Lined up on the trigger's end (1022 - 160) would cross the 8 px margin.
+    expect(menu()!.style.left).toBe(`${1024 - 8 - 160}px`);
+    expect(menu()!.style.maxHeight).toBe('');
+    expect(menu()!.style.visibility).toBe('');
+  });
+
+  it('scrolls inside a max-height when taller than the window, the focused item in view', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    // Room below: 768 - 8 - (332 + 4) = 424; above: 300 - 4 - 8 = 288.
+    mockGeometry({ top: 300, bottom: 332, left: 400, right: 432 }, { width: 160, height: 900 });
+    const { user, trigger } = setup();
+    await user.click(trigger);
+    expect(menu()!.style.top).toBe('336px');
+    expect(menu()!.style.maxHeight).toBe('424px');
+    scrollIntoView.mockClear();
+    await user.keyboard('{End}');
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toHaveFocus();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(screen.getByRole('menuitem', { name: 'Delete' }));
   });
 
   it('can show its label on a text trigger, and has no separator without other items', async () => {

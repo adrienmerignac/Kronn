@@ -53,7 +53,7 @@ export function Menu<L extends string>({
   const [open, setOpen] = useState(false);
   /** Index in `entries` of the item to focus; -1 when there is none. */
   const [focus, setFocus] = useState(-1);
-  const style = useAnchoredStyle(triggerRef, open, 'bottom', align);
+  const style = useAnchoredStyle(triggerRef, menuRef, open, 'bottom', align);
 
   const entries = destructiveItem ? [...items, destructiveItem] : [...items];
   const enabled = entries.map((entry, i) => (entry.disabled ? -1 : i)).filter(i => i >= 0);
@@ -67,9 +67,13 @@ export function Menu<L extends string>({
     if (returnFocus) triggerRef.current?.focus();
   }, []);
 
-  // Focus the asked item once the menu is in the document.
+  // Focus the asked item once the menu is in the document, and scroll it into
+  // view when the menu is cut down to the room of the window.
   useLayoutEffect(() => {
-    if (open && focus >= 0) itemRefs.current[focus]?.focus();
+    if (!open || focus < 0) return;
+    const item = itemRefs.current[focus];
+    item?.focus({ preventScroll: true });
+    item?.scrollIntoView?.({ block: 'nearest' });
   }, [open, focus]);
 
   // A press outside the trigger and the menu closes it, focus stays where it lands.

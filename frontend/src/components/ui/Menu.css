@@ -6,6 +6,9 @@
   flex-direction: column;
   min-width: calc(var(--kr-space-8) * 4);
   max-width: calc(var(--kr-space-8) * 7);
+  /* anchor.ts sets a max-height when the window has less room than the menu. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--kr-space-1);
   background-color: var(--kr-bg-elevated);
   border: 1px solid var(--kr-border-strong);
@@ -22,6 +25,7 @@
 .ui-menu-item {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   gap: var(--kr-space-2);
   width: 100%;
   min-height: var(--kr-control-h-md);
@@ -62,6 +66,7 @@
 }
 
 .ui-menu-separator {
+  flex-shrink: 0;
   height: 1px;
   margin: var(--kr-space-1) 0;
   background-color: var(--kr-border-medium);

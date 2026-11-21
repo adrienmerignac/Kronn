@@ -24,6 +24,10 @@ fails if a component lacks one of the three.
 
 `Menu` and `Tooltip` render into `document.body` at a fixed position
 (`anchor.ts`), so a container with `overflow: hidden` does not clip them.
+A floating layer never leaves the window: it is measured once rendered,
+flips to the side with more room, is clamped `--kr-space-2` from the edges,
+and a menu taller than the room scrolls inside a max-height
+`[src: file: frontend/src/components/ui/anchor.ts:30#anchoredStyle]`.
 
 ## Rules
 
