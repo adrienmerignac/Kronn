@@ -116,7 +116,7 @@ CLI tiers. No embedded model list participates in the display helper anymore.
 [src: file: frontend/src/lib/constants.ts:60-75#modelForAgentTier]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:12-49#resolveCatalogTier]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:77-88#catalogTierEntry]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:578-588#resolvedTier]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:553-563#resolvedTier]
 
 The shared picker keeps an unavailable configured entry disabled. A failed
 snapshot read reports the error and retains previous data as cached, not live.
@@ -146,7 +146,7 @@ refetches the catalogue. An unknown configured ID remains searchable, and a
 known unavailable choice remains disabled; accessible descriptions retain the
 model, provenance and unavailable state after filtering.
 [src: file: frontend/src/lib/modelCatalogSelection.ts:53-62#matchesCatalogSearch]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:597-603#visibleChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:572-578#visibleChoices]
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:550-585#tierOptions]
 
 The search field is outside the menu, within a portalled non-modal dialog.
@@ -155,11 +155,11 @@ search and navigate choices when an option has focus. Escape inside the picker
 does not propagate to its parent form. Closing with Escape or completing an
 asynchronous selection restores trigger focus. Reopening clears the query,
 an empty result is explicit, and the popup's height is bounded by the viewport.
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:570-595#navigateChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:545-570#navigateChoices]
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:414-423#place]
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:432-437#restoreFocusRef]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:677-683#setQuery]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:692-712#createPortal]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:652-658#setQuery]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:667-687#createPortal]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.catalog.test.tsx:167-204#reports]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.catalog.test.tsx:228-255#closes]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.accessibility.test.tsx:40-76#repositions]
