@@ -23,6 +23,9 @@ export const GALLERY_COMPONENTS: readonly GalleryComponent[] = [
   component('tabs', 'Tabs'),
   component('searchField', 'SearchField'),
   component('tooltip', 'Tooltip'),
+  component('dialog', 'Dialog'),
+  component('drawer', 'Drawer'),
+  component('confirmDialog', 'ConfirmDialog'),
 ];
 
 /** Anchor of the tokens part of the page. */

@@ -1,0 +1,11 @@
+/* KT-1881 — ConfirmDialog: a Dialog (Dialog.css) whose question is short and
+   whose message is the whole content, so the body under it stays empty. */
+
+.ui-confirm-dialog > .ui-overlay-description {
+  padding-bottom: var(--kr-space-4);
+  color: var(--kr-text-primary);
+}
+
+.ui-confirm-dialog > .ui-overlay-footer {
+  border-top: 0;
+}

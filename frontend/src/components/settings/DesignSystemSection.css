@@ -242,6 +242,32 @@
   max-width: calc(var(--kr-space-8) * 8);
 }
 
+/* KT-1881 — the content of the Dialog and Drawer demos. */
+.ds-demo-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kr-space-1);
+  font-size: var(--kr-type-md);
+  color: var(--kr-text-secondary);
+}
+
+.ds-demo-field input {
+  min-height: var(--kr-control-h-md);
+  padding: 0 var(--kr-space-3);
+  font: inherit;
+  color: var(--kr-text-primary);
+  background-color: var(--kr-bg-input);
+  border: 1px solid var(--kr-border-medium);
+  border-radius: var(--kr-radius-control);
+}
+
+.ds-demo-list {
+  margin: 0;
+  padding-left: var(--kr-space-4);
+  line-height: 1.6;
+  color: var(--kr-text-primary);
+}
+
 /* Narrower than --kr-bp-md (768px): a custom property cannot be read in @media.
    Each token becomes a small block: its name on one unbroken line, then its
    value, its use and its preview. */

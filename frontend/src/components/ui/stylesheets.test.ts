@@ -8,6 +8,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadThemes, resolveValue } from '../../styles/themeAudit';
+import { BREAKPOINTS } from '../../styles/designTokens';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 const SRC = join(DIR, '..', '..');
@@ -17,6 +18,10 @@ const CSS = files.filter(f => f.endsWith('.css')).map(file => ({
   // Comments are prose, not rules.
   text: readFileSync(join(DIR, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''),
 }));
+/** `@media (max-width: <bp - 1>px)`: a custom property cannot be read in a
+ *  media query, so a breakpoint is the one px length a stylesheet writes. */
+const BREAKPOINT_QUERY = /@media\s*\(max-width:\s*(\d+)px\)/g;
+const BREAKPOINT_EDGES = new Set(Object.values(BREAKPOINTS).map(px => px - 1));
 const THEME_NAMES = ['dark', 'arcade', 'light', 'matrix', 'gotham', 'sakura', 'euronews'];
 
 /** The body of every `@media (pointer: coarse)` block of a stylesheet. */
@@ -48,7 +53,8 @@ function declsFor(block: string, selector: string): string {
 describe('components/ui stylesheets', () => {
   it('finds the stylesheets, so the checks below are not vacuous', () => {
     expect(CSS.map(c => c.file).sort()).toEqual([
-      'Button.css', 'IconButton.css', 'Menu.css', 'SearchField.css', 'StatusBadge.css', 'Tabs.css', 'Tooltip.css',
+      'Button.css', 'ConfirmDialog.css', 'Dialog.css', 'Drawer.css', 'IconButton.css', 'Menu.css', 'SearchField.css',
+      'StatusBadge.css', 'Tabs.css', 'Tooltip.css', 'overlay.css',
     ]);
   });
 
@@ -62,9 +68,17 @@ describe('components/ui stylesheets', () => {
 
   it('write no length in px but a 1px or 2px line: sizes come from the scales', () => {
     for (const { file, text } of CSS) {
-      const lengths = [...text.matchAll(/(?<![\w-])-?(\d*\.?\d+)px\b/g)].map(m => Number(m[1]));
+      // A breakpoint query is checked on its own below.
+      const rules = text.replace(BREAKPOINT_QUERY, '@media (max-width: bp)');
+      const lengths = [...rules.matchAll(/(?<![\w-])-?(\d*\.?\d+)px\b/g)].map(m => Number(m[1]));
       expect(lengths.filter(px => px > 2), `${file}: px lengths`).toEqual([]);
     }
+  });
+
+  it('write a max-width query only at a breakpoint minus one (KT-1881)', () => {
+    const queries = CSS.flatMap(({ file, text }) => [...text.matchAll(BREAKPOINT_QUERY)].map(m => ({ file, px: Number(m[1]) })));
+    expect(queries.map(q => q.file)).toEqual(expect.arrayContaining(['Dialog.css', 'Drawer.css']));
+    for (const { file, px } of queries) expect(BREAKPOINT_EDGES.has(px), `${file}: max-width ${px}px`).toBe(true);
   });
 
   it('take text sizes, durations and z-index from their tokens', () => {
@@ -118,7 +132,8 @@ describe('components/ui stylesheets', () => {
   it('gives every component its stylesheet and its test, next to it', () => {
     const components = files.filter(f => /^[A-Z]\w+\.tsx$/.test(f) && !f.endsWith('.test.tsx'));
     expect(components.sort()).toEqual([
-      'Button.tsx', 'IconButton.tsx', 'Menu.tsx', 'SearchField.tsx', 'StatusBadge.tsx', 'Tabs.tsx', 'Tooltip.tsx',
+      'Button.tsx', 'ConfirmDialog.tsx', 'Dialog.tsx', 'Drawer.tsx', 'IconButton.tsx', 'Menu.tsx', 'SearchField.tsx',
+      'StatusBadge.tsx', 'Tabs.tsx', 'Tooltip.tsx',
     ]);
     for (const component of components) {
       const name = component.replace(/\.tsx$/, '');

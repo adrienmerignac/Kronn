@@ -87,7 +87,7 @@ describe('DesignSystemSection', () => {
       'designSystem.link', 'designSystem.title', 'designSystem.hint',
       'designSystem.column.token', 'designSystem.column.value', 'designSystem.column.use', 'designSystem.column.preview',
       'designSystem.index', 'designSystem.tokens', 'designSystem.components', 'designSystem.componentsHint',
-      'ui.searchField.clear',
+      'ui.searchField.clear', 'ui.overlay.close', 'ui.confirm.cancel',
       ...DESIGN_TOKEN_GROUPS.map(g => g.title),
       ...DESIGN_TOKENS.map(token => token.use),
       ...GALLERY_COMPONENTS.map(c => c.caption),
@@ -179,6 +179,27 @@ describe('DesignSystemSection — index and components (KT-1880)', () => {
     within(tooltip).getByRole('button', { name: 'designSystem.demo.schedule' });
     await user.hover(within(tooltip).getByRole('button'));
     expect(document.querySelector('[role="tooltip"]')).toHaveTextContent('designSystem.demo.tooltipText');
+  });
+
+  it.each([
+    ['Dialog', 'dialog'],
+    ['Drawer', 'dialog'],
+    ['ConfirmDialog', 'alertdialog'],
+  ] as const)('opens %s from a button in each of the three sizes, and Escape gives the focus back (KT-1881)', async (name, role) => {
+    const user = userEvent.setup();
+    render(<DesignSystemSection t={t} />);
+    const section = screen.getByRole('region', { name });
+    for (const size of ['sm', 'md', 'lg']) {
+      const opener = section.querySelector(`button[data-size-demo="${size}"]`) as HTMLButtonElement;
+      expect(opener, `${name} ${size}`).toBeTruthy();
+      await user.click(opener);
+      const layer = screen.getByRole(role);
+      expect(layer).toHaveAttribute('data-size', size);
+      expect(layer).toHaveAccessibleName();
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole(role)).toBeNull();
+      expect(opener).toHaveFocus();
+    }
   });
 
   it('turns each token row into a block under md, keeping its preview and its name on one line', () => {
