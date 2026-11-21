@@ -5,8 +5,7 @@ import type { CatalogModelEntry, ModelTiersConfig } from '../../types/generated'
 
 const { list } = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock('../../lib/api', () => buildApiMock({ modelCatalogApi: { list: list as never } }));
-import { AgentSwitchPicker } from '../AgentSwitchPicker';
-import { MentionTierChoices } from '../MentionTierChoices';
+import { AgentPickerTierChoices, AgentSwitchPicker } from '../AgentSwitchPicker';
 
 function model(id: string, tier: CatalogModelEntry['tier_assignment'] = null): CatalogModelEntry {
   return { id, runtime_target_id: 'agent:claude-code', agent_type: 'ClaudeCode',
@@ -275,11 +274,15 @@ it('presents the launchable catalogue warning visually before choosing the agent
 it('presents the launchable catalogue warning visually before choosing the mention tier', () => {
   const notice = 'model operator-choice is absent from the complete CLI listing; this launch can still try it';
   const onSelect = vi.fn();
-  render(<MentionTierChoices trigger="@claude" resolve={tier => ({
-    configured: 'operator-choice', entry: model('operator-choice', tier), view: undefined,
-    model: 'operator-choice', unavailable: false, replacement: null, refusal: null,
-    notice: tier === 'reasoning' ? notice : null, provenance: 'live' as const,
-  })} onSelect={onSelect} t={(key, ...args) => [key, ...args].join(' ')} />);
+  // KT-1885 — the mention menu renders the picker's own tier choices, keeping the text field's focus.
+  render(<AgentPickerTierChoices targetLabel="@claude" tiers={['economy', 'default', 'reasoning']} keepFocus
+    resolve={tier => ({
+      configured: 'operator-choice', entry: model('operator-choice', tier), view: undefined,
+      model: 'operator-choice', unavailable: false, replacement: null, refusal: null,
+      notice: tier === 'reasoning' ? notice : null, provenance: 'live' as const,
+    })}
+    tierLabel={tier => tier} modelLabel={() => 'operator-choice'} defaultLabel="default"
+    onSelect={onSelect} t={(key, ...args) => [key, ...args].join(' ')} />);
   const button = screen.getAllByRole('button').find(candidate => candidate.getAttribute('data-tier') === 'reasoning')!;
   expect(button.getAttribute('title')).toContain(notice);
   expect(within(button).getByText(/modelCatalog\.notListedBadge/)).toBeVisible();

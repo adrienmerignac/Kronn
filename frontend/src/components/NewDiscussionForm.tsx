@@ -5,7 +5,7 @@ import { newTabClickProps } from '../lib/newTabNavigation';
 import '../pages/DiscussionsPage.css';
 import { ProfileTooltip } from './ProfileTooltip';
 import { MediaGenerateForm } from './MediaGenerateForm';
-import { AgentSwitchPicker, type AgentSwitchTarget } from './AgentSwitchPicker';
+import { AgentPickerPalette, AgentSwitchPicker, type AgentPickerPaletteRow, type AgentSwitchTarget } from './AgentSwitchPicker';
 import { MarkdownEditor } from './MarkdownComposerTools';
 import { SearchableSelect } from './SearchableSelect';
 import { DiscussionSkillPicker } from './DiscussionSkillPicker';
@@ -18,10 +18,9 @@ import { userError } from '../lib/userError';
 import type { ExternalApiConnectionView } from '../lib/api';
 import type { Project, AgentDetection, AgentReadiness, AgentType, AgentsConfig, Skill, AgentProfile, Directive, MessageTarget, ModelTier, ModelTierConfig } from '../types/generated';
 import { requiresFullAccessToRun } from '../lib/agentFullAccess';
-import { AGENT_LABELS, AGENT_MENTIONS, MODEL_TIER_ICONS, agentTextColor, isAgentRestricted as isAgentRestrictedUtil, isUsable, isHiddenPath, RTK_APPLICABLE, isRtkActive } from '../lib/constants';
+import { AGENT_LABELS, AGENT_MENTIONS, MODEL_TIER_ICONS, isAgentRestricted as isAgentRestrictedUtil, isUsable, isHiddenPath, RTK_APPLICABLE, isRtkActive } from '../lib/constants';
 import { resolveCatalogTier, matchesCatalogSearch, catalogTargetSearchTerms } from '../lib/modelCatalogSelection';
 import { useModelCatalogSnapshot } from '../hooks/useModelCatalogSnapshot';
-import { MentionTierChoices } from './MentionTierChoices';
 import { MENTION_TIER_CHOICES, nextMentionTierIndex } from '../lib/mentionTierSelection';
 import { clearDraft, loadDraft, NEW_DISCUSSION_DRAFT_ID, saveDraft, type DraftRoutingTiers } from '../lib/chat-drafts';
 import { externalAgentTargets } from '../lib/externalAgentIdentity';
@@ -39,7 +38,7 @@ import {
   Folder, ChevronRight, GitBranch,
   MessageSquare, X, AlertTriangle,
   Settings, Check, Zap, UserCircle, FileText, Paperclip, Image,
-  Clapperboard, Cpu,
+  Clapperboard,
 } from 'lucide-react';
 
 interface LaunchTarget {
@@ -848,65 +847,62 @@ export function NewDiscussionForm({
                 const available = availableMentionTargets;
                 const unavailable = matching.filter(target => !target.available);
                 if (matching.length === 0) return null;
+                // KT-1885 — the shared agent picker's palette: its rows, tier
+                // choices and availability badges; the prompt keeps the keys.
                 return (
-                  <div
-                    ref={autocompleteRef}
+                  <AgentPickerPalette
+                    listRef={autocompleteRef}
                     className="disc-mention-popover disc-new-autocomplete"
-                    role="listbox"
-                    aria-label={t('disc.mentionAgents')}
-                    data-placement="below"
+                    ariaLabel={t('disc.mentionAgents')}
+                    placement="below"
                     style={{ maxHeight: 250 }}
-                  >
-                    {catalogError && <div role="status">{t('modelCatalog.loadError')}</div>}
-                    {available.length > 0 && (
-                      <div className="disc-mention-group">{t('disc.routingAvailableAgents')}</div>
-                    )}
-                    {available.map((target, index) => {
-                      const targetKey = launchTargetKey(target);
-                      const currentTier = promptAgentTiers[targetKey] ?? newDiscTier;
-                      return (
-                        <div
-                          key={targetKey}
-                          role="option"
-                          aria-selected={index === mentionIndex}
-                          aria-disabled={targetTierResolution(target, currentTier).unavailable}
-                          className="disc-mention-item"
-                          data-highlighted={index === mentionIndex}
-                          onMouseEnter={() => {
+                    status={catalogError ? t('modelCatalog.loadError') : undefined}
+                    t={t}
+                    rows={[
+                      ...available.map((target, index): AgentPickerPaletteRow => {
+                        const currentTier = promptAgentTiers[launchTargetKey(target)] ?? newDiscTier;
+                        const current = targetTierResolution(target, currentTier);
+                        return {
+                          key: launchTargetKey(target),
+                          agent: target.agent,
+                          label: target.trigger,
+                          detail: target.label,
+                          group: t('disc.routingAvailableAgents'),
+                          availability: current.unavailable
+                            ? { state: 'unavailable', label: t('modelCatalog.unavailable'), title: current.refusal ?? undefined }
+                            : null,
+                          highlighted: index === mentionIndex,
+                          onHover: () => {
                             setMentionIndex(index);
                             setMentionTierIndex(null);
-                          }}
-                          onMouseDown={event => {
-                            // Disabled buttons can still bubble pointer events to the row.
-                            // Never turn a refused tier choice into an implicit default.
-                            if (event.target instanceof Element && event.target.closest('button')) return;
-                            event.preventDefault();
-                            applyMentionSuggestion(target.trigger, newDiscPromptRef.current, target);
-                          }}
-                        >
-                          <div className="disc-mention-main">
-                            <Cpu size={13} style={{ color: agentTextColor(target.agent) }} />
-                            <span className="font-semibold" style={{ color: agentTextColor(target.agent) }}>{target.trigger}</span>
-                            <span className="text-muted">{target.label}</span>
-                          </div>
-                          <MentionTierChoices trigger={target.trigger} currentTier={currentTier}
-                            keyboardTier={index === mentionIndex && mentionTierIndex !== null ? MENTION_TIER_CHOICES[mentionTierIndex] : undefined}
-                            ariaLabel={t('disc.modelTier')} resolve={tier => targetTierResolution(target, tier)}
-                            onSelect={tier => applyMentionSuggestion(target.trigger, newDiscPromptRef.current, target, tier)} t={t} />
-                        </div>
-                      );
-                    })}
-                    {unavailable.length > 0 && (
-                      <div className="disc-mention-group">{t('disc.routingDisabledAgent')}</div>
-                    )}
-                    {unavailable.map(target => (
-                      <div key={launchTargetKey(target)} className="disc-mention-item disc-mention-item-disabled" aria-disabled="true">
-                        <Cpu size={13} style={{ color: agentTextColor(target.agent) }} />
-                        <span className="font-semibold">{target.trigger}</span>
-                        <span className="text-muted">{t('disc.promptAgentUnavailable')}</span>
-                      </div>
-                    ))}
-                  </div>
+                          },
+                          onSelect: () => applyMentionSuggestion(target.trigger, newDiscPromptRef.current, target),
+                          tiers: {
+                            targetLabel: target.trigger,
+                            currentTier,
+                            keyboardTier: index === mentionIndex && mentionTierIndex !== null ? MENTION_TIER_CHOICES[mentionTierIndex] : undefined,
+                            ariaLabel: t('disc.modelTier'),
+                            resolve: tier => targetTierResolution(target, tier),
+                            tierLabel: tier => t(`disc.tier.${tier}`),
+                            modelLabel: tier => targetTierResolution(target, tier).model || t('disc.defaultAgentModel'),
+                            titleFor: tier => t('disc.routingInvokeTier', t(`disc.tier.${tier}`),
+                              targetTierResolution(target, tier).model || t('disc.defaultAgentModel')),
+                            defaultLabel: t('disc.defaultAgentModel'),
+                            onSelect: tier => {
+                              if (tier) applyMentionSuggestion(target.trigger, newDiscPromptRef.current, target, tier);
+                            },
+                          },
+                        };
+                      }),
+                      ...unavailable.map((target): AgentPickerPaletteRow => ({
+                        key: launchTargetKey(target),
+                        agent: target.agent,
+                        label: target.trigger,
+                        group: t('disc.routingDisabledAgent'),
+                        availability: { state: 'disabled', label: t('disc.promptAgentUnavailable') },
+                      })),
+                    ]}
+                  />
                 );
               })()}
 

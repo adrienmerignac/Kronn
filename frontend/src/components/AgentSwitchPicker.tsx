@@ -109,6 +109,8 @@ export interface AgentPickerTierChoicesProps {
   tierLabel: (tier: ModelTier) => string;
   /** The model named for a tier when the catalogue resolves none. */
   modelLabel: (tier: ModelTier) => string;
+  /** How a tier is named in its title and accessible name (default `Tier · model`). */
+  titleFor?: (tier: ModelTier) => string;
   defaultLabel: string;
   onSelect: (tier: ModelTier | null) => void;
   disabled?: boolean;
@@ -125,7 +127,7 @@ export interface AgentPickerTierChoicesProps {
 }
 
 export function AgentPickerTierChoices({
-  targetLabel, tiers, currentTier, keyboardTier, resolve, tierLabel, modelLabel, defaultLabel, onSelect,
+  targetLabel, tiers, currentTier, keyboardTier, resolve, tierLabel, modelLabel, titleFor, defaultLabel, onSelect,
   disabled = false, disableCurrent = false, keepFocus = false, itemRole, ariaLabel, t,
 }: AgentPickerTierChoicesProps) {
   const id = useId();
@@ -137,9 +139,8 @@ export function AgentPickerTierChoices({
         const resolution = tier === null ? null : resolve(tier);
         const availability = tierAvailability(resolution, t);
         const blocked = availabilityBlocks(availability);
-        const title = tier === null
-          ? label
-          : [`${label} · ${modelLabel(tier)}`, resolution?.notice, resolution?.refusal].filter(Boolean).join(' — ');
+        const name = tier === null ? label : titleFor?.(tier) ?? `${label} · ${modelLabel(tier)}`;
+        const title = [name, resolution?.notice, resolution?.refusal].filter(Boolean).join(' — ');
         const provenance = resolution?.entry && resolution.provenance
           ? t(`modelCatalog.provenance.${resolution.provenance}`)
           : resolution?.configured ? t('modelCatalog.notInCatalog') : '';
@@ -154,7 +155,7 @@ export function AgentPickerTierChoices({
             data-tier={tier ?? 'agent-default'}
             data-current={selected}
             data-keyboard-selected={keyboardTier !== undefined && keyboardTier === tier ? 'true' : undefined}
-            aria-label={`${targetLabel} · ${label}`}
+            aria-label={`${targetLabel} · ${titleFor && tier !== null ? name : label}`}
             aria-describedby={descriptionId}
             title={title}
             disabled={disabled || (disableCurrent && selected) || blocked}
@@ -179,6 +180,7 @@ export function AgentPickerTierChoices({
                   ? t('modelCatalog.runsInstead', resolution.replacement, resolution.configured || resolution.entry?.model_id || '')
                   : '',
                 resolution?.notice ?? '',
+                resolution?.entry ? t('modelCatalog.lastChecked', resolution.entry.last_checked_at) : '',
               ].filter(Boolean).join(' · ')}
             </span>
             {availability
@@ -218,12 +220,14 @@ export interface AgentPickerPaletteRow {
  * moves the highlight with its own keys; the rows, the tier choices and the
  * availability badges are the picker's.
  */
-export function AgentPickerPalette({ rows, status, ariaLabel, className, style, listRef, t }: {
+export function AgentPickerPalette({ rows, status, ariaLabel, className, style, placement, listRef, t }: {
   rows: readonly AgentPickerPaletteRow[];
   status?: ReactNode;
   ariaLabel: string;
   className?: string;
   style?: CSSProperties;
+  /** Which side of its field the list opens on, for the caller's CSS. */
+  placement?: 'above' | 'below';
   listRef?: Ref<HTMLDivElement>;
   t: Translate;
 }) {
@@ -234,8 +238,9 @@ export function AgentPickerPalette({ rows, status, ariaLabel, className, style, 
       role="listbox"
       aria-label={ariaLabel}
       style={style}
+      data-placement={placement}
     >
-      {status && <div role="status" className="kr-agent-switch-status">{status}</div>}
+      {status &&<div role="status" className="kr-agent-switch-status">{status}</div>}
       {rows.map((row, index) => {
         const blocked = availabilityBlocks(row.availability);
         return (
@@ -250,16 +255,19 @@ export function AgentPickerPalette({ rows, status, ariaLabel, className, style, 
               aria-disabled={blocked || !row.onSelect || undefined}
               data-highlighted={Boolean(row.highlighted)}
               onMouseEnter={row.onHover}
+              onMouseDown={event => {
+                // A tier choice chooses itself; never turn a refused one into the row's default.
+                if (event.target instanceof Element && event.target.closest('.kr-agent-switch-tier-option')) return;
+                // The text field keeps its focus and caret.
+                event.preventDefault();
+                if (!blocked) row.onSelect?.();
+              }}
             >
               <button
                 type="button"
                 className="kr-agent-switch-palette-main"
                 disabled={blocked || !row.onSelect}
                 tabIndex={-1}
-                onMouseDown={event => {
-                  event.preventDefault();
-                  if (!blocked) row.onSelect?.();
-                }}
               >
                 <span
                   className="kr-agent-switch-option-dot"

@@ -64,7 +64,7 @@ async function showNew(connectionPatch: Partial<ExternalApiConnectionView> = {})
   return { textarea, onSubmit };
 }
 function tierButton(tier: string): HTMLButtonElement {
-  return document.querySelector<HTMLButtonElement>(`.disc-mention-tier-choice[data-tier="${tier}"]`)!;
+  return document.querySelector<HTMLButtonElement>(`.kr-agent-switch-tier-option[data-tier="${tier}"]`)!;
 }
 beforeEach(() => { localStorage.clear(); list.mockReset().mockResolvedValue(snapshot()); });
 afterEach(cleanup);
@@ -131,6 +131,23 @@ describe('composer mentions — shared exact catalogue contract', () => {
     expect(textarea).toHaveValue('@equipe');
   });
 
+  // KT-1885 — the @ menu is the shared agent picker's palette: an unavailable
+  // choice wears the same badge as in every other agent picker, and its row
+  // cannot be chosen by pointer either.
+  it.each(['chat', 'new'] as const)('shows an unavailable choice with the shared availability badge (%s)', async mode => {
+    list.mockResolvedValue(snapshot({ availability: 'unavailable' }));
+    const { textarea } = mode === 'chat' ? await showChat() : await showNew();
+    fireEvent.change(textarea, { target: { value: '@equipe' } });
+    const palette = screen.getByRole('listbox', { name: 'disc.mentionAgents' });
+    expect(palette).toHaveClass('kr-agent-switch-palette');
+    const row = within(palette).getAllByRole('option')[0];
+    expect(row).toHaveAttribute('aria-disabled', 'true');
+    expect(within(row).getAllByText('modelCatalog.unavailable')
+      .some(node => node.getAttribute('data-state') === 'unavailable')).toBe(true);
+    fireEvent.mouseDown(row);
+    expect(textarea).toHaveValue('@equipe');
+  });
+
   it('resolves the principal HTTP connection and cached provenance, not a colliding model or family default', async () => {
     await showChat();
     expect(tierButton('reasoning')).toHaveAttribute('title', expect.stringContaining('Modèle équipe A'));
@@ -149,7 +166,7 @@ describe('composer mentions — shared exact catalogue contract', () => {
   it('keeps the principal saved override for untouched insertion but resolves explicit tier choices independently', async () => {
     const { textarea } = await showChat('saved-unknown');
     expect(tierButton('default').title).toContain('Modèle équipe A');
-    expect(document.querySelector('.disc-mention-tier-choices')).toHaveAttribute('aria-label', expect.stringContaining('saved-unknown'));
+    expect(document.querySelector('.kr-agent-switch-tier-choices')).toHaveAttribute('aria-label', expect.stringContaining('saved-unknown'));
     fireEvent.keyDown(textarea, { key: 'Enter' });
     expect(textarea).toHaveValue('@litellm ');
     expect(document.querySelector('.disc-composer-routing-chips')).toBeNull();
@@ -226,7 +243,7 @@ describe('composer mentions — shared exact catalogue contract', () => {
     list.mockResolvedValue(data);
     const { textarea, onSend } = await showChat();
     await act(async () => { fireEvent.change(textarea, { target: { value: '@codex-cli-4' } }); });
-    expect(document.querySelector('.disc-mention-tier-choices')).toBeNull();
+    expect(document.querySelector('.kr-agent-switch-tier-choices')).toBeNull();
     expect(screen.getByLabelText('disc.routingCliModelManaged')).toBeInTheDocument();
     fireEvent.change(textarea, { target: { value: '@cli-4' } });
     expect(screen.getByLabelText('disc.routingCliModelManaged')).toBeInTheDocument();
