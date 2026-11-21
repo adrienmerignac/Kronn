@@ -66,6 +66,39 @@
   font-size: 9px;
 }
 
+.kr-agent-switch-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* KT-1885 — the field variant: a full-width trigger that reads as a form field. */
+.kr-agent-switch[data-variant='field'] {
+  display: flex;
+  width: 100%;
+}
+
+.kr-agent-switch[data-variant='field'] .kr-agent-switch-btn {
+  width: 100%;
+  min-height: 32px;
+  padding: var(--kr-sp-1) var(--kr-sp-2);
+  border-color: var(--kr-border);
+  background: var(--kr-bg-surface);
+  font-size: var(--kr-fs-sm);
+  font-weight: 600;
+}
+
+.kr-agent-switch[data-variant='field'] .kr-agent-switch-btn > svg:last-child {
+  margin-left: auto;
+}
+
+.kr-agent-switch[data-variant='field'] .kr-agent-switch-btn:focus-visible,
+.kr-agent-switch-btn:focus-visible {
+  outline: 2px solid var(--kr-accent);
+  outline-offset: 1px;
+}
+
 .kr-agent-switch[data-compact='true'] .kr-agent-switch-btn {
   gap: 3px;
   padding: 0;
@@ -90,23 +123,8 @@
 }
 
 .kr-agent-switch-search {
-  box-sizing: border-box;
   flex: 0 0 auto;
-  width: 100%;
-  min-width: 0;
-  margin-bottom: 4px;
-  padding: 6px 8px;
-  border: 1px solid var(--kr-border);
-  border-radius: var(--kr-r-sm);
-  background: var(--kr-bg-surface);
-  color: var(--kr-text-primary);
-  font-family: inherit;
-  font-size: var(--kr-fs-xs);
-}
-
-.kr-agent-switch-search:focus-visible {
-  outline: 2px solid var(--kr-accent);
-  outline-offset: -1px;
+  margin-bottom: var(--kr-sp-1);
 }
 
 .kr-agent-switch-results {
@@ -216,9 +234,16 @@
   border-radius: var(--kr-radius-pill);
   background: var(--kr-warning-bg);
   color: var(--kr-warning-soft);
-  font-size: 9px;
+  font-size: var(--kr-fs-2xs);
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* KT-1885 — one look per availability state, wherever an agent is chosen. */
+.kr-agent-switch-badge[data-state='unavailable'],
+.kr-agent-switch-badge[data-state='disabled'] {
+  background: rgba(var(--kr-danger-rgb), 0.12);
+  color: var(--kr-danger);
 }
 
 .kr-agent-switch-catalog-meta {
@@ -235,10 +260,11 @@
   white-space: nowrap;
 }
 
-.kr-agent-switch-catalog-meta[data-catalog-warning='true'] {
+.kr-agent-switch-catalog-meta[data-state='not-listed'] {
   color: var(--kr-warning);
 }
 
+.kr-agent-switch-catalog-meta[data-state='unavailable'],
 .kr-agent-switch-tier-option:disabled .kr-agent-switch-catalog-meta {
   color: var(--kr-danger);
 }
@@ -248,9 +274,20 @@
   background: var(--kr-accent-bg);
 }
 
-.kr-agent-switch-tier-option[data-current='true'] {
+.kr-agent-switch-tier-option[data-current='true'],
+.kr-agent-switch-tier-option[data-keyboard-selected='true'] {
   border-color: var(--kr-accent-border);
   background: var(--kr-accent-bg);
+}
+
+.kr-agent-switch-tier-option[data-keyboard-selected='true'] {
+  outline: 2px solid var(--kr-accent);
+  outline-offset: -2px;
+}
+
+.kr-agent-switch-tier-option:focus-visible {
+  outline: 2px solid var(--kr-accent);
+  outline-offset: -2px;
 }
 
 .kr-agent-switch-tier-option:disabled {
@@ -264,7 +301,161 @@
   color: var(--kr-accent);
 }
 
+.kr-agent-switch-option:focus-visible {
+  outline: 2px solid var(--kr-accent);
+  outline-offset: -2px;
+}
+
+/* Multi-choice: a check box per target. */
+.kr-agent-switch-check {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--kr-border);
+  border-radius: var(--kr-r-sm);
+  background: var(--kr-bg-surface);
+}
+
+.kr-agent-switch-check[data-checked='true'] {
+  border-color: var(--kr-accent-border);
+  background: var(--kr-accent-bg);
+  color: var(--kr-accent);
+}
+
+.kr-agent-switch-option .kr-agent-switch-check svg {
+  margin-left: 0;
+}
+
+/* Group headings (exact model's agents, the mention menu's groups). */
+.kr-agent-switch-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 3px;
+  color: var(--kr-text-tertiary);
+  font-size: var(--kr-fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.kr-agent-switch-group-block {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--kr-sp-1);
+  padding-top: var(--kr-sp-1);
+  border-top: 1px solid var(--kr-border-subtle);
+}
+
+.kr-agent-switch-group-block .kr-agent-switch-group {
+  color: var(--kr-text-secondary);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Exact model: one row per model id. */
+.kr-agent-switch-popover[data-mode='exact-model'] {
+  width: 300px;
+}
+
+.kr-agent-switch-model {
+  padding-left: 22px;
+}
+
+.kr-agent-switch-results > .kr-agent-switch-model {
+  padding-left: 8px;
+}
+
+.kr-agent-switch-model > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kr-agent-switch-model[data-main='true'] {
+  color: var(--kr-text-faint);
+}
+
+.kr-agent-switch-model[data-free='true'] {
+  font-style: italic;
+}
+
+.kr-agent-switch-hint {
+  color: var(--kr-text-tertiary);
+  font-size: var(--kr-fs-2xs);
+}
+
+/* Palette: the list a text field drives (the composer's @ menu). */
+.kr-agent-switch-palette {
+  display: flex;
+  flex-direction: column;
+  padding: var(--kr-sp-1);
+  border: 1px solid var(--kr-border);
+  border-radius: var(--kr-r-md);
+  background: var(--kr-bg-elevated);
+  box-shadow: var(--kr-shadow-lg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.kr-agent-switch-palette-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto;
+  align-items: center;
+  gap: var(--kr-sp-2);
+  padding: 3px 4px;
+  border-radius: var(--kr-r-sm);
+}
+
+.kr-agent-switch-palette-row[data-highlighted='true'] {
+  background: var(--kr-bg-hover);
+}
+
+.kr-agent-switch-palette-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--kr-text-secondary);
+  font-family: inherit;
+  font-size: var(--kr-fs-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.kr-agent-switch-palette-main:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.kr-agent-switch-palette-label {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.kr-agent-switch-palette-detail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--kr-text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kr-agent-switch-palette-row .kr-agent-switch-tier-option {
+  min-width: 58px;
+  height: 34px;
+}
+
 @media (max-width: 419px) {
+  .kr-agent-switch-palette-row {
+    grid-template-columns: 1fr;
+  }
+
   .kr-agent-switch-tier-row {
     grid-template-columns: 1fr;
   }

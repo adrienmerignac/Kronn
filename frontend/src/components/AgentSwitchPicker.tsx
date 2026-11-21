@@ -1,22 +1,35 @@
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import {
+  Fragment, useCallback, useEffect, useId, useRef, useState,
+  type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref, type RefObject,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Loader2, RefreshCw } from 'lucide-react';
-import { resolveCatalogTier, matchesCatalogSearch, catalogTargetSearchTerms } from '../lib/modelCatalogSelection';
+import {
+  resolveCatalogTier, matchesCatalogSearch, catalogTargetSearchTerms, modelRuntimeTargetId,
+  type ResolvedCatalogTier,
+} from '../lib/modelCatalogSelection';
 import { useModelCatalogSnapshot } from '../hooks/useModelCatalogSnapshot';
 import { useT } from '../lib/I18nContext';
 import {
   AGENT_COLORS,
   AGENT_LABELS,
+  ALL_AGENT_TYPES,
   MODEL_TIER_ICONS,
   agentTextColor,
 } from '../lib/constants';
+import { agentTransport, type AgentTransport } from '../lib/shadowMerge';
+import { SearchField } from './ui/SearchField';
+import { agentModelLabel } from './workflows/shadowRowModel';
 import type {
   AgentType,
   ModelTier,
   ModelTierConfig,
   ModelTiersConfig,
+  ShadowAgent,
 } from '../types/generated';
 import './AgentSwitchPicker.css';
+
+type Translate = (key: string, ...args: (string | number)[]) => string;
 
 export interface AgentSwitchTarget {
   agent: AgentType;
@@ -24,6 +37,287 @@ export interface AgentSwitchTarget {
   label?: string;
   modelTiers?: ModelTierConfig;
 }
+
+// ─── Availability: one badge, the same everywhere ────────────────────────
+
+/**
+ * KT-1885 — why a choice cannot run (or runs with a warning). Every place that
+ * chooses an agent shows it through `AgentAvailabilityBadge`, so a state reads
+ * the same in a header, a step, an assistant and the composer's mention menu.
+ * `unavailable` and `disabled` block the choice; the others only warn.
+ */
+export type AgentAvailabilityState = 'unavailable' | 'disabled' | 'needs-full-access' | 'not-listed';
+
+export interface AgentAvailability {
+  state: AgentAvailabilityState;
+  label: string;
+  /** The detail, in the badge's title (a refusal, a notice). */
+  title?: string;
+}
+
+export const availabilityBlocks = (availability?: AgentAvailability | null) =>
+  availability?.state === 'unavailable' || availability?.state === 'disabled';
+
+const AVAILABILITY_TEST_IDS: Record<AgentAvailabilityState, string> = {
+  'needs-full-access': 'agent-needs-full-access',
+  unavailable: 'agent-unavailable',
+  disabled: 'agent-disabled',
+  'not-listed': 'agent-not-listed',
+};
+
+export function AgentAvailabilityBadge({ availability, placement = 'inline' }: {
+  availability?: AgentAvailability | null;
+  /** `tier`: under a tier choice's label, inside its button. */
+  placement?: 'inline' | 'tier';
+}) {
+  if (!availability) return null;
+  return (
+    <span
+      className={placement === 'tier' ? 'kr-agent-switch-catalog-meta' : 'kr-agent-switch-badge'}
+      data-state={availability.state}
+      data-testid={AVAILABILITY_TEST_IDS[availability.state]}
+      title={availability.title}
+    >
+      {availability.label}
+    </span>
+  );
+}
+
+/** What the catalogue says about one tier of one agent, as an availability. */
+export function tierAvailability(resolution: ResolvedCatalogTier | null | undefined, t: Translate): AgentAvailability | null {
+  if (!resolution) return null;
+  if (resolution.unavailable) {
+    return { state: 'unavailable', label: t('modelCatalog.unavailable'), title: resolution.refusal ?? undefined };
+  }
+  if (resolution.notice) {
+    return { state: 'not-listed', label: `⚠ ${t('modelCatalog.notListedBadge')}`, title: resolution.notice };
+  }
+  return null;
+}
+
+// ─── Tier choices: the picker's and the mention menu's ───────────────────
+
+export interface AgentPickerTierChoicesProps {
+  /** Who the tiers belong to, first in each choice's name (`Claude Code · Reasoning`). */
+  targetLabel: string;
+  /** `null` is « the agent's own default », offered when the caller can go back to it. */
+  tiers: readonly (ModelTier | null)[];
+  currentTier?: ModelTier | null;
+  /** The tier the keyboard points at, in a list driven from a text field. */
+  keyboardTier?: ModelTier | null;
+  resolve: (tier: ModelTier) => ResolvedCatalogTier;
+  tierLabel: (tier: ModelTier) => string;
+  /** The model named for a tier when the catalogue resolves none. */
+  modelLabel: (tier: ModelTier) => string;
+  defaultLabel: string;
+  onSelect: (tier: ModelTier | null) => void;
+  disabled?: boolean;
+  /** The current choice cannot be chosen again (the popover's). */
+  disableCurrent?: boolean;
+  /**
+   * The pointer chooses on press and keeps the focus where it is: the mention
+   * menu's text field keeps its caret.
+   */
+  keepFocus?: boolean;
+  itemRole?: 'menuitem';
+  ariaLabel?: string;
+  t: Translate;
+}
+
+export function AgentPickerTierChoices({
+  targetLabel, tiers, currentTier, keyboardTier, resolve, tierLabel, modelLabel, defaultLabel, onSelect,
+  disabled = false, disableCurrent = false, keepFocus = false, itemRole, ariaLabel, t,
+}: AgentPickerTierChoicesProps) {
+  const id = useId();
+  return (
+    <span className="kr-agent-switch-tier-choices" aria-label={ariaLabel}>
+      {tiers.map(tier => {
+        const selected = tier === (currentTier ?? null) && (tier !== null || currentTier === null);
+        const label = tier === null ? defaultLabel : tierLabel(tier);
+        const resolution = tier === null ? null : resolve(tier);
+        const availability = tierAvailability(resolution, t);
+        const blocked = availabilityBlocks(availability);
+        const title = tier === null
+          ? label
+          : [`${label} · ${modelLabel(tier)}`, resolution?.notice, resolution?.refusal].filter(Boolean).join(' — ');
+        const provenance = resolution?.entry && resolution.provenance
+          ? t(`modelCatalog.provenance.${resolution.provenance}`)
+          : resolution?.configured ? t('modelCatalog.notInCatalog') : '';
+        const descriptionId = `${id}-${tier ?? 'agent-default'}`;
+        const choose = () => { if (!blocked) onSelect(tier); };
+        return (
+          <button
+            key={tier ?? 'agent-default'}
+            type="button"
+            role={itemRole}
+            className="kr-agent-switch-tier-option"
+            data-tier={tier ?? 'agent-default'}
+            data-current={selected}
+            data-keyboard-selected={keyboardTier !== undefined && keyboardTier === tier ? 'true' : undefined}
+            aria-label={`${targetLabel} · ${label}`}
+            aria-describedby={descriptionId}
+            title={title}
+            disabled={disabled || (disableCurrent && selected) || blocked}
+            onMouseDown={keepFocus ? event => {
+              event.preventDefault();
+              event.stopPropagation();
+              choose();
+            } : undefined}
+            onClick={event => {
+              // With keepFocus, a pointer already chose on press: only keyboard activation remains.
+              if (keepFocus && event.detail !== 0) return;
+              choose();
+            }}
+          >
+            {tier !== null && <span aria-hidden="true">{MODEL_TIER_ICONS[tier]}</span>}
+            <span>{label}</span>
+            <span id={descriptionId} hidden>
+              {[title, resolution?.entry?.model_id, provenance,
+                availability?.state === 'unavailable' ? availability.label : '',
+                resolution?.refusal ?? resolution?.entry?.unavailable_reason ?? '',
+                resolution?.replacement
+                  ? t('modelCatalog.runsInstead', resolution.replacement, resolution.configured || resolution.entry?.model_id || '')
+                  : '',
+                resolution?.notice ?? '',
+              ].filter(Boolean).join(' · ')}
+            </span>
+            {availability
+              ? <AgentAvailabilityBadge availability={availability} placement="tier" />
+              : provenance && <span className="kr-agent-switch-catalog-meta">{provenance}</span>}
+            {selected && <Check size={8} aria-hidden="true" />}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+// ─── Palette: the list a text field drives (the composer's @ menu) ───────
+
+export interface AgentPickerPaletteRow {
+  key: string;
+  /** Colours the dot and the label; none for a row that is no agent (@all). */
+  agent?: AgentType | null;
+  label: ReactNode;
+  detail?: ReactNode;
+  /** A heading shown before the first row of each group. */
+  group?: string;
+  availability?: AgentAvailability | null;
+  /** An icon after the label (a CLI session that manages its own model). */
+  trailing?: ReactNode;
+  highlighted?: boolean;
+  onHover?: () => void;
+  /** Choose the row as it stands; absent for a row that is only shown. */
+  onSelect?: () => void;
+  tiers?: Omit<AgentPickerTierChoicesProps, 'keepFocus' | 't' | 'tiers'> & { tiers?: readonly (ModelTier | null)[] };
+}
+
+/**
+ * KT-1885 — the agent picker's list without its own trigger and search, for
+ * a menu a text field drives: the composer types the query after « @ » and
+ * moves the highlight with its own keys; the rows, the tier choices and the
+ * availability badges are the picker's.
+ */
+export function AgentPickerPalette({ rows, status, ariaLabel, className, style, listRef, t }: {
+  rows: readonly AgentPickerPaletteRow[];
+  status?: ReactNode;
+  ariaLabel: string;
+  className?: string;
+  style?: CSSProperties;
+  listRef?: Ref<HTMLDivElement>;
+  t: Translate;
+}) {
+  return (
+    <div
+      ref={listRef}
+      className={['kr-agent-switch-palette', className].filter(Boolean).join(' ')}
+      role="listbox"
+      aria-label={ariaLabel}
+      style={style}
+    >
+      {status && <div role="status" className="kr-agent-switch-status">{status}</div>}
+      {rows.map((row, index) => {
+        const blocked = availabilityBlocks(row.availability);
+        return (
+          <Fragment key={row.key}>
+            {row.group && row.group !== rows[index - 1]?.group && (
+              <div className="kr-agent-switch-group" role="presentation">{row.group}</div>
+            )}
+            <div
+              className="kr-agent-switch-palette-row"
+              role="option"
+              aria-selected={Boolean(row.highlighted)}
+              aria-disabled={blocked || !row.onSelect || undefined}
+              data-highlighted={Boolean(row.highlighted)}
+              onMouseEnter={row.onHover}
+            >
+              <button
+                type="button"
+                className="kr-agent-switch-palette-main"
+                disabled={blocked || !row.onSelect}
+                tabIndex={-1}
+                onMouseDown={event => {
+                  event.preventDefault();
+                  if (!blocked) row.onSelect?.();
+                }}
+              >
+                <span
+                  className="kr-agent-switch-option-dot"
+                  style={{ background: row.agent ? AGENT_COLORS[row.agent] ?? 'var(--kr-text-faint)' : 'var(--kr-accent)' }}
+                />
+                <span className="kr-agent-switch-palette-label" style={row.agent ? { color: agentTextColor(row.agent) } : undefined}>
+                  {row.label}
+                </span>
+                {row.detail && <span className="kr-agent-switch-palette-detail">{row.detail}</span>}
+                <AgentAvailabilityBadge availability={row.availability} />
+                {row.trailing}
+              </button>
+              {row.tiers && (
+                <AgentPickerTierChoices
+                  {...row.tiers}
+                  tiers={row.tiers.tiers ?? TIER_CHOICES}
+                  keepFocus
+                  t={t}
+                />
+              )}
+            </div>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Exact model: an agent and one of its model ids ──────────────────────
+
+/** The agent a step runs on, for what the exact-model mode greys out. */
+export interface MainAgent {
+  agent: AgentType;
+  connectionId?: string | null;
+  model?: string | null;
+  /** The step's tier: it picks the model configured when none is explicit. */
+  tier?: ModelTier | null;
+}
+
+/** CLI / HTTP / Local, the badge the agent lists carry. */
+export function TransportBadge({ agent, connectionId, t }: { agent: string; connectionId?: string | null; t: Translate }) {
+  const transport: AgentTransport = agentTransport(agent, connectionId);
+  return <span className="wf-shadow-transport" data-transport={transport}>{t(`wf.shadow.rows.transport.${transport}`)}</span>;
+}
+
+export interface ExactModelSelection {
+  /** `undefined` is « = principal »: the step's own agent and model. */
+  value: ShadowAgent | undefined;
+  onChange: (next: ShadowAgent | undefined) => void;
+  main: MainAgent;
+  /** Trigger's test id; the list is `${testId}-menu`, « = principal » `${testId}-same`. */
+  testId: string;
+  /** The trigger's content; the current agent and model by default. */
+  children?: ReactNode;
+  className?: string;
+}
+
+// ─── The picker ──────────────────────────────────────────────────────────
 
 interface AgentSwitchPickerProps {
   currentAgent: AgentType;
@@ -43,7 +337,13 @@ interface AgentSwitchPickerProps {
   modelTiers?: ModelTiersConfig | null;
   defaultModelLabel?: string;
   disabled?: boolean;
+  /** Shorthand for `variant="compact"`. */
   compact?: boolean;
+  /**
+   * KT-1885 — the trigger: `chip` (default, a bordered chip in a line of text),
+   * `compact` (no border, in a dense row) or `field` (full width, a form field).
+   */
+  variant?: 'chip' | 'compact' | 'field';
   title: string;
   ariaLabel: string;
   staticClassName?: string;
@@ -60,14 +360,139 @@ interface AgentSwitchPickerProps {
   displayName?: string;
   /** Agents that cannot run until their full access is turned on (badged in the list). */
   needsFullAccess?: (agent: AgentType) => boolean;
+  /** Why a target cannot be chosen, or runs with a warning: badged, and disabled when it blocks. */
+  availability?: (target: AgentSwitchTarget) => AgentAvailability | null | undefined;
+  /**
+   * KT-1885 — multi-choice: several targets at once. The list stays open and
+   * each target toggles; `currentAgent` only names the trigger when nothing is chosen.
+   */
+  multiple?: {
+    selected: readonly AgentSwitchTarget[];
+    onToggle: (target: AgentSwitchTarget) => void;
+    /** The trigger's text, e.g. « 3 agents ». */
+    summary?: (selected: readonly AgentSwitchTarget[]) => string;
+  };
+  /**
+   * KT-1885 — exact model: the choice is an agent and one of its model ids
+   * (the catalogue's, or one typed in the search), or « = principal ». The
+   * principal's own model is greyed out: « = principal » already says it.
+   */
+  exactModel?: ExactModelSelection;
+}
+
+const TIER_CHOICES: readonly ModelTier[] = ['economy', 'default', 'reasoning'];
+const targetKey = (target: Pick<AgentSwitchTarget, 'agent' | 'connectionId'>) => `${target.agent}:${target.connectionId ?? ''}`;
+const defaultTargetLabel = (target: AgentSwitchTarget) => target.label ?? AGENT_LABELS[target.agent] ?? target.agent;
+
+/** Arrows, Home and End between the enabled items; Escape closes. */
+function usePopoverKeys(
+  popoverRef: RefObject<HTMLElement | null>,
+  searchRef: RefObject<HTMLInputElement | null>,
+  close: () => void,
+) {
+  return (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      return;
+    }
+    const options = Array.from(popoverRef.current?.querySelectorAll<HTMLButtonElement>(
+      '[role="menuitem"]:not(:disabled), [role="menuitemcheckbox"]:not(:disabled)',
+    ) ?? []);
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const inSearch = event.target === searchRef.current;
+    // Home/End keep their normal caret behavior in the search field.
+    if (inSearch && (event.key === 'Home' || event.key === 'End')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!options.length) return;
+    const index = options.indexOf(event.target as HTMLButtonElement);
+    if (event.key === 'Home') options[0].focus();
+    else if (event.key === 'End') options[options.length - 1].focus();
+    else if (event.key === 'ArrowUp' && index === 0) searchRef.current?.focus();
+    else if (event.key === 'ArrowUp') options[index < 0 ? options.length - 1 : index - 1].focus();
+    else options[(index + 1) % options.length].focus();
+  };
+}
+
+/** Open state, fixed position under (or above) the trigger, outside click and Escape. */
+function usePopover(estimate: () => { width: number; height: number }, busy = false) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+  const restoreFocusRef = useRef(false);
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const popoverRef = useRef<HTMLSpanElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const estimateRef = useRef(estimate);
+  estimateRef.current = estimate;
+
+  const place = useCallback(() => {
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const viewportPadding = 8;
+    const { width, height } = estimateRef.current();
+    const hasRoomBelow = rect.bottom + 5 + height <= window.innerHeight - viewportPadding;
+    const top = hasRoomBelow ? rect.bottom + 5 : Math.max(viewportPadding, rect.top - height - 5);
+    const left = Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - width - viewportPadding));
+    setPosition({ top, left, maxHeight: Math.max(0, window.innerHeight - top - viewportPadding) });
+  }, []);
+
+  const close = useCallback((restoreFocus = true) => {
+    restoreFocusRef.current = restoreFocus;
+    setOpen(false);
+  }, []);
+
+  // Back on the trigger once it is enabled again (a save disables it).
+  useEffect(() => {
+    if (!open && !busy && restoreFocusRef.current) {
+      restoreFocusRef.current = false;
+      rootRef.current?.querySelector('button')?.focus();
+    }
+  }, [open, busy]);
+
+  useEffect(() => {
+    if (!open) return;
+    // The search field takes the focus, even when the picker sits in a dialog
+    // (the popover is in <body>, above every overlay layer).
+    searchRef.current?.focus();
+    place();
+    const closeOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.isComposing) close();
+    };
+    document.addEventListener('mousedown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      document.removeEventListener('mousedown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open, place, close]);
+
+  return { open, setOpen, position, place, close, rootRef, popoverRef, searchRef, restoreFocusRef };
 }
 
 /**
- * Shared inline agent picker used by discussion headers and workflow steps.
- * It owns only the popover interaction; callers remain responsible for
- * persisting the selected agent and surfacing any API error.
+ * Shared agent picker: discussion headers, workflow steps, the API assistants,
+ * the shadows' exact model, and (through `AgentPickerPalette` and
+ * `AgentPickerTierChoices`) the composer's mention menu. It owns only the
+ * popover interaction; callers remain responsible for persisting the selected
+ * agent and surfacing any API error.
  */
-export function AgentSwitchPicker({
+export function AgentSwitchPicker(props: AgentSwitchPickerProps) {
+  if (props.exactModel) return <ExactModelPicker {...props} exactModel={props.exactModel} />;
+  return <TierPicker {...props} />;
+}
+
+function TierPicker({
   currentAgent,
   availableAgents,
   currentConnectionId,
@@ -84,6 +509,7 @@ export function AgentSwitchPicker({
   defaultModelLabel = 'Default agent model',
   disabled = false,
   compact = false,
+  variant,
   title,
   ariaLabel,
   staticClassName,
@@ -92,20 +518,13 @@ export function AgentSwitchPicker({
   currentModelFallback,
   displayName,
   needsFullAccess,
+  availability,
+  multiple,
 }: AgentSwitchPickerProps) {
   const { t } = useT();
-  const pickerId = useId();
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
-  const { catalog, catalogError } = useModelCatalogSnapshot(open);
-  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
   const savingRef = useRef(false);
-  const restoreFocusRef = useRef(false);
-  const rootRef = useRef<HTMLSpanElement>(null);
-  const popoverRef = useRef<HTMLSpanElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const targetKey = (target: AgentSwitchTarget) => `${target.agent}:${target.connectionId ?? ''}`;
   const suppliedTargets: AgentSwitchTarget[] = availableTargets
     ?? availableAgents.map(agent => ({ agent }));
   const suppliedCurrent = suppliedTargets.find(target =>
@@ -117,42 +536,50 @@ export function AgentSwitchPicker({
     connectionId: currentConnectionId,
     label: currentTargetLabel,
   };
-  const choices = [currentTarget, ...suppliedTargets].filter((target, index, targets) =>
+  const choices = (multiple ? suppliedTargets : [currentTarget, ...suppliedTargets]).filter((target, index, targets) =>
     targets.findIndex(candidate => targetKey(candidate) === targetKey(target)) === index
   );
-  const choiceCount = choices.length;
-  const tierChoices: ModelTier[] = ['economy', 'default', 'reasoning'];
   const tierOptions: (ModelTier | null)[] = onDefaultTierSelection
-    ? [null, ...tierChoices]
-    : tierChoices;
-  const tierPicker = currentTier !== undefined
+    ? [null, ...TIER_CHOICES]
+    : [...TIER_CHOICES];
+  const tierPicker = !multiple && currentTier !== undefined
     && (onSelectionChange !== undefined || onTargetSelectionChange !== undefined);
-  const canChange = tierPicker
-    ? choices.length > 1 || tierOptions.length > 1
-    : Boolean(onChange) && choices.length > 1;
+  const canChange = multiple
+    ? choices.length > 0
+    : tierPicker
+      ? choices.length > 1 || tierOptions.length > 1
+      : Boolean(onChange) && choices.length > 1;
+  const triggerVariant = variant ?? (compact ? 'compact' : 'chip');
 
-  const targetLabel = (target: AgentSwitchTarget) =>
-    target.label ?? AGENT_LABELS[target.agent] ?? target.agent;
-  const fullAccessBadge = (target: AgentSwitchTarget) => needsFullAccess?.(target.agent) && (
-    <span className="kr-agent-switch-badge" data-testid="agent-needs-full-access">
-      {t('agentPicker.needsFullAccess')}
-    </span>
-  );
+  const popover = usePopover(() => {
+    const compactTierLayout = tierPicker && window.innerWidth < 420;
+    return {
+      width: tierPicker ? 342 : 170,
+      height: choices.length * (compactTierLayout ? 75 : tierPicker ? 45 : 31) + 46,
+    };
+  }, saving);
+  const { catalog, catalogError } = useModelCatalogSnapshot(popover.open);
+  const navigateChoices = usePopoverKeys(popover.popoverRef, popover.searchRef, popover.close);
+
+  const targetLabel = defaultTargetLabel;
+  const targetAvailability = (target: AgentSwitchTarget): AgentAvailability | null =>
+    availability?.(target)
+    ?? (needsFullAccess?.(target.agent)
+      ? { state: 'needs-full-access', label: t('agentPicker.needsFullAccess') }
+      : null);
   const resolvedTier = (target: AgentSwitchTarget, tier: ModelTier) => resolveCatalogTier(
     catalog, target, tier, modelTiers,
     targetKey(target) === targetKey(currentTarget) && tier === currentTier ? currentModel : null,
   );
-  const configuredModel = (target: AgentSwitchTarget, tier: ModelTier) => resolvedTier(target, tier).configured;
-  const catalogEntry = (target: AgentSwitchTarget, tier: ModelTier) =>
-    resolvedTier(target, tier).entry;
   const targetModel = (target: AgentSwitchTarget, tier: ModelTier) =>
     resolvedTier(target, tier).model
     || (targetKey(target) === targetKey(currentTarget) && tier === currentTier
       ? currentModelFallback?.trim()
       : undefined)
     || defaultModelLabel;
+  const tierLabel = (tier: ModelTier) => tierLabels?.[tier] ?? tier;
   const tierTitle = (target: AgentSwitchTarget, tier: ModelTier) =>
-    `${tierLabels?.[tier] ?? tier} · ${targetModel(target, tier)}`;
+    `${tierLabel(tier)} · ${targetModel(target, tier)}`;
   const showsCurrentModel = Boolean(currentTier) && (tierPicker || role !== undefined);
   const effectiveSuffix = suffix
     ?? (showsCurrentModel && currentTier ? targetModel(currentTarget, currentTier) : undefined);
@@ -161,57 +588,13 @@ export function AgentSwitchPicker({
   );
   const visibleChoices = choices.filter(target => matchesCatalogSearch(query, [
     targetLabel(target),
-    ...catalogTargetSearchTerms(target, tierChoices.map(tier => resolvedTier(target, tier))),
-    ...tierOptions.flatMap(tier => tier === null
+    ...catalogTargetSearchTerms(target, TIER_CHOICES.map(tier => resolvedTier(target, tier))),
+    ...(tierPicker ? tierOptions.flatMap(tier => tier === null
       ? [defaultModelLabel]
-      : [tier, tierLabels?.[tier]]),
+      : [tier, tierLabels?.[tier]]) : []),
   ]));
-
-  const navigateChoices = (event: ReactKeyboardEvent<HTMLSpanElement>) => {
-    if (event.nativeEvent.isComposing) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      restoreFocusRef.current = true;
-      setOpen(false);
-      return;
-    }
-    const options = Array.from(popoverRef.current?.querySelectorAll<HTMLButtonElement>(
-      '[role="menuitem"]:not(:disabled)',
-    ) ?? []);
-    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-    const inSearch = event.target === searchRef.current;
-    // Home/End keep their normal caret behavior in the search field.
-    if (inSearch && (event.key === 'Home' || event.key === 'End')) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (!options.length) return;
-    const index = options.indexOf(event.target as HTMLButtonElement);
-    if (event.key === 'Home') options[0].focus();
-    else if (event.key === 'End') options[options.length - 1].focus();
-    else if (event.key === 'ArrowUp' && index === 0) searchRef.current?.focus();
-    else if (event.key === 'ArrowUp') options[index < 0 ? options.length - 1 : index - 1].focus();
-    else options[(index + 1) % options.length].focus();
-  };
-
-  const updatePopoverPosition = useCallback(() => {
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const viewportPadding = 8;
-    const compactTierLayout = tierPicker && window.innerWidth < 420;
-    const popoverWidth = tierPicker ? 342 : 170;
-    const estimatedHeight = choiceCount * (compactTierLayout ? 75 : tierPicker ? 45 : 31) + 46;
-    const hasRoomBelow = rect.bottom + 5 + estimatedHeight <= window.innerHeight - viewportPadding;
-    const top = hasRoomBelow
-      ? rect.bottom + 5
-      : Math.max(viewportPadding, rect.top - estimatedHeight - 5);
-    const left = Math.max(
-      viewportPadding,
-      Math.min(rect.left, window.innerWidth - popoverWidth - viewportPadding),
-    );
-    setPopoverPosition({ top, left, maxHeight: Math.max(0, window.innerHeight - top - viewportPadding) });
-  }, [choiceCount, tierPicker]);
+  const isSelected = (target: AgentSwitchTarget) =>
+    multiple?.selected.some(selected => targetKey(selected) === targetKey(target)) ?? false;
 
   const select = async (target: AgentSwitchTarget, tier?: ModelTier | null) => {
     if (savingRef.current) return;
@@ -235,8 +618,7 @@ export function AgentSwitchPicker({
       } else if (onChange) {
         await onChange(target.agent);
       }
-      restoreFocusRef.current = true;
-      setOpen(false);
+      popover.close();
     } catch {
       // The caller owns the user-facing error. Keep the picker open so
       // another available combination can be selected.
@@ -245,44 +627,6 @@ export function AgentSwitchPicker({
       setSaving(false);
     }
   };
-
-  useEffect(() => {
-    if (!open && !saving && restoreFocusRef.current) {
-      restoreFocusRef.current = false;
-      rootRef.current?.querySelector('button')?.focus();
-    }
-  }, [open, saving]);
-
-  useEffect(() => {
-    if (!open) return;
-    searchRef.current?.focus();
-    updatePopoverPosition();
-    const closeOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        !rootRef.current?.contains(target)
-        && !popoverRef.current?.contains(target)
-      ) {
-        setOpen(false);
-      }
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !event.isComposing) {
-        restoreFocusRef.current = true;
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', closeOutside);
-    document.addEventListener('keydown', closeOnEscape);
-    window.addEventListener('resize', updatePopoverPosition);
-    window.addEventListener('scroll', updatePopoverPosition, true);
-    return () => {
-      document.removeEventListener('mousedown', closeOutside);
-      document.removeEventListener('keydown', closeOnEscape);
-      window.removeEventListener('resize', updatePopoverPosition);
-      window.removeEventListener('scroll', updatePopoverPosition, true);
-    };
-  }, [open, updatePopoverPosition]);
 
   if (!canChange) {
     return (
@@ -297,35 +641,41 @@ export function AgentSwitchPicker({
     );
   }
 
+  const triggerText = multiple
+    ? (multiple.summary?.(multiple.selected)
+      ?? (multiple.selected.length ? multiple.selected.map(targetLabel).join(', ') : displayName ?? targetLabel(currentTarget)))
+    : displayName ?? targetLabel(currentTarget);
+
   return (
     <span
-      ref={rootRef}
+      ref={popover.rootRef}
       className="kr-agent-switch"
-      data-compact={compact}
-      data-open={open}
+      data-compact={triggerVariant === 'compact'}
+      data-variant={triggerVariant}
+      data-open={popover.open}
       onClick={event => event.stopPropagation()}
     >
       <button
         type="button"
         className="kr-agent-switch-btn"
-        style={{ color: agentTextColor(currentTarget.agent) }}
+        style={multiple ? undefined : { color: agentTextColor(currentTarget.agent) }}
         title={tierPicker && currentTier
           ? `${title} · ${tierTitle(currentTarget, currentTier)}`
           : title}
         aria-label={ariaLabel}
         aria-haspopup="dialog"
-        aria-expanded={open}
+        aria-expanded={popover.open}
         disabled={disabled || saving}
         onClick={() => {
-          if (!open) {
+          if (!popover.open) {
             setQuery('');
-            updatePopoverPosition();
+            popover.place();
           }
-          setOpen(value => !value);
+          popover.setOpen(value => !value);
         }}
       >
         {saving ? <Loader2 size={9} className="spin" /> : <RefreshCw size={9} />}
-        <span>{displayName ?? targetLabel(currentTarget)}</span>
+        <span className="kr-agent-switch-name">{triggerText}</span>
         {roleLabel}
         {tierPicker && currentTier && (
           <span
@@ -339,114 +689,275 @@ export function AgentSwitchPicker({
         {effectiveSuffix && <span className="kr-agent-switch-suffix"> · {effectiveSuffix}</span>}
         <ChevronDown size={9} />
       </button>
-      {open && popoverPosition && createPortal(
+      {popover.open && popover.position && createPortal(
         <span
-          ref={popoverRef}
+          ref={popover.popoverRef}
           className="kr-agent-switch-popover"
           role="dialog"
           aria-label={ariaLabel}
-          style={popoverPosition}
+          style={popover.position}
           onKeyDown={navigateChoices}
         >
-          <input
-            ref={searchRef}
-            type="search"
+          <SearchField
+            ref={popover.searchRef}
             className="kr-agent-switch-search"
-            aria-label={t('agentPicker.search')}
+            size="sm"
+            label={t('agentPicker.search')}
             placeholder={t('agentPicker.search')}
             value={query}
-            onChange={event => setQuery(event.target.value)}
+            onChange={setQuery}
           />
           {catalogError && <span role="status" className="kr-agent-switch-status">{t('modelCatalog.loadError')}</span>}
           {!visibleChoices.length && <span role="status" className="kr-agent-switch-status">{t('agentPicker.noMatch')}</span>}
           <span role="menu" aria-label={ariaLabel} className="kr-agent-switch-results">
-          {visibleChoices.map((target, targetIndex) => tierPicker ? (
-            <span
-              key={targetKey(target)}
-              className="kr-agent-switch-tier-row"
-              role="group"
-              aria-label={targetLabel(target)}
-            >
-              <span className="kr-agent-switch-tier-agent">
+          {visibleChoices.map(target => {
+            const badge = targetAvailability(target);
+            const blocked = availabilityBlocks(badge);
+            if (tierPicker) {
+              return (
+                <span
+                  key={targetKey(target)}
+                  className="kr-agent-switch-tier-row"
+                  role="group"
+                  aria-label={targetLabel(target)}
+                >
+                  <span className="kr-agent-switch-tier-agent">
+                    <span
+                      className="kr-agent-switch-option-dot"
+                      style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }}
+                    />
+                    {targetLabel(target)}
+                    <AgentAvailabilityBadge availability={badge} />
+                  </span>
+                  <AgentPickerTierChoices
+                    targetLabel={targetLabel(target)}
+                    tiers={tierOptions}
+                    currentTier={targetKey(target) === targetKey(currentTarget) ? currentTier : undefined}
+                    resolve={tier => resolvedTier(target, tier)}
+                    tierLabel={tierLabel}
+                    modelLabel={tier => targetModel(target, tier)}
+                    defaultLabel={defaultModelLabel}
+                    onSelect={tier => void select(target, tier)}
+                    disabled={saving || blocked}
+                    disableCurrent
+                    itemRole="menuitem"
+                    t={t}
+                  />
+                </span>
+              );
+            }
+            if (multiple) {
+              const checked = isSelected(target);
+              return (
+                <button
+                  key={targetKey(target)}
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={checked}
+                  className="kr-agent-switch-option"
+                  data-current={checked}
+                  disabled={blocked}
+                  onClick={() => multiple.onToggle(target)}
+                >
+                  <span className="kr-agent-switch-check" data-checked={checked} aria-hidden="true">
+                    {checked && <Check size={9} />}
+                  </span>
+                  <span
+                    className="kr-agent-switch-option-dot"
+                    style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }}
+                  />
+                  {targetLabel(target)}
+                  <AgentAvailabilityBadge availability={badge} />
+                </button>
+              );
+            }
+            const current = targetKey(target) === targetKey(currentTarget);
+            return (
+              <button
+                key={targetKey(target)}
+                type="button"
+                role="menuitem"
+                className="kr-agent-switch-option"
+                data-current={current}
+                disabled={saving || current || blocked}
+                onClick={() => void select(target)}
+              >
                 <span
                   className="kr-agent-switch-option-dot"
                   style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }}
                 />
                 {targetLabel(target)}
-                {fullAccessBadge(target)}
-              </span>
-              <span className="kr-agent-switch-tier-choices">
-                {tierOptions.map(tier => {
-                  const selected = targetKey(target) === targetKey(currentTarget)
-                    && tier === currentTier;
-                  const icon = tier === null ? null : MODEL_TIER_ICONS[tier];
-                  const label = tier === null ? defaultModelLabel : (tierLabels?.[tier] ?? tier);
-                  const entry = tier === null ? null : catalogEntry(target, tier);
-                  const resolution = tier === null ? null : resolvedTier(target, tier);
-                  const unavailable = resolution?.unavailable ?? false;
-                  const provenance = entry
-                    ? t(`modelCatalog.provenance.${resolvedTier(target, tier as ModelTier).provenance}`)
-                    : null;
-                  const descriptionId = `${pickerId}-${targetIndex}-${tier ?? 'agent-default'}`;
-                  return (
-                    <button
-                      key={tier}
-                      type="button"
-                      role="menuitem"
-                      className="kr-agent-switch-tier-option"
-                      data-tier={tier ?? 'agent-default'}
-                      data-current={selected}
-                      aria-label={`${targetLabel(target)} · ${label}`}
-                      aria-describedby={descriptionId}
-                      title={tier === null ? label : [tierTitle(target, tier), resolution?.notice, resolution?.refusal]
-                        .filter(Boolean).join(' — ')}
-                      disabled={saving || selected || unavailable}
-                      onClick={() => void select(target, tier)}
-                    >
-                      {icon && <span aria-hidden="true">{icon}</span>}
-                      <span>{label}</span>
-                      <span id={descriptionId} hidden>
-                        {[tier === null ? label : tierTitle(target, tier), provenance ?? (tier !== null && configuredModel(target, tier) ? t('modelCatalog.notInCatalog') : ''),
-                          unavailable ? t('modelCatalog.unavailable') : '', resolution?.refusal ?? '',
-                          resolution?.replacement ? t('modelCatalog.runsInstead', resolution.replacement, resolution.configured || entry?.model_id || '') : '',
-                          resolution?.notice ?? '',
-                        ].filter(Boolean).join(' · ')}
-                      </span>
-                      {tier !== null && (entry || configuredModel(target, tier)) && (
-                        <span className="kr-agent-switch-catalog-meta"
-                          data-catalog-warning={!unavailable && resolution?.notice ? 'true' : undefined}>
-                          {unavailable
-                            ? t('modelCatalog.unavailable')
-                            : resolution?.notice
-                              ? `⚠ ${t('modelCatalog.notListedBadge')}`
-                              : provenance ?? t('modelCatalog.notInCatalog')}
-                        </span>
-                      )}
-                      {selected && <Check size={8} aria-hidden="true" />}
-                    </button>
-                  );
-                })}
-              </span>
-            </span>
-          ) : (
+                <AgentAvailabilityBadge availability={badge} />
+                {current && <Check size={10} />}
+              </button>
+            );
+          })}
+          </span>
+        </span>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
+/** The agents offered when the page supplies none: every agent Kronn knows. */
+const FALLBACK_TARGETS: readonly AgentSwitchTarget[] = [...ALL_AGENT_TYPES, 'Custom' as AgentType].map(agent => ({ agent }));
+
+function ExactModelPicker({
+  availableTargets, modelTiers, ariaLabel, disabled = false, compact = false, variant, availability,
+  needsFullAccess, exactModel,
+}: AgentSwitchPickerProps & { exactModel: ExactModelSelection }) {
+  const { t } = useT();
+  const { value, onChange, main, testId, children, className } = exactModel;
+  const [query, setQuery] = useState('');
+  const supplied = availableTargets?.length ? availableTargets : FALLBACK_TARGETS;
+  // A saved connection the page no longer lists stays choosable, under its id.
+  const targets: readonly AgentSwitchTarget[] = value?.connection_id
+    && !supplied.some(target => targetKey(target) === targetKey({ agent: value.agent, connectionId: value.connection_id }))
+    ? [...supplied, { agent: value.agent, connectionId: value.connection_id, label: value.connection_id }]
+    : supplied;
+  const popover = usePopover(() => ({ width: 300, height: 320 }));
+  const { catalog } = useModelCatalogSnapshot(popover.open);
+  const navigate = usePopoverKeys(popover.popoverRef, popover.searchRef, popover.close);
+  const triggerVariant = variant ?? (compact ? 'compact' : 'chip');
+
+  const fullLabel = agentModelLabel(value, main, targets, t, modelTiers);
+  const pick = (next: ShadowAgent | undefined) => {
+    popover.close();
+    onChange(next);
+  };
+  const isMain = (agent: AgentType, connectionId: string | null, model: string | null) =>
+    agent === main.agent && connectionId === (main.connectionId ?? null) && (model ?? '') === (main.model ?? '');
+  const isCurrent = (agent: AgentType, connectionId: string | null, model: string | null) =>
+    !!value && value.agent === agent && (value.connection_id ?? null) === connectionId && (value.model ?? '') === (model ?? '');
+  const typed = query.trim();
+
+  const groups = targets.map(target => {
+    const connectionId = target.connectionId ?? null;
+    const models = catalog?.targets.find(view => view.runtime_target_id === modelRuntimeTargetId(target.agent, connectionId))?.models ?? [];
+    const ids = models.map(model => model.model_id);
+    const extra = value && value.agent === target.agent && (value.connection_id ?? null) === connectionId && value.model && !ids.includes(value.model)
+      ? [value.model] : [];
+    const options: { model: string | null; label: string; free?: boolean }[] = [
+      { model: null, label: t('wf.shadow.rows.defaultModel') },
+      ...extra.map(model => ({ model, label: model })),
+      ...models.map(model => ({ model: model.model_id, label: model.display_alias ?? model.display_name ?? model.model_id })),
+    ];
+    const label = defaultTargetLabel(target);
+    const labelHit = !typed || matchesCatalogSearch(typed, [label, target.agent, connectionId]);
+    const shown = labelHit ? options : options.filter(option => matchesCatalogSearch(typed, [option.label, option.model]));
+    // A model id the catalogue does not list is typed in the search: offered under each agent shown.
+    const free = typed && !options.some(option => option.model === typed)
+      ? [{ model: typed, label: t('agentPicker.freeModel', typed), free: true }] : [];
+    return { target, connectionId, label, labelHit, options: [...shown, ...free], hit: labelHit || shown.length > 0 };
+  });
+  const anyHit = groups.some(group => group.hit);
+  const visible = groups.filter(group => !typed || !anyHit || group.hit);
+
+  return (
+    <span
+      ref={popover.rootRef}
+      className={`kr-agent-switch wf-shadow-picker${className ? ` ${className}` : ''}`}
+      data-compact={triggerVariant === 'compact'}
+      data-variant={triggerVariant}
+      data-mode="exact-model"
+      data-open={popover.open}
+      onClick={event => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="kr-agent-switch-btn wf-shadow-picker-btn"
+        data-testid={testId}
+        aria-label={ariaLabel}
+        aria-haspopup="dialog"
+        aria-expanded={popover.open}
+        title={children ? undefined : fullLabel}
+        disabled={disabled}
+        onClick={() => {
+          if (!popover.open) {
+            setQuery('');
+            popover.place();
+          }
+          popover.setOpen(open => !open);
+        }}
+      >
+        {children ?? <span className="kr-agent-switch-name">{fullLabel}</span>}
+        {!children && !value && <em className="wf-shadow-picker-hint">{t('wf.shadow.rows.sameAgent')}</em>}
+        <ChevronDown size={9} aria-hidden />
+      </button>
+      {popover.open && popover.position && createPortal(
+        <span
+          ref={popover.popoverRef}
+          className="kr-agent-switch-popover"
+          data-mode="exact-model"
+          role="dialog"
+          aria-label={ariaLabel}
+          style={popover.position}
+          onKeyDown={navigate}
+        >
+          <SearchField
+            ref={popover.searchRef}
+            className="kr-agent-switch-search"
+            size="sm"
+            label={t('agentPicker.searchModel')}
+            placeholder={t('agentPicker.searchModel')}
+            value={query}
+            onChange={setQuery}
+          />
+          <span role="menu" aria-label={ariaLabel} className="kr-agent-switch-results" data-testid={`${testId}-menu`}>
             <button
-              key={targetKey(target)}
               type="button"
               role="menuitem"
-              className="kr-agent-switch-option"
-              data-current={targetKey(target) === targetKey(currentTarget)}
-              disabled={saving || targetKey(target) === targetKey(currentTarget)}
-              onClick={() => void select(target)}
+              className="kr-agent-switch-option kr-agent-switch-model"
+              data-current={!value}
+              data-testid={`${testId}-same`}
+              onClick={() => pick(undefined)}
             >
-              <span
-                className="kr-agent-switch-option-dot"
-                style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }}
-              />
-              {targetLabel(target)}
-              {fullAccessBadge(target)}
-              {targetKey(target) === targetKey(currentTarget) && <Check size={10} />}
+              <span>{t('wf.shadow.rows.sameAgent')}</span>
+              <span className="kr-agent-switch-hint">{t('wf.shadow.rows.sameAgentHint')}</span>
+              {!value && <Check size={10} aria-hidden />}
             </button>
-          ))}
+            {visible.map(({ target, connectionId, label, options }) => {
+              const badge = availability?.(target)
+                ?? (needsFullAccess?.(target.agent) ? { state: 'needs-full-access' as const, label: t('agentPicker.needsFullAccess') } : null);
+              const blocked = availabilityBlocks(badge);
+              return (
+                <span key={targetKey(target)} className="kr-agent-switch-group-block" role="group" aria-label={label}>
+                  <span className="kr-agent-switch-group">
+                    <span className="kr-agent-switch-option-dot" style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }} />
+                    <span>{label}</span>
+                    <TransportBadge agent={target.agent} connectionId={connectionId} t={t} />
+                    <AgentAvailabilityBadge availability={badge} />
+                  </span>
+                  {options.map(option => {
+                    const onMain = isMain(target.agent, connectionId, option.model);
+                    const current = isCurrent(target.agent, connectionId, option.model);
+                    return (
+                      <button
+                        key={`${option.free ? 'free:' : ''}${option.model ?? ''}`}
+                        type="button"
+                        role="menuitem"
+                        className="kr-agent-switch-option kr-agent-switch-model"
+                        data-current={current}
+                        data-main={onMain}
+                        data-free={option.free || undefined}
+                        disabled={onMain || blocked}
+                        title={onMain ? t('wf.shadow.rows.mainModel') : undefined}
+                        aria-label={`${label} · ${option.label}`}
+                        onClick={() => pick({
+                          agent: target.agent,
+                          ...(option.model ? { model: option.model } : {}),
+                          ...(connectionId ? { connection_id: connectionId } : {}),
+                        })}
+                      >
+                        <span>{option.label}</span>
+                        {current && <Check size={10} aria-hidden />}
+                      </button>
+                    );
+                  })}
+                </span>
+              );
+            })}
           </span>
         </span>,
         document.body,
