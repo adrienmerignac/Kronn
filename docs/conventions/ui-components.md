@@ -2,7 +2,9 @@
 
 KT-1880 (design-system lot 1). These components replace the parallel base
 buttons, tab styles, menus and native `title=` tooltips. No screen is migrated
-in KT-1880; the screens move to them in lots 2-5. Pairs with
+in KT-1880; the screens move to them in lots 2-5. KT-1882 adds the form
+components (`Field`, `Select`, `Switch`, `FormFooter`); lot 5 migrates the
+forms to them. Pairs with
 [design-tokens.md](design-tokens.md) and [ui-text.md](ui-text.md).
 
 ## Where they live
@@ -10,7 +12,7 @@ in KT-1880; the screens move to them in lots 2-5. Pairs with
 One folder, one file per component, with its stylesheet and its test next to
 it (`Button.tsx`, `Button.css`, `Button.test.tsx`). `stylesheets.test.ts`
 fails if a component lacks one of the three.
-`[src: file: frontend/src/components/ui/stylesheets.test.ts:132]`
+`[src: file: frontend/src/components/ui/stylesheets.test.ts:180]`
 
 | Component | Use | Keyboard |
 |---|---|---|
@@ -24,6 +26,10 @@ fails if a component lacks one of the three.
 | `Dialog` | Modal layer, centred. `title` (its name, an `h2`), optional `description`, `footer` for the actions, `size` sm / md / lg (480 / 640 / 960 px), `role` dialog / alertdialog. | focus on the first control of the body (or `initialFocus`), Tab kept inside, Escape / the cross / the scrim close it, focus back to the opener |
 | `Drawer` | The same props and keyboard as `Dialog`, as a side panel the full height of the window at its end edge. | as `Dialog` |
 | `ConfirmDialog` | In place of `window.confirm`: an alertdialog, `title` is the question, `message` what happens, `confirmLabel` the verb and the object ("Delete 3 projects", never "OK"), `tone` danger (default) or primary. `useConfirm()` gives it as a promise. | focus on Cancel (Enter at once answers no); Escape, the cross and the scrim cancel |
+| `Field` | One form field: `label` above the control and bound to it, `required` (an asterisk) or `optional` (the word), `help` and `error` lines under the control, `disabled`. Wraps one control element, or a render function `control => …` for a control it cannot clone. | the control's own |
+| `Select` | The native `<select>`, one look: `options` (an entry or a group), `value`, `onChange(value)`, `placeholder`, `size` sm / md. No label of its own: a `Field` names it, or an `aria-label`. | native |
+| `Switch` | An on/off setting that applies at once: a checkbox with `role="switch"`, named by its visible `label` (`hideLabel` keeps it for assistive technology only), `description` under it. | Space; a click on the label |
+| `FormFooter` | The end of a form: `blockers` (what still holds the action), then Cancel (`onCancel`), then the action (`submitLabel`, `tone` primary / danger, `busy`), on the right, `pinned` to the bottom of what scrolls (default). Without `onSubmit` the action submits the form around it. | a held action stays focusable |
 
 `Menu` and `Tooltip` render into `document.body` at a fixed position
 (`anchor.ts`), so a container with `overflow: hidden` does not clip them.
@@ -87,6 +93,46 @@ Escape closes one layer, the innermost first
   (`LivePageResources`), the restore of a skill version
   (`SkillHistoryDrawer`), the deletion of a Quick Prompt version
   (`QPHistoryDrawer`).
+
+## Form components (KT-1882)
+
+- **A label is always bound.** `Field` gives its control an id (it keeps one
+  the control already has) and renders `<label for>` on it, above it; a
+  native `input`, `textarea` or `select` also takes the field style
+  (`ui-field-control`), a component keeps its own
+  `[src: file: frontend/src/components/ui/Field.tsx:39]`.
+- **The asterisk means required, nothing else.** `required` prints it
+  (hidden from assistive technology, the control gets `aria-required`);
+  `optional` writes the word; the props are exclusive at the type level. A
+  text label ending in `*` loses it: an asterisk for "advanced options are
+  set" (`WorkflowWizard.tsx`) cannot pass through `Field`
+  `[src: file: frontend/src/components/ui/Field.tsx:43#plainLabel]`.
+- **The error is announced.** The error line sits in a polite live region
+  rendered from the start; while there is an error the control is
+  `aria-invalid` and its description reads the error first, then the help
+  `[src: file: frontend/src/components/ui/Field.tsx:100]`. The error text is
+  `--kr-text-primary` (4.5:1 in every theme), its icon carries the danger
+  colour.
+- **16 px on a coarse pointer.** A phone zooms into a field written under
+  16 px when it takes the focus: `ui-field-control` and `Select` write
+  `--kr-type-xl` (1rem) under `@media (pointer: coarse)`, and grow to
+  `--kr-control-h-touch`
+  `[src: file: frontend/src/components/ui/Field.css:106]`.
+- **A held action says why.** `FormFooter` holds its action with
+  `aria-disabled` (not `disabled`) while there are `blockers` or it is
+  `busy`: the keyboard still reaches it, its description is the list of
+  reasons, a click or Enter does nothing (and does not submit the form)
+  `[src: file: frontend/src/components/ui/FormFooter.tsx:32#FormFooter]`.
+- **One switch.** `Switch` is the native checkbox with the `switch` role,
+  transparent over its track; the focus ring is drawn on the track. Its off
+  thumb and border (`--kr-text-muted`), its on track (`--kr-accent`) and on
+  thumb (`--kr-text-on-accent`) hold 3:1 in every theme, which the test
+  measures.
+- **Axe.** Each of the four has an axe run in its test, in every state, and
+  the gallery test runs axe on their four sections.
+- **`.ui-visually-hidden`** now lives in `visuallyHidden.css`, imported by
+  each component that uses it (it was in `SearchField.css`, which `Switch`
+  and `FormFooter` would otherwise depend on).
 
 ## Rules
 

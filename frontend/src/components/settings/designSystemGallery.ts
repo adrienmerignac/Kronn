@@ -26,6 +26,10 @@ export const GALLERY_COMPONENTS: readonly GalleryComponent[] = [
   component('dialog', 'Dialog'),
   component('drawer', 'Drawer'),
   component('confirmDialog', 'ConfirmDialog'),
+  component('field', 'Field'),
+  component('select', 'Select'),
+  component('switch', 'Switch'),
+  component('formFooter', 'FormFooter'),
 ];
 
 /** Anchor of the tokens part of the page. */
