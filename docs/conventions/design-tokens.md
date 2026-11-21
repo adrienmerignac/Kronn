@@ -59,3 +59,9 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
   `[src: file: frontend/src/styles/__tests__/designTokens.test.ts:177]`
 - **Contrast:** code and diff text colours hold 4.5:1 on `--kr-code-surface`
   and `--kr-bg-elevated` in every theme (diff text measured on its tinted row).
+  The same 4.5:1 floor holds for the status colours used as text: a label on
+  a `--kr-status-*` tint is measured on that tint over each opaque surface, in
+  the seven themes. Several themes print `--kr-status-*` under 4.5:1 there, so
+  `StatusBadge` writes its label in `--kr-text-primary` and leaves the status
+  colour to the dot, the border and the tint
+  `[src: file: frontend/src/components/ui/StatusBadge.test.tsx:40]`.
