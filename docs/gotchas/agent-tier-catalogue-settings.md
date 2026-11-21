@@ -156,7 +156,7 @@ does not propagate to its parent form. Closing with Escape or completing an
 asynchronous selection restores trigger focus. Reopening clears the query,
 an empty result is explicit, and the popup's height is bounded by the viewport.
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:570-595#navigateChoices]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:197-214#updatePopoverPosition]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:414-423#place]
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:432-437#restoreFocusRef]
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:677-683#setQuery]
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:692-712#createPortal]
@@ -171,16 +171,17 @@ component results forward as browser qualification.
 
 ### Composer mention catalogue contract
 
-Both composer palettes share tier buttons and the same catalogue resolver and
-opening-time snapshot reader as the agent picker. A named principal connection
+Both composer palettes render the agent picker's own palette and tier buttons
+(`AgentPickerPalette`, `AgentPickerTierChoices`, KT-1885) with the same
+catalogue resolver and opening-time snapshot reader as the agent picker. A named principal connection
 uses only its own tier configuration; an empty HTTP tier may use that same
 connection's default. Exact model IDs, provenance and verification time remain
 accessible even when an alias is displayed. Failed reloads retain stale data
 and an explicit error; typing within an open palette does not refetch.
 [src: file: frontend/src/lib/modelCatalogSelection.ts:12-49#resolveCatalogTier]
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:32-93#useModelCatalogSnapshot]
-[src: file: frontend/src/components/MentionTierChoices.tsx:7-15#MentionTierChoices]
-[src: file: frontend/src/components/MentionTierChoices.tsx:39-44#lastChecked]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:104-106#AgentPickerTierChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:158#lastChecked]
 [src: file: frontend/src/components/ChatInput.tsx:517#useModelCatalogSnapshot]
 [src: file: frontend/src/components/ChatInput.tsx:741-751#mentionTierResolution]
 [src: file: frontend/src/components/NewDiscussionForm.tsx:200#useModelCatalogSnapshot]

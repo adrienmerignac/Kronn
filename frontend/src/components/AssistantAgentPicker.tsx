@@ -1,16 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { externalApi, type ExternalApiConnectionView } from '../lib/api';
 import { externalAgentTargets } from '../lib/externalAgentIdentity';
-import type { AgentType, ModelTier } from '../types/generated';
+import type { AssistantAgentChoice } from '../lib/assistantAgentChoice';
+import type { AgentType } from '../types/generated';
 import { AgentSwitchPicker, type AgentSwitchTarget } from './AgentSwitchPicker';
-
-/** The agent a configuration assistant talks to: an agent or a connection, and a tier (`null`: the agent's own default). */
-export interface AssistantAgentChoice extends AgentSwitchTarget {
-  tier: ModelTier | null;
-}
-
-export const sameAssistantChoice = (left: AssistantAgentChoice | null, right: AssistantAgentChoice) =>
-  !!left && left.agent === right.agent && (left.connectionId ?? null) === (right.connectionId ?? null) && left.tier === right.tier;
 
 /**
  * KT-1885 — the agent chooser of the API assistants (workflow API step, custom
@@ -29,8 +22,10 @@ export function AssistantAgentPicker({ installedAgents, current, onSelect, disab
   const [connections, setConnections] = useState<ExternalApiConnectionView[]>([]);
   useEffect(() => {
     let live = true;
-    externalApi.list()
-      .then(list => { if (live) setConnections(list); })
+    // Through a promise: a failing or absent list leaves the installed agents.
+    Promise.resolve()
+      .then(() => externalApi.list())
+      .then(list => { if (live && Array.isArray(list)) setConnections(list); })
       .catch(() => { /* no connection offered: the installed agents remain */ });
     return () => { live = false; };
   }, []);
@@ -60,13 +55,4 @@ export function AssistantAgentPicker({ installedAgents, current, onSelect, disab
       ariaLabel={title}
     />
   );
-}
-
-/** What a discussion created for this choice carries: its connection and an explicit tier. */
-export function assistantDiscussionTarget(choice: AssistantAgentChoice) {
-  return {
-    agent: choice.agent,
-    ...(choice.connectionId ? { connection_id: choice.connectionId } : {}),
-    ...(choice.tier ? { tier: choice.tier } : {}),
-  };
 }

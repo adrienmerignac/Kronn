@@ -225,8 +225,35 @@ the table is `DESIGN_SYSTEM_ANCHOR_TABS`.
 `[src: file: frontend/src/lib/routes.ts:184#legacyDesignSystemLocation]`
 The route is its own chunk, never preloaded, so Settings does not load the
 gallery.
-`[src: file: frontend/src/routes/lazyRoutes.ts:17#DesignSystemRoute]` Adding a component: add it to `GALLERY_COMPONENTS`, a
+`[src: file: frontend/src/routes/lazyRoutes.ts:17#DesignSystemRoute]` Adding a component: add it to `UI_GALLERY_COMPONENTS`, a
 demo in `DesignSystemComponents.tsx`, and its `designSystem.caption.<id>` in
 the four locales; the gallery test fails if a component of the folder is
-missing.
-`[src: file: frontend/src/components/settings/designSystemGallery.ts:18#GALLERY_COMPONENTS]`
+missing. A shared component built on those controls (the agent picker,
+KT-1885) goes in `SHARED_GALLERY_COMPONENTS`, shown after them.
+`[src: file: frontend/src/components/settings/designSystemGallery.ts:19#UI_GALLERY_COMPONENTS]`
+`[src: file: frontend/src/components/settings/designSystemGallery.ts:47#SHARED_GALLERY_COMPONENTS]`
+
+## The one agent picker
+
+Every place that chooses an agent uses `AgentSwitchPicker` (KT-1885); its
+modes are props, not copies: the trigger `variant` (`chip`, `compact`,
+`field`), `multiple` (several targets, the list stays open) and `exactModel`
+(an agent and a model id, the catalogue's or one typed in the search, or
+« = principal », with the principal's own model greyed).
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:329#variant]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:352#multiple]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:363#exactModel]`
+Its popover is in `<body>` on the popover layer, above every dialog, and opens
+on its search field. Availability always goes through
+`AgentAvailabilityBadge` (`unavailable` and `disabled` block the choice,
+`needs-full-access` and `not-listed` only warn).
+`[src: file: frontend/src/lib/agentAvailability.ts:10#AgentAvailabilityState]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:55#AgentAvailabilityBadge]`
+A menu a text field drives (the composer's @ menu) renders
+`AgentPickerPalette` and keeps its own keys; the API assistants go through
+`AssistantAgentPicker` (installed agents, external connections, tiers).
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:198#AgentPickerPalette]`
+`[src: file: frontend/src/components/AssistantAgentPicker.tsx:14#AssistantAgentPicker]`
+Kept apart on purpose: the audit's card grid (a decision aid), the default-tier
+radios of Settings (a preference) and the chips of agents detected in a prompt
+(a read-only summary).

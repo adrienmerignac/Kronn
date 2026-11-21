@@ -18,6 +18,9 @@ import {
   agentTextColor,
 } from '../lib/constants';
 import { agentTransport, type AgentTransport } from '../lib/shadowMerge';
+import {
+  availabilityBlocks, tierAvailability, type AgentAvailability, type AgentAvailabilityState,
+} from '../lib/agentAvailability';
 import { SearchField } from './ui/SearchField';
 import { agentModelLabel } from './workflows/shadowRowModel';
 import type {
@@ -38,25 +41,9 @@ export interface AgentSwitchTarget {
   modelTiers?: ModelTierConfig;
 }
 
-// ─── Availability: one badge, the same everywhere ────────────────────────
+// ─── Availability: one badge, the same everywhere (KT-1885) ──────────────
 
-/**
- * KT-1885 — why a choice cannot run (or runs with a warning). Every place that
- * chooses an agent shows it through `AgentAvailabilityBadge`, so a state reads
- * the same in a header, a step, an assistant and the composer's mention menu.
- * `unavailable` and `disabled` block the choice; the others only warn.
- */
-export type AgentAvailabilityState = 'unavailable' | 'disabled' | 'needs-full-access' | 'not-listed';
-
-export interface AgentAvailability {
-  state: AgentAvailabilityState;
-  label: string;
-  /** The detail, in the badge's title (a refusal, a notice). */
-  title?: string;
-}
-
-export const availabilityBlocks = (availability?: AgentAvailability | null) =>
-  availability?.state === 'unavailable' || availability?.state === 'disabled';
+export type { AgentAvailability, AgentAvailabilityState };
 
 const AVAILABILITY_TEST_IDS: Record<AgentAvailabilityState, string> = {
   'needs-full-access': 'agent-needs-full-access',
@@ -81,18 +68,6 @@ export function AgentAvailabilityBadge({ availability, placement = 'inline' }: {
       {availability.label}
     </span>
   );
-}
-
-/** What the catalogue says about one tier of one agent, as an availability. */
-export function tierAvailability(resolution: ResolvedCatalogTier | null | undefined, t: Translate): AgentAvailability | null {
-  if (!resolution) return null;
-  if (resolution.unavailable) {
-    return { state: 'unavailable', label: t('modelCatalog.unavailable'), title: resolution.refusal ?? undefined };
-  }
-  if (resolution.notice) {
-    return { state: 'not-listed', label: `⚠ ${t('modelCatalog.notListedBadge')}`, title: resolution.notice };
-  }
-  return null;
 }
 
 // ─── Tier choices: the picker's and the mention menu's ───────────────────
@@ -951,7 +926,7 @@ function ExactModelPicker({
                         data-free={option.free || undefined}
                         disabled={onMain || blocked}
                         title={onMain ? t('wf.shadow.rows.mainModel') : undefined}
-                        aria-label={`${label} · ${option.label}`}
+                        aria-label={option.free ? `${label} · ${option.model} — ${option.label}` : `${label} · ${option.label}`}
                         onClick={() => pick({
                           agent: target.agent,
                           ...(option.model ? { model: option.model } : {}),

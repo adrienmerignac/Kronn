@@ -21,7 +21,8 @@ import { isLocaleLoaded, loadLocale, t as translate, type UILocale } from '../li
 import type { AgentType, AssistantConversation, CustomApiPayload } from '../types/generated';
 import { sanitizeForAssistant, scrubSecrets } from '../lib/assistantSecrets';
 import { AssistantConversationList } from './AssistantConversationList';
-import { AssistantAgentPicker, assistantDiscussionTarget, sameAssistantChoice, type AssistantAgentChoice } from './AssistantAgentPicker';
+import { AssistantAgentPicker } from './AssistantAgentPicker';
+import { assistantDiscussionTarget, sameAssistantChoice, type AssistantAgentChoice } from '../lib/assistantAgentChoice';
 import {
   notifyAssistantConversationsChanged,
   pendingFor,
