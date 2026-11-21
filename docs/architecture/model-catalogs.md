@@ -148,7 +148,7 @@ this is permission to attempt execution, not proof of account access. Missing CL
 authentication failures and unavailable/unknown identities are not covered by
 that exception, and other runtimes keep their existing failure policy.
 [src: file: backend/src/core/model_catalog/mod.rs:1191-1222#retained_claude_model]
-[src: file: backend/src/api/discussions/streaming.rs:4240-4286#preflight_resolve]
+[src: file: backend/src/api/discussions/streaming.rs:4253-4299#preflight_resolve]
 [src: file: backend/src/workflows/runner.rs:2165-2250#preflight_resolve]
 [src: file: backend/src/workflows/steps.rs:1222-1275#preflight_workflow_launch]
 
@@ -187,7 +187,7 @@ alongside each tier's model (`economy_effort`/`default_effort`/
 deserializes every new field to `None`. Without an execution override or a
 preset, no effort flag is sent: the runtime's own default applies, never a
 silently assigned `high`/`max`.
-[src: file: backend/src/models/setup.rs:1844-1874#ModelTierConfig]
+[src: file: backend/src/models/setup.rs:1853-1883#ModelTierConfig]
 
 Resolution is a single precedence, mirrored on `effective_model_flag`:
 `runner::resolve_reasoning_effort` — explicit per-step/per-QP

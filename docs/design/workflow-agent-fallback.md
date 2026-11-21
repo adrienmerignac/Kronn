@@ -54,7 +54,7 @@ discussion identity. Switching Claude to Codex or Ollama changes more than the
 Kronn already has the useful abstraction needed for routing: `ModelTier` plus a
 per-agent `ModelTierConfig`. Concrete models are resolved independently for
 Claude, Codex, Gemini, Copilot, Ollama, and LiteLLM. An explicit per-step model
-currently wins over the tier. [src: file: backend/src/models/setup.rs:1807-1853#ModelTier]
+currently wins over the tier. [src: file: backend/src/models/setup.rs:1816-1862#ModelTier]
 [src: file: backend/src/agents/runner.rs:3707-3741#resolve_model_flag]
 
 Consequently, a fallback target must be represented as:
@@ -70,7 +70,7 @@ FallbackTarget {
 “Installed” is not enough to select that target. Current detection separately
 tracks installed, enabled, runtime-available, authentication-ready, and runtime
 warning states. HTTP providers additionally need endpoint health, model
-availability, and model capability checks. [src: file: backend/src/models/setup.rs:1965-2040#AgentDetection]
+availability, and model capability checks. [src: file: backend/src/models/setup.rs:1974-2049#AgentDetection]
 
 ## Policy and precedence
 
@@ -249,7 +249,7 @@ The current spawn audit found these distinct Kronn-owned paths:
 
 | Current spawn path | What it covers |
 |---|---|
-| Discussion streaming | Normal replies, manual/forced runs, durable dispatch, and Quick Prompt / Batch Quick Prompt child discussions. HTTP tools are attached here, on workflow Agent steps and on audit steps. [src: file: backend/src/api/discussions/streaming.rs:4591-4634#native_http_tools] |
+| Discussion streaming | Normal replies, manual/forced runs, durable dispatch, and Quick Prompt / Batch Quick Prompt child discussions. HTTP tools are attached here, on workflow Agent steps and on audit steps. [src: file: backend/src/api/discussions/streaming.rs:4604-4647#native_http_tools] |
 | Debate pre-summary | Compresses the shared context before debate. [src: file: backend/src/api/discussions/orchestration.rs:629-725#ToolFreeSummary] |
 | Debate participants | Starts every participant/round independently. [src: file: backend/src/api/discussions/orchestration.rs:803-1020#start_agent_with_config] |
 | Debate final synthesis | Starts the primary synthesis agent. [src: file: backend/src/api/discussions/orchestration.rs:966-1123#synthesis_external_http] |
