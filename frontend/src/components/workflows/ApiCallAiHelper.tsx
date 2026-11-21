@@ -7,7 +7,9 @@ import type { AgentType, AssistantConversation, McpServer, WorkflowStep } from '
 import { sanitizeForAssistant, scrubSecrets } from '../../lib/assistantSecrets';
 import { AssistantConversationList } from '../AssistantConversationList';
 import { AssistantAgentPicker } from '../AssistantAgentPicker';
-import { assistantDiscussionTarget, sameAssistantChoice, type AssistantAgentChoice } from '../../lib/assistantAgentChoice';
+import {
+  assistantChoiceFromDiscussion, assistantDiscussionTarget, sameAssistantChoice, type AssistantAgentChoice,
+} from '../../lib/assistantAgentChoice';
 import {
   notifyAssistantConversationsChanged,
   pendingFor,
@@ -255,6 +257,8 @@ export function ApiCallAiHelper({
       if (!isLocaleLoaded(agentLocale)) await loadLocale(agentLocale);
       const disc = await discussionsApi.get(conversation.discussion_id);
       if (session !== sessionRef.current) return;
+      // KT-1885 — the picker shows what the conversation runs on: its connection and its tier.
+      setActiveAgent(assistantChoiceFromDiscussion(conversation.agent, disc));
       setMessages(transcriptToChat(disc.messages, [
         agentT('wf.apicall.helper.sys.userQuestion'),
         t('wf.apicall.helper.sys.userQuestion'),
@@ -536,7 +540,7 @@ export function ApiCallAiHelper({
                   installedAgents={installedAgents}
                   current={activeAgent}
                   onSelect={switchAgent}
-                  disabled={streaming}
+                  disabled={streaming || loading}
                   title={t('wf.apicall.helper.switchAgent')}
                   t={t}
                 />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useId, useLayoutEffect, useMemo, useRef } from 'react';
 import { AppLink } from './AppLink';
 import { PAGE_PATHS, settingsSectionPath } from '../lib/routes';
 import { newTabClickProps } from '../lib/newTabNavigation';
@@ -6,6 +6,7 @@ import '../pages/DiscussionsPage.css';
 import { ProfileTooltip } from './ProfileTooltip';
 import { MediaGenerateForm } from './MediaGenerateForm';
 import { AgentPickerPalette, AgentSwitchPicker, type AgentPickerPaletteRow, type AgentSwitchTarget } from './AgentSwitchPicker';
+import { agentPaletteFieldAria } from '../lib/agentPickerPalette';
 import { MarkdownEditor } from './MarkdownComposerTools';
 import { SearchableSelect } from './SearchableSelect';
 import { DiscussionSkillPicker } from './DiscussionSkillPicker';
@@ -236,6 +237,14 @@ export function NewDiscussionForm({
     ...catalogTargetSearchTerms(target, MENTION_TIER_CHOICES.map(tier => targetTierResolution(target, tier))),
   ])).sort((a, b) => mentionMatchRank(a.trigger, mentionQuery) - mentionMatchRank(b.trigger, mentionQuery));
   const availableMentionTargets = matchingMentionTargets.filter(target => target.available);
+  // KT-1885 — the prompt names the @ menu and its highlighted row for assistive tech.
+  const mentionListId = `${useId()}-mentions`;
+  const highlightedMention = availableMentionTargets[mentionIndex];
+  const mentionFieldAria = agentPaletteFieldAria(
+    mentionListId,
+    matchingMentionTargets.length > 0,
+    highlightedMention ? launchTargetKey(highlightedMention) : null,
+  );
   const availableSwitchTargets = useMemo<AgentSwitchTarget[]>(() =>
     launchTargets
       .filter(target => target.available)
@@ -851,6 +860,7 @@ export function NewDiscussionForm({
                 // choices and availability badges; the prompt keeps the keys.
                 return (
                   <AgentPickerPalette
+                    id={mentionListId}
                     listRef={autocompleteRef}
                     className="disc-mention-popover disc-new-autocomplete"
                     ariaLabel={t('disc.mentionAgents')}
@@ -957,6 +967,7 @@ export function NewDiscussionForm({
                   placeholder={t('disc.promptPlaceholder')}
                   value={newDiscPrompt}
                   aria-label={t('disc.prompt')}
+                  {...mentionFieldAria}
                   onChange={e => {
                     if (newDiscPrefilled) return;
                     setNewDiscPrompt(e.target.value);

@@ -93,6 +93,10 @@
 
 /* Agent/model picker: same trigger look as the step's own agent picker. */
 .wf-shadow-picker { display: inline-flex; min-width: 0; }
+/* KT-1885 — a row's picker is as wide as its text, « + Shadow » a small chip:
+   the step routing's full-width picker rule is for its own agent field. */
+.wf-shadow-rows .kr-agent-switch.wf-shadow-picker { width: auto; }
+.wf-shadow-rows .wf-shadow-picker .kr-agent-switch-btn { width: auto; }
 .wf-shadow-picker-btn {
   display: inline-flex;
   align-items: center;

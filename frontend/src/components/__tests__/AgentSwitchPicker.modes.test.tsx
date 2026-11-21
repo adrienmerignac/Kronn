@@ -15,8 +15,14 @@ import {
   AgentPickerPalette, AgentSwitchPicker, type AgentAvailability, type AgentSwitchTarget,
 } from '../AgentSwitchPicker';
 import { Dialog } from '../ui/Dialog';
+import { I18nProvider } from '../../lib/I18nContext';
+import { loadLocale, setUILocale } from '../../lib/i18n';
+import { agentPaletteFieldAria, agentPaletteOptionId } from '../../lib/agentPickerPalette';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setUILocale('fr');
+});
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TARGETS: AgentSwitchTarget[] = [{ agent: 'ClaudeCode' }, { agent: 'Codex' }, { agent: 'GeminiCli' }];
@@ -126,10 +132,10 @@ describe('AgentSwitchPicker — the modes (KT-1885)', () => {
     const onToggle = vi.fn();
     render(
       <AgentSwitchPicker currentAgent="ClaudeCode" availableAgents={[]} availableTargets={TARGETS}
-        multiple={{ selected: [{ agent: 'ClaudeCode' }], onToggle, summary: selected => `${selected.length} agents` }}
+        multiple={{ selected: [{ agent: 'ClaudeCode' }], onToggle, summary: selected => `${selected.length} chosen` }}
         title="Agent" ariaLabel="Agent" />,
     );
-    expect(screen.getByRole('button', { name: 'Agent' })).toHaveTextContent('1 agents');
+    expect(screen.getByRole('button', { name: 'Agent' })).toHaveTextContent('1 chosen');
     const popover = await open();
     expect(within(popover).getByRole('menuitemcheckbox', { name: /Claude Code/ })).toHaveAttribute('aria-checked', 'true');
     fireEvent.click(within(popover).getByRole('menuitemcheckbox', { name: /Codex/ }));
@@ -149,5 +155,101 @@ describe('AgentSwitchPicker — the modes (KT-1885)', () => {
     fireEvent.change(within(popover).getByRole('searchbox'), { target: { value: 'gpt-5.5-mini' } });
     fireEvent.click(within(popover).getByRole('menuitem', { name: /^Codex · .*gpt-5\.5-mini/ }));
     expect(onChange).toHaveBeenCalledWith({ agent: 'Codex', model: 'gpt-5.5-mini' });
+  });
+});
+
+describe('AgentSwitchPicker — review fixes (KT-1885)', () => {
+  it.each([
+    ['fr', 0, 'Aucun agent'], ['fr', 1, '1 agent'], ['fr', 2, '2 agents'],
+    ['en', 0, 'No agent'], ['en', 1, '1 agent'], ['en', 3, '3 agents'],
+    ['es', 1, '1 agente'], ['es', 2, '2 agentes'], ['zh', 2, '2 个代理'],
+  ] as const)('multi-choice (%s): %i chosen reads « %s », a real singular and plural', async (locale, count, text) => {
+    await loadLocale(locale);
+    setUILocale(locale);
+    const selected = TARGETS.slice(0, count).map(target => ({ agent: target.agent }));
+    render(
+      <I18nProvider>
+        <AgentSwitchPicker currentAgent="ClaudeCode" availableAgents={[]} availableTargets={TARGETS}
+          multiple={{ selected, onToggle: vi.fn() }} title="Agent" ariaLabel="Agent" />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Agent' })).toHaveTextContent(new RegExp(`^${text}$`));
+  });
+
+  it('exact model: the typed id stays usable on the agents the search hides', async () => {
+    const onChange = vi.fn();
+    render(
+      <AgentSwitchPicker currentAgent="ClaudeCode" availableAgents={[]} availableTargets={TARGETS} title="Agent" ariaLabel="Agent"
+        exactModel={{ value: undefined, onChange, main: { agent: 'ClaudeCode' }, testId: 'exact' }} />,
+    );
+    const popover = await open();
+    // « codex » matches one agent's name: the others leave its groups, not its free id.
+    fireEvent.change(within(popover).getByRole('searchbox'), { target: { value: 'codex' } });
+    expect(within(popover).getByRole('group', { name: 'Codex' })).toBeInTheDocument();
+    const gemini = within(popover).getByRole('group', { name: 'Gemini CLI' });
+    expect(within(gemini).getAllByRole('menuitem')).toHaveLength(1);
+    expect(within(popover).getByText('agentPicker.otherTargets')).toBeInTheDocument();
+    fireEvent.click(within(gemini).getByRole('menuitem', { name: /^Gemini CLI · codex/ }));
+    expect(onChange).toHaveBeenCalledWith({ agent: 'GeminiCli', model: 'codex' });
+  });
+
+  it('an outside click closes it without sending the focus back to the trigger later', async () => {
+    let finishSave!: () => void;
+    const onChange = vi.fn(() => new Promise<void>(resolve => { finishSave = resolve; }));
+    render(
+      <>
+        <AgentSwitchPicker currentAgent="ClaudeCode" availableAgents={[]} availableTargets={TARGETS}
+          onChange={onChange} title="Agent" ariaLabel="Agent" />
+        <input aria-label="elsewhere" />
+      </>,
+    );
+    const popover = await open();
+    // A choice starts saving; meanwhile the user clicks into another field.
+    fireEvent.click(within(popover).getByRole('menuitem', { name: /Codex/ }));
+    expect(onChange).toHaveBeenCalledWith('Codex');
+    const elsewhere = screen.getByRole('textbox', { name: 'elsewhere' });
+    fireEvent.mouseDown(elsewhere);
+    elsewhere.focus();
+    expect(screen.queryByRole('dialog', { name: 'Agent' })).toBeNull();
+    // The save ends later: the focus stays where the user put it.
+    await act(async () => { finishSave(); });
+    expect(elsewhere).toHaveFocus();
+  });
+
+  it('palette: names its rows for the field, keeps the highlighted row in view, and leaves Tab to the field', () => {
+    const scrollIntoView = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    const rows = (highlighted: number) => ['claude', 'codex', 'gemini'].map((key, index) => ({
+      key, agent: 'ClaudeCode' as const, label: `@${key}`, highlighted: index === highlighted, onSelect: vi.fn(),
+      tiers: {
+        targetLabel: `@${key}`, resolve: () => ({ model: '' }) as never, tierLabel: (tier: string) => tier,
+        modelLabel: () => 'model', defaultLabel: 'default', onSelect: vi.fn(),
+      },
+    }));
+    const { rerender } = render(<AgentPickerPalette id="mentions" ariaLabel="Mention" t={t} rows={rows(0)} />);
+    const options = screen.getAllByRole('option');
+    expect(screen.getByRole('listbox')).toHaveAttribute('id', 'mentions');
+    expect(options.map(option => option.id)).toEqual([
+      agentPaletteOptionId('mentions', 'claude'), agentPaletteOptionId('mentions', 'codex'), agentPaletteOptionId('mentions', 'gemini'),
+    ]);
+    expect(new Set(options.map(option => option.id)).size).toBe(3);
+    scrollIntoView.mockClear();
+    rerender(<AgentPickerPalette id="mentions" ariaLabel="Mention" t={t} rows={rows(2)} />);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(options[2]);
+    for (const tier of screen.getAllByRole('button').filter(node => node.classList.contains('kr-agent-switch-tier-option'))) {
+      expect(tier).toHaveAttribute('tabindex', '-1');
+    }
+    HTMLElement.prototype.scrollIntoView = original;
+  });
+
+  it('palette: the field that drives it carries aria-controls, aria-expanded and aria-activedescendant while open', () => {
+    expect(agentPaletteFieldAria('mentions', false, 'codex')).toEqual({});
+    expect(agentPaletteFieldAria('mentions', true, 'codex')).toEqual({
+      'aria-controls': 'mentions',
+      'aria-expanded': true,
+      'aria-activedescendant': agentPaletteOptionId('mentions', 'codex'),
+    });
   });
 });

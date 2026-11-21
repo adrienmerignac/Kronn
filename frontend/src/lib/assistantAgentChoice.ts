@@ -22,3 +22,21 @@ export function assistantDiscussionTarget(choice: AssistantAgentChoice) {
     ...(choice.tier ? { tier: choice.tier } : {}),
   };
 }
+
+/**
+ * The choice a kept conversation was created with, read back from its
+ * discussion: its agent, its connection and its tier. A discussion created
+ * without a tier stores `default`, which runs as the assistant's « agent
+ * default » (`null`), the choice it opens on.
+ */
+export function assistantChoiceFromDiscussion(
+  fallbackAgent: AgentType,
+  discussion: { agent?: AgentType | null; connection_id?: string | null; tier?: ModelTier | null } | null | undefined,
+): AssistantAgentChoice {
+  const tier = discussion?.tier ?? null;
+  return {
+    agent: discussion?.agent ?? fallbackAgent,
+    connectionId: discussion?.connection_id ?? null,
+    tier: tier === 'default' ? null : tier,
+  };
+}

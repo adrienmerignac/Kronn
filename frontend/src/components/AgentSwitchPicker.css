@@ -81,11 +81,11 @@
 
 .kr-agent-switch[data-variant='field'] .kr-agent-switch-btn {
   width: 100%;
-  min-height: 32px;
-  padding: var(--kr-sp-1) var(--kr-sp-2);
+  min-height: var(--kr-space-7);
+  padding: var(--kr-space-1) var(--kr-space-2);
   border-color: var(--kr-border);
   background: var(--kr-bg-surface);
-  font-size: var(--kr-fs-sm);
+  font-size: var(--kr-type-md);
   font-weight: 600;
 }
 
@@ -107,6 +107,11 @@
   line-height: 1.1;
 }
 
+/* KT-1885 — the compact chip stays a 24px target, like the other modes. */
+.kr-agent-switch[data-compact='true'] > .kr-agent-switch-btn {
+  min-height: var(--kr-space-6);
+}
+
 .kr-agent-switch-popover {
   position: fixed;
   z-index: var(--kr-z-popover);
@@ -124,7 +129,7 @@
 
 .kr-agent-switch-search {
   flex: 0 0 auto;
-  margin-bottom: var(--kr-sp-1);
+  margin-bottom: var(--kr-space-1);
 }
 
 .kr-agent-switch-results {
@@ -209,23 +214,34 @@
   gap: 3px;
 }
 
+/* KT-1885 — a tier choice: its icon and name on one line, then the
+   catalogue's state, which wraps rather than being cut. Never under 24px. */
 .kr-agent-switch-tier-option {
   position: relative;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  min-width: 62px;
-  height: 38px;
-  padding: 0 6px 9px;
+  min-width: 76px;
+  max-width: 128px;
+  min-height: var(--kr-space-6);
+  padding: var(--kr-space-1) var(--kr-space-2);
   border: 1px solid var(--kr-border-ghost);
   border-radius: var(--kr-r-sm);
   background: var(--kr-bg-surface);
   color: var(--kr-text-secondary);
   font-family: inherit;
-  font-size: 9px;
+  font-size: var(--kr-type-sm);
   font-weight: 650;
+  line-height: 1.25;
   cursor: pointer;
+}
+
+.kr-agent-switch-tier-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kr-space-1);
+  white-space: nowrap;
 }
 
 .kr-agent-switch-badge {
@@ -234,7 +250,7 @@
   border-radius: var(--kr-radius-pill);
   background: var(--kr-warning-bg);
   color: var(--kr-warning-soft);
-  font-size: var(--kr-fs-2xs);
+  font-size: var(--kr-type-sm);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -247,17 +263,14 @@
 }
 
 .kr-agent-switch-catalog-meta {
-  position: absolute;
-  right: 3px;
-  bottom: 2px;
-  left: 3px;
-  overflow: hidden;
+  max-width: 100%;
   color: var(--kr-text-tertiary);
-  font-size: 7px;
+  font-size: var(--kr-type-sm);
   font-weight: 500;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .kr-agent-switch-catalog-meta[data-state='not-listed'] {
@@ -311,8 +324,8 @@
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 13px;
-  height: 13px;
+  width: var(--kr-space-3);
+  height: var(--kr-space-3);
   border: 1px solid var(--kr-border);
   border-radius: var(--kr-r-sm);
   background: var(--kr-bg-surface);
@@ -332,10 +345,10 @@
 .kr-agent-switch-group {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px 3px;
+  gap: var(--kr-space-2);
+  padding: var(--kr-space-2) var(--kr-space-2) var(--kr-space-1);
   color: var(--kr-text-tertiary);
-  font-size: var(--kr-fs-2xs);
+  font-size: var(--kr-type-sm);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -344,8 +357,8 @@
 .kr-agent-switch-group-block {
   display: flex;
   flex-direction: column;
-  margin-top: var(--kr-sp-1);
-  padding-top: var(--kr-sp-1);
+  margin-top: var(--kr-space-1);
+  padding-top: var(--kr-space-1);
   border-top: 1px solid var(--kr-border-subtle);
 }
 
@@ -356,16 +369,17 @@
 }
 
 /* Exact model: one row per model id. */
+/* Wide enough for its whole search placeholder, never wider than the window. */
 .kr-agent-switch-popover[data-mode='exact-model'] {
-  width: 300px;
+  width: min(320px, calc(100vw - 2 * var(--kr-space-2)));
 }
 
 .kr-agent-switch-model {
-  padding-left: 22px;
+  padding-left: var(--kr-space-6);
 }
 
 .kr-agent-switch-results > .kr-agent-switch-model {
-  padding-left: 8px;
+  padding-left: var(--kr-space-2);
 }
 
 .kr-agent-switch-model > span:first-child {
@@ -384,14 +398,14 @@
 
 .kr-agent-switch-hint {
   color: var(--kr-text-tertiary);
-  font-size: var(--kr-fs-2xs);
+  font-size: var(--kr-type-sm);
 }
 
 /* Palette: the list a text field drives (the composer's @ menu). */
 .kr-agent-switch-palette {
   display: flex;
   flex-direction: column;
-  padding: var(--kr-sp-1);
+  padding: var(--kr-space-1);
   border: 1px solid var(--kr-border);
   border-radius: var(--kr-r-md);
   background: var(--kr-bg-elevated);
@@ -400,12 +414,13 @@
   overscroll-behavior: contain;
 }
 
+/* The tier choices sit after the agent, and go under it only when the row is too narrow. */
 .kr-agent-switch-palette-row {
-  display: grid;
-  grid-template-columns: minmax(140px, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--kr-sp-2);
-  padding: 3px 4px;
+  gap: var(--kr-space-1) var(--kr-space-2);
+  padding: var(--kr-space-1);
   border-radius: var(--kr-r-sm);
 }
 
@@ -415,15 +430,16 @@
 
 .kr-agent-switch-palette-main {
   display: flex;
+  flex: 1 1 140px;
   align-items: center;
-  gap: 6px;
+  gap: var(--kr-space-2);
   min-width: 0;
-  padding: 4px;
+  padding: var(--kr-space-1);
   border: 0;
   background: transparent;
   color: var(--kr-text-secondary);
   font-family: inherit;
-  font-size: var(--kr-fs-xs);
+  font-size: var(--kr-type-sm);
   text-align: left;
   cursor: pointer;
 }
@@ -446,16 +462,7 @@
   white-space: nowrap;
 }
 
-.kr-agent-switch-palette-row .kr-agent-switch-tier-option {
-  min-width: 58px;
-  height: 34px;
-}
-
 @media (max-width: 419px) {
-  .kr-agent-switch-palette-row {
-    grid-template-columns: 1fr;
-  }
-
   .kr-agent-switch-tier-row {
     grid-template-columns: 1fr;
   }

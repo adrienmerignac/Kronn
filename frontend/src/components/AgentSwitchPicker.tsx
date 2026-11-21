@@ -1,7 +1,8 @@
 import {
-  Fragment, useCallback, useEffect, useId, useRef, useState,
+  Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState,
   type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref, type RefObject,
 } from 'react';
+import { agentPaletteOptionId } from '../lib/agentPickerPalette';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Loader2, RefreshCw } from 'lucide-react';
 import {
@@ -134,6 +135,8 @@ export function AgentPickerTierChoices({
             aria-describedby={descriptionId}
             title={title}
             disabled={disabled || (disableCurrent && selected) || blocked}
+            // The text field driving the list keeps the keyboard: no Tab stop here.
+            tabIndex={keepFocus ? -1 : undefined}
             onMouseDown={keepFocus ? event => {
               event.preventDefault();
               event.stopPropagation();
@@ -145,8 +148,10 @@ export function AgentPickerTierChoices({
               choose();
             }}
           >
-            {tier !== null && <span aria-hidden="true">{MODEL_TIER_ICONS[tier]}</span>}
-            <span>{label}</span>
+            <span className="kr-agent-switch-tier-label">
+              {tier !== null && <span aria-hidden="true">{MODEL_TIER_ICONS[tier]}</span>}
+              <span>{label}</span>
+            </span>
             <span id={descriptionId} hidden>
               {[title, resolution?.entry?.model_id, provenance,
                 availability?.state === 'unavailable' ? availability.label : '',
@@ -195,7 +200,12 @@ export interface AgentPickerPaletteRow {
  * moves the highlight with its own keys; the rows, the tier choices and the
  * availability badges are the picker's.
  */
-export function AgentPickerPalette({ rows, status, ariaLabel, className, style, placement, listRef, t }: {
+export function AgentPickerPalette({ id, rows, status, ariaLabel, className, style, placement, listRef, t }: {
+  /**
+   * The list's id: its rows are `agentPaletteOptionId(id, row.key)`, which the
+   * text field names in `aria-activedescendant` (see `agentPaletteFieldAria`).
+   */
+  id?: string;
   rows: readonly AgentPickerPaletteRow[];
   status?: ReactNode;
   ariaLabel: string;
@@ -206,9 +216,25 @@ export function AgentPickerPalette({ rows, status, ariaLabel, className, style, 
   listRef?: Ref<HTMLDivElement>;
   t: Translate;
 }) {
+  const fallbackId = useId();
+  const listId = id ?? fallbackId;
+  const ownRef = useRef<HTMLDivElement | null>(null);
+  const setRef = useCallback((node: HTMLDivElement | null) => {
+    ownRef.current = node;
+    if (typeof listRef === 'function') listRef(node);
+    else if (listRef) (listRef as { current: HTMLDivElement | null }).current = node;
+  }, [listRef]);
+  const highlightedKey = rows.find(row => row.highlighted)?.key;
+  // The keys move the highlight past the list's fold: keep it in view.
+  useEffect(() => {
+    if (!highlightedKey) return;
+    const row = ownRef.current?.querySelector<HTMLElement>('[data-highlighted="true"]');
+    row?.scrollIntoView?.({ block: 'nearest' });
+  }, [highlightedKey]);
   return (
     <div
-      ref={listRef}
+      ref={setRef}
+      id={listId}
       className={['kr-agent-switch-palette', className].filter(Boolean).join(' ')}
       role="listbox"
       aria-label={ariaLabel}
@@ -224,6 +250,7 @@ export function AgentPickerPalette({ rows, status, ariaLabel, className, style, 
               <div className="kr-agent-switch-group" role="presentation">{row.group}</div>
             )}
             <div
+              id={agentPaletteOptionId(listId, row.key)}
               className="kr-agent-switch-palette-row"
               role="option"
               aria-selected={Boolean(row.highlighted)}
@@ -400,32 +427,71 @@ function usePopoverKeys(
   };
 }
 
-/** Open state, fixed position under (or above) the trigger, outside click and Escape. */
-function usePopover(estimate: () => { width: number; height: number }, busy = false) {
+/** Between the trigger and its popover (`--kr-space-1`). */
+const POPOVER_GAP = 4;
+/** The popover never comes closer to the window's edge (`--kr-space-2`). */
+const VIEWPORT_PADDING = 8;
+
+/**
+ * Open state, fixed position under (or above) the trigger, outside click and Escape.
+ *
+ * KT-1885 — the popover is placed from its rendered size, measured on open
+ * and again whenever `layoutKey` changes (search, catalogue load), when it
+ * resizes and when the window does: it stays inside the window and never
+ * covers its trigger. Opened above, its bottom is anchored to the trigger.
+ */
+function usePopover(layoutKey: unknown, busy = false) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
   const restoreFocusRef = useRef(false);
   const rootRef = useRef<HTMLSpanElement>(null);
   const popoverRef = useRef<HTMLSpanElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const estimateRef = useRef(estimate);
-  estimateRef.current = estimate;
 
   const place = useCallback(() => {
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const viewportPadding = 8;
-    const { width, height } = estimateRef.current();
-    const hasRoomBelow = rect.bottom + 5 + height <= window.innerHeight - viewportPadding;
-    const top = hasRoomBelow ? rect.bottom + 5 : Math.max(viewportPadding, rect.top - height - 5);
-    const left = Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - width - viewportPadding));
-    setPosition({ top, left, maxHeight: Math.max(0, window.innerHeight - top - viewportPadding) });
+    const trigger = rootRef.current?.getBoundingClientRect();
+    const popover = popoverRef.current;
+    if (!trigger || !popover) return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const box = popover.getBoundingClientRect();
+    // Its height without the cap it may already carry: the list's hidden overflow added back.
+    const results = popover.querySelector<HTMLElement>('.kr-agent-switch-results');
+    const naturalHeight = box.height + (results ? Math.max(0, results.scrollHeight - results.clientHeight) : 0);
+    const width = Math.min(box.width, viewportWidth - 2 * VIEWPORT_PADDING);
+    const roomBelow = viewportHeight - trigger.bottom - POPOVER_GAP - VIEWPORT_PADDING;
+    const roomAbove = trigger.top - POPOVER_GAP - VIEWPORT_PADDING;
+    const below = naturalHeight <= roomBelow || roomBelow >= roomAbove;
+    const left = Math.max(VIEWPORT_PADDING, Math.min(trigger.left, viewportWidth - width - VIEWPORT_PADDING));
+    popover.style.left = `${Math.round(left)}px`;
+    popover.style.top = below ? `${Math.round(trigger.bottom + POPOVER_GAP)}px` : '';
+    popover.style.bottom = below ? '' : `${Math.round(viewportHeight - trigger.top + POPOVER_GAP)}px`;
+    popover.style.maxHeight = `${Math.max(0, Math.floor(below ? roomBelow : roomAbove))}px`;
+    popover.dataset.placement = below ? 'below' : 'above';
   }, []);
 
+  const openRef = useRef(open);
+  openRef.current = open;
   const close = useCallback((restoreFocus = true) => {
+    // Already closed (an outside click while a choice was saving): the focus
+    // stays where the user put it, no return to the trigger is scheduled.
+    if (!openRef.current) return;
     restoreFocusRef.current = restoreFocus;
+    openRef.current = false;
     setOpen(false);
   }, []);
+
+  // Before the first paint, and again when what it shows changes.
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open, place, layoutKey]);
+
+  useEffect(() => {
+    const popover = popoverRef.current;
+    if (!open || !popover || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => place());
+    observer.observe(popover);
+    return () => observer.disconnect();
+  }, [open, place]);
 
   // Back on the trigger once it is enabled again (a save disables it).
   useEffect(() => {
@@ -440,10 +506,10 @@ function usePopover(estimate: () => { width: number; height: number }, busy = fa
     // The search field takes the focus, even when the picker sits in a dialog
     // (the popover is in <body>, above every overlay layer).
     searchRef.current?.focus();
-    place();
     const closeOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (!rootRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false);
+      // The focus stays where the click put it: no later return to the trigger.
+      if (!rootRef.current?.contains(target) && !popoverRef.current?.contains(target)) close(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !event.isComposing) close();
@@ -460,7 +526,7 @@ function usePopover(estimate: () => { width: number; height: number }, busy = fa
     };
   }, [open, place, close]);
 
-  return { open, setOpen, position, place, close, rootRef, popoverRef, searchRef, restoreFocusRef };
+  return { open, setOpen, place, close, rootRef, popoverRef, searchRef, restoreFocusRef };
 }
 
 /**
@@ -504,7 +570,7 @@ function TierPicker({
   availability,
   multiple,
 }: AgentSwitchPickerProps) {
-  const { t } = useT();
+  const { t, tp } = useT();
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -534,14 +600,13 @@ function TierPicker({
       : Boolean(onChange) && choices.length > 1;
   const triggerVariant = variant ?? (compact ? 'compact' : 'chip');
 
-  const popover = usePopover(() => {
-    const compactTierLayout = tierPicker && window.innerWidth < 420;
-    return {
-      width: tierPicker ? 342 : 170,
-      height: choices.length * (compactTierLayout ? 75 : tierPicker ? 45 : 31) + 46,
-    };
-  }, saving);
+  const popover = usePopover(query, saving);
   const { catalog, catalogError } = useModelCatalogSnapshot(popover.open);
+  const { place } = popover;
+  // The catalogue's models and states change the list's size: placed again.
+  useLayoutEffect(() => {
+    if (popover.open) place();
+  }, [popover.open, place, catalog, catalogError]);
   const navigateChoices = usePopoverKeys(popover.popoverRef, popover.searchRef, popover.close);
 
   const targetLabel = defaultTargetLabel;
@@ -624,9 +689,12 @@ function TierPicker({
     );
   }
 
+  // Multi-choice: « No agent », or a count with its own singular and plural form.
   const triggerText = multiple
     ? (multiple.summary?.(multiple.selected)
-      ?? (multiple.selected.length ? multiple.selected.map(targetLabel).join(', ') : displayName ?? targetLabel(currentTarget)))
+      ?? (multiple.selected.length === 0
+        ? t('agentPicker.selectedNone')
+        : tp('agentPicker.selectedCount', multiple.selected.length)))
     : displayName ?? targetLabel(currentTarget);
 
   return (
@@ -650,10 +718,7 @@ function TierPicker({
         aria-expanded={popover.open}
         disabled={disabled || saving}
         onClick={() => {
-          if (!popover.open) {
-            setQuery('');
-            popover.place();
-          }
+          if (!popover.open) setQuery('');
           popover.setOpen(value => !value);
         }}
       >
@@ -672,13 +737,12 @@ function TierPicker({
         {effectiveSuffix && <span className="kr-agent-switch-suffix"> · {effectiveSuffix}</span>}
         <ChevronDown size={9} />
       </button>
-      {popover.open && popover.position && createPortal(
+      {popover.open && createPortal(
         <span
           ref={popover.popoverRef}
           className="kr-agent-switch-popover"
           role="dialog"
           aria-label={ariaLabel}
-          style={popover.position}
           onKeyDown={navigateChoices}
         >
           <SearchField
@@ -799,8 +863,12 @@ function ExactModelPicker({
     && !supplied.some(target => targetKey(target) === targetKey({ agent: value.agent, connectionId: value.connection_id }))
     ? [...supplied, { agent: value.agent, connectionId: value.connection_id, label: value.connection_id }]
     : supplied;
-  const popover = usePopover(() => ({ width: 300, height: 320 }));
+  const popover = usePopover(query);
   const { catalog } = useModelCatalogSnapshot(popover.open);
+  const { place } = popover;
+  useLayoutEffect(() => {
+    if (popover.open) place();
+  }, [popover.open, place, catalog]);
   const navigate = usePopoverKeys(popover.popoverRef, popover.searchRef, popover.close);
   const triggerVariant = variant ?? (compact ? 'compact' : 'chip');
 
@@ -832,10 +900,55 @@ function ExactModelPicker({
     // A model id the catalogue does not list is typed in the search: offered under each agent shown.
     const free = typed && !options.some(option => option.model === typed)
       ? [{ model: typed, label: t('agentPicker.freeModel', typed), free: true }] : [];
-    return { target, connectionId, label, labelHit, options: [...shown, ...free], hit: labelHit || shown.length > 0 };
+    return { target, connectionId, label, options: [...shown, ...free], free, hit: labelHit || shown.length > 0 };
   });
   const anyHit = groups.some(group => group.hit);
-  const visible = groups.filter(group => !typed || !anyHit || group.hit);
+  const narrowed = Boolean(typed) && anyHit;
+  const visible = narrowed ? groups.filter(group => group.hit) : groups;
+  // The search hides the agents it does not match, but the typed id stays usable on each of them.
+  const hidden = narrowed ? groups.filter(group => !group.hit && group.free.length > 0) : [];
+
+  const renderGroup = ({ target, connectionId, label }: typeof groups[number], options: typeof groups[number]['options']) => {
+    const badge = availability?.(target)
+      ?? (needsFullAccess?.(target.agent) ? { state: 'needs-full-access' as const, label: t('agentPicker.needsFullAccess') } : null);
+    const blocked = availabilityBlocks(badge);
+    return (
+      <span key={targetKey(target)} className="kr-agent-switch-group-block" role="group" aria-label={label}>
+        <span className="kr-agent-switch-group">
+          <span className="kr-agent-switch-option-dot" style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }} />
+          <span>{label}</span>
+          <TransportBadge agent={target.agent} connectionId={connectionId} t={t} />
+          <AgentAvailabilityBadge availability={badge} />
+        </span>
+        {options.map(option => {
+          const onMain = isMain(target.agent, connectionId, option.model);
+          const current = isCurrent(target.agent, connectionId, option.model);
+          return (
+            <button
+              key={`${option.free ? 'free:' : ''}${option.model ?? ''}`}
+              type="button"
+              role="menuitem"
+              className="kr-agent-switch-option kr-agent-switch-model"
+              data-current={current}
+              data-main={onMain}
+              data-free={option.free || undefined}
+              disabled={onMain || blocked}
+              title={onMain ? t('wf.shadow.rows.mainModel') : undefined}
+              aria-label={option.free ? `${label} · ${option.model} — ${option.label}` : `${label} · ${option.label}`}
+              onClick={() => pick({
+                agent: target.agent,
+                ...(option.model ? { model: option.model } : {}),
+                ...(connectionId ? { connection_id: connectionId } : {}),
+              })}
+            >
+              <span>{option.label}</span>
+              {current && <Check size={10} aria-hidden />}
+            </button>
+          );
+        })}
+      </span>
+    );
+  };
 
   return (
     <span
@@ -857,10 +970,7 @@ function ExactModelPicker({
         title={children ? undefined : fullLabel}
         disabled={disabled}
         onClick={() => {
-          if (!popover.open) {
-            setQuery('');
-            popover.place();
-          }
+          if (!popover.open) setQuery('');
           popover.setOpen(open => !open);
         }}
       >
@@ -868,14 +978,13 @@ function ExactModelPicker({
         {!children && !value && <em className="wf-shadow-picker-hint">{t('wf.shadow.rows.sameAgent')}</em>}
         <ChevronDown size={9} aria-hidden />
       </button>
-      {popover.open && popover.position && createPortal(
+      {popover.open && createPortal(
         <span
           ref={popover.popoverRef}
           className="kr-agent-switch-popover"
           data-mode="exact-model"
           role="dialog"
           aria-label={ariaLabel}
-          style={popover.position}
           onKeyDown={navigate}
         >
           <SearchField
@@ -900,47 +1009,13 @@ function ExactModelPicker({
               <span className="kr-agent-switch-hint">{t('wf.shadow.rows.sameAgentHint')}</span>
               {!value && <Check size={10} aria-hidden />}
             </button>
-            {visible.map(({ target, connectionId, label, options }) => {
-              const badge = availability?.(target)
-                ?? (needsFullAccess?.(target.agent) ? { state: 'needs-full-access' as const, label: t('agentPicker.needsFullAccess') } : null);
-              const blocked = availabilityBlocks(badge);
-              return (
-                <span key={targetKey(target)} className="kr-agent-switch-group-block" role="group" aria-label={label}>
-                  <span className="kr-agent-switch-group">
-                    <span className="kr-agent-switch-option-dot" style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }} />
-                    <span>{label}</span>
-                    <TransportBadge agent={target.agent} connectionId={connectionId} t={t} />
-                    <AgentAvailabilityBadge availability={badge} />
-                  </span>
-                  {options.map(option => {
-                    const onMain = isMain(target.agent, connectionId, option.model);
-                    const current = isCurrent(target.agent, connectionId, option.model);
-                    return (
-                      <button
-                        key={`${option.free ? 'free:' : ''}${option.model ?? ''}`}
-                        type="button"
-                        role="menuitem"
-                        className="kr-agent-switch-option kr-agent-switch-model"
-                        data-current={current}
-                        data-main={onMain}
-                        data-free={option.free || undefined}
-                        disabled={onMain || blocked}
-                        title={onMain ? t('wf.shadow.rows.mainModel') : undefined}
-                        aria-label={option.free ? `${label} · ${option.model} — ${option.label}` : `${label} · ${option.label}`}
-                        onClick={() => pick({
-                          agent: target.agent,
-                          ...(option.model ? { model: option.model } : {}),
-                          ...(connectionId ? { connection_id: connectionId } : {}),
-                        })}
-                      >
-                        <span>{option.label}</span>
-                        {current && <Check size={10} aria-hidden />}
-                      </button>
-                    );
-                  })}
-                </span>
-              );
-            })}
+            {visible.map(group => renderGroup(group, group.options))}
+            {hidden.length > 0 && (
+              <>
+                <span className="kr-agent-switch-group" role="presentation">{t('agentPicker.otherTargets')}</span>
+                {hidden.map(group => renderGroup(group, group.free))}
+              </>
+            )}
           </span>
         </span>,
         document.body,

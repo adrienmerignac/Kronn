@@ -675,7 +675,6 @@ function AgentSwitchPickerDemo({ t }: { t: T }) {
             onToggle: target => setMany(current => current.some(item => item.agent === target.agent)
               ? current.filter(item => item.agent !== target.agent)
               : [...current, target]),
-            summary: selected => t('agentPicker.selectedCount', selected.length),
           }}
         />
       </Row>

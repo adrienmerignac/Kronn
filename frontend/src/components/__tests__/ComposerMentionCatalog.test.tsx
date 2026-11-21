@@ -272,3 +272,38 @@ describe('composer mentions — shared exact catalogue contract', () => {
     expect(tierButton('reasoning')).toHaveAccessibleDescription(expect.stringContaining('modelCatalog.provenance.cached'));
   });
 });
+
+// KT-1885 review — the @ menu is a listbox the field drives: the field names
+// it and its highlighted row, and the arrows keep that row in view.
+describe('composer mentions — the field drives the shared palette (KT-1885)', () => {
+  it.each(['chat', 'new'] as const)('names the list and its highlighted row, and scrolls it into view (%s)', async mode => {
+    const scrollIntoView = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      const { textarea } = mode === 'chat' ? await showChat() : await showNew();
+      await act(async () => { fireEvent.change(textarea, { target: { value: '@' } }); });
+      const menu = screen.getByRole('listbox', { name: 'disc.mentionAgents' });
+      const options = within(menu).getAllByRole('option').filter(option => option.getAttribute('aria-disabled') !== 'true');
+      expect(options.length).toBeGreaterThan(1);
+      expect(textarea).toHaveAttribute('aria-controls', menu.id);
+      expect(textarea).toHaveAttribute('aria-expanded', 'true');
+      expect(textarea).toHaveAttribute('aria-activedescendant', options[0].id);
+      scrollIntoView.mockClear();
+      fireEvent.keyDown(textarea, { key: 'ArrowDown' });
+      const highlighted = within(menu).getAllByRole('option').find(option => option.getAttribute('aria-selected') === 'true');
+      expect(highlighted).toBe(options[1]);
+      expect(textarea).toHaveAttribute('aria-activedescendant', options[1].id);
+      expect(document.getElementById(textarea.getAttribute('aria-activedescendant') ?? '')).toBe(options[1]);
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+      expect(scrollIntoView.mock.contexts.at(-1)).toBe(options[1]);
+      // The tier choices inside a row are no Tab stops: the field keeps the keyboard.
+      for (const tier of menu.querySelectorAll('.kr-agent-switch-tier-option')) expect(tier).toHaveAttribute('tabindex', '-1');
+      fireEvent.keyDown(textarea, { key: 'Escape' });
+      expect(textarea).not.toHaveAttribute('aria-activedescendant');
+      expect(textarea).not.toHaveAttribute('aria-controls');
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+});

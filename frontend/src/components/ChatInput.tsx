@@ -1,5 +1,5 @@
 import { FULL_ACCESS_REQUIRED_AGENTS } from '../lib/agentFullAccess';
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, useId } from 'react';
 import '../pages/DiscussionsPage.css';
 import type {
   Discussion,
@@ -46,6 +46,7 @@ import { useModelCatalogSnapshot } from '../hooks/useModelCatalogSnapshot';
 import { useTargetReachability, reachabilityKey } from '../hooks/useTargetReachability';
 import { composerTargetWarning, formatWarningDate, type ComposerTargetWarning } from '../lib/composerTargetWarnings';
 import { AgentPickerPalette, type AgentPickerPaletteRow } from './AgentSwitchPicker';
+import { agentPaletteFieldAria } from '../lib/agentPickerPalette';
 import { MENTION_TIER_CHOICES, nextMentionTierIndex } from '../lib/mentionTierSelection';
 import { detectTriggeredSkills } from '../lib/autoTriggers';
 import {
@@ -771,6 +772,13 @@ export function ChatInput({
     () => mentionQuery === null ? [] : DISABLED_MENTION_OPTIONS.filter(mention => mentionMatchesQuery(mention, mentionQuery))
       .sort((a, b) => mentionMatchRank(a.trigger, mentionQuery) - mentionMatchRank(b.trigger, mentionQuery)),
     [mentionQuery, DISABLED_MENTION_OPTIONS, mentionMatchesQuery],
+  );
+  // KT-1885 — the textarea names the @ menu and its highlighted row for assistive tech.
+  const mentionListId = `${useId()}-mentions`;
+  const mentionMenuOpen = mentionQuery !== null
+    && (filteredMentionOptions.length > 0 || filteredDisabledMentionOptions.length > 0);
+  const mentionFieldAria = agentPaletteFieldAria(
+    mentionListId, mentionMenuOpen, filteredMentionOptions[mentionIndex]?.mention.trigger,
   );
   const mentionRoutingMode = useCallback((mention: (typeof AGENT_MENTIONS)[number]) => {
     const target = mention.target;
@@ -1525,6 +1533,7 @@ export function ChatInput({
           && (filteredMentionOptions.length > 0 || filteredDisabledMentionOptions.length > 0)
           && (
             <AgentPickerPalette
+              id={mentionListId}
               className="disc-mention-popover"
               ariaLabel={t('disc.mentionAgents')}
               status={catalogError ? t('modelCatalog.loadError') : undefined}
@@ -1909,6 +1918,7 @@ export function ChatInput({
           className="disc-composer-textarea"
           rows={1}
           aria-label={t('disc.messagePlaceholder')}
+          {...mentionFieldAria}
           placeholder={t('disc.messagePlaceholder')}
           defaultValue=""
           onChange={e => {

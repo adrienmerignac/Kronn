@@ -330,6 +330,13 @@
   flex: 1;
 }
 
+/* The bubble's title line: its agent reads at the text floor, not smaller. */
+.wf-apicall-ai-agent-selector .kr-agent-switch-btn {
+  min-height: var(--kr-space-6);
+  padding: var(--kr-space-1) var(--kr-space-2);
+  font-size: var(--kr-type-sm);
+}
+
 /* ── Welcome state with starter chips (0.8.1 UX) ─────────────────────── */
 
 .wf-apicall-ai-welcome {
