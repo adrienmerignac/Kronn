@@ -1,0 +1,37 @@
+/* KT-1880 — StatusBadge. The text takes the --kr-status-* colour; the fill is
+   the same colour at low opacity, from its rgb triple. */
+
+.ui-status-badge {
+  --ui-status-rgb: var(--kr-text-rgb);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kr-space-1);
+  padding: 0 var(--kr-space-2);
+  min-height: var(--kr-control-h-sm);
+  font-size: var(--kr-type-sm);
+  font-weight: var(--kr-weight-medium);
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--kr-status-neutral);
+  background-color: rgba(var(--ui-status-rgb), 0.1);
+  border: 1px solid rgba(var(--ui-status-rgb), 0.28);
+  border-radius: var(--kr-radius-pill);
+}
+
+.ui-status-badge[data-tone="success"] { --ui-status-rgb: var(--kr-success-rgb); color: var(--kr-status-success); }
+.ui-status-badge[data-tone="warning"] { --ui-status-rgb: var(--kr-warning-rgb); color: var(--kr-status-warning); }
+.ui-status-badge[data-tone="danger"] { --ui-status-rgb: var(--kr-danger-rgb); color: var(--kr-status-danger); }
+.ui-status-badge[data-tone="info"] { --ui-status-rgb: var(--kr-info-rgb); color: var(--kr-status-info); }
+
+.ui-status-badge-dot {
+  width: var(--kr-space-2);
+  height: var(--kr-space-2);
+  flex-shrink: 0;
+  border-radius: var(--kr-radius-pill);
+  background-color: currentColor;
+}
+
+.ui-status-badge-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}

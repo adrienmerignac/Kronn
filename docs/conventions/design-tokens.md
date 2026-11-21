@@ -8,15 +8,17 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
 - **Values:** `frontend/src/styles/tokens.css`, `:root` block "Design scales"
   and "Semantic colours". Light themes (`light`, `sakura`, `euronews`) override
   the code and diff text colours in one shared block.
-  `[src: file: frontend/src/styles/tokens.css:111-164]`
-  `[src: file: frontend/src/styles/tokens.css:286-323]`
+  `[src: file: frontend/src/styles/tokens.css:111-165]`
+  `[src: file: frontend/src/styles/tokens.css:287-324]`
 - **Typed table:** `frontend/src/styles/designTokens.ts` lists every token of
   a scale with the i18n key of its use line (`designSystem.use.<name>`).
   `[src: file: frontend/src/styles/designTokens.ts:45-119#DESIGN_TOKEN_GROUPS]`
 - **In the app:** Settings → appearance panel → "Design system"
   (`/config#design-system`), not in the section index. It reads each value
   with `getComputedStyle` on `<html>` and re-reads it when `data-theme` changes.
-  `[src: file: frontend/src/components/settings/DesignSystemSection.tsx:66#DesignSystemSection]`
+  Since KT-1880 the page also shows the base components, after the tokens,
+  with an index of its headings: see [ui-components.md](ui-components.md).
+  `[src: file: frontend/src/components/settings/DesignSystemSection.tsx:79#DesignSystemSection]`
 
 ## The scales
 
@@ -28,7 +30,7 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
 | Breakpoint | `--kr-bp-sm`, `-md`, `-lg` | 640, 768, 900 px (count below) |
 | Duration | `--kr-duration-fast`, `-base`, `-slow` | 120, 150, 300 ms |
 | Weight | `--kr-weight-regular` … `-bold` | 400–700, the faces `reset.css` loads |
-| Control height | `--kr-control-h-sm`, `-md`, `-lg` | 28, 34, 44 px, used as `min-height` |
+| Control height | `--kr-control-h-sm`, `-md`, `-touch`, `-lg` | 28, 34, 40, 44 px, used as `min-height`; `-touch` (KT-1880) is the least size of a control on a coarse pointer |
 | Text roles | `--kr-text-primary`, `-secondary`, `-muted` | existing tokens, distinct in every theme |
 | Semantic colours | `--kr-status-*`, `--kr-diff-{added,removed}-{bg,border,text}`, `--kr-code-*` | no component names a theme |
 

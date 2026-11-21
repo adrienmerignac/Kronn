@@ -93,7 +93,7 @@ export const DESIGN_TOKEN_GROUPS: readonly DesignTokenGroup[] = [
     title: 'designSystem.scale.controlHeight',
     preview: 'height',
     match: /^--kr-control-h-/,
-    tokens: tokens(['--kr-control-h-sm', '--kr-control-h-md', '--kr-control-h-lg']),
+    tokens: tokens(['--kr-control-h-sm', '--kr-control-h-md', '--kr-control-h-touch', '--kr-control-h-lg']),
   },
   {
     scale: 'textRole',
