@@ -664,7 +664,7 @@ export function DesignSystemComponents({ t }: { t: T }) {
         const anchor = componentAnchor(component.id);
         return (
           <section key={component.id} className="ds-component" data-component={component.id} aria-labelledby={anchor}>
-            <h4 id={anchor} className="ds-component-title" tabIndex={-1}><code>{component.name}</code></h4>
+            <h3 id={anchor} className="ds-component-title" tabIndex={-1}><code>{component.name}</code></h3>
             <p className="ds-caption">{t(component.caption)}</p>
             <div className="ds-demo">{Demo ? <Demo t={t} /> : null}</div>
           </section>

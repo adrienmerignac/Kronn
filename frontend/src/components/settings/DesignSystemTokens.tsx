@@ -65,10 +65,10 @@ export function DesignSystemTokens({ t }: Props) {
   return (
     <section className="ds-part" aria-labelledby={TOKENS_ANCHOR}>
       {/* The tab says it already: the heading is the index's target and the region's name. */}
-      <h3 id={TOKENS_ANCHOR} className="ds-part-title ds-sr-only" tabIndex={-1}>{t('designSystem.tokens')}</h3>
+      <h2 id={TOKENS_ANCHOR} className="ds-part-title ds-sr-only" tabIndex={-1}>{t('designSystem.tokens')}</h2>
       {DESIGN_TOKEN_GROUPS.map(group => (
         <section key={group.scale} className="ds-group" data-scale={group.scale} aria-labelledby={`ds-${group.scale}`}>
-          <h4 id={`ds-${group.scale}`} className="ds-group-title" tabIndex={-1}>{t(group.title)}</h4>
+          <h3 id={`ds-${group.scale}`} className="ds-group-title" tabIndex={-1}>{t(group.title)}</h3>
           <table className="ds-table">
             <thead>
               <tr>

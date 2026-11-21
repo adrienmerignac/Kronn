@@ -181,7 +181,7 @@ Escape closes one layer, the innermost first
 - **Variants** live in `headerKinds.ts` (`HEADER_LEVELS`, `HEADER_KINDS`).
 - **In the gallery** each kind shows its normal and compact form (the compact
   one with a long title, to show it ellipsize). A demo renders its real
-  heading, so the gallery's own `h4` after an `h1` or `h2` demo is the one
+  heading, so the gallery's own `h3` after an `h1` or `h2` demo is the one
   `heading-order` jump its axe test allows.
 
 ## Rules
@@ -210,16 +210,19 @@ Escape closes one layer, the innermost first
 ## The gallery
 
 Settings → appearance → "Design system" opens a sub-page of its own
-(KT-1987): a section header with the way back to Settings, an index (the
-tokens, then one entry per component), then two tabs. Tokens is
+(KT-1987): its page header (`ListHeader`, the page's one `h1`) with the way
+back to the appearance section of Settings (`/config#settings-appearance`,
+where the link sits), an index (the tokens, then one entry per component),
+then two tabs. Under the `h1`, each tab's part is an `h2` (visually hidden:
+the tab says it), the token groups and the entries are `h3`. Tokens is
 `/config/design-system`; Components, `/config/design-system/components`,
 shows each component under its own heading, with its variants and states, in
 the current theme. An entry's address is its tab plus the heading in the hash
 (`/config/design-system/components#ds-c-menu`). The old `/config#design-system`
 and the old `/config#ds-…` entry anchors still land on the right tab and entry:
 the table is `DESIGN_SYSTEM_ANCHOR_TABS`.
-`[src: file: frontend/src/lib/routes.ts:164#DESIGN_SYSTEM_ANCHOR_TABS]`
-`[src: file: frontend/src/lib/routes.ts:181#legacyDesignSystemLocation]`
+`[src: file: frontend/src/lib/routes.ts:167#DESIGN_SYSTEM_ANCHOR_TABS]`
+`[src: file: frontend/src/lib/routes.ts:184#legacyDesignSystemLocation]`
 The route is its own chunk, never preloaded, so Settings does not load the
 gallery.
 `[src: file: frontend/src/routes/lazyRoutes.ts:17#DesignSystemRoute]` Adding a component: add it to `GALLERY_COMPONENTS`, a

@@ -153,6 +153,9 @@ export function designSystemTabFromSegment(segment: string | undefined): DesignS
   return tab ?? null;
 }
 
+/** The Configuration section that holds the link to the design system. */
+export const SETTINGS_APPEARANCE_SECTION_ID = 'settings-appearance';
+
 /** The anchor `/config#…` named the design system by, before it had its own page. */
 export const DESIGN_SYSTEM_SECTION_ID = 'design-system';
 

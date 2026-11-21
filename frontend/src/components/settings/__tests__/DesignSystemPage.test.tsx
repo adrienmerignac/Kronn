@@ -33,15 +33,17 @@ afterEach(() => {
 const rowOf = (name: string) => document.querySelector(`tr[data-token="${name}"]`) as HTMLElement | null;
 
 describe('DesignSystemPage — its own page, two tabs (KT-1987)', () => {
-  it('opens on a section header with the way back to Settings, then the index, then the tabs', async () => {
+  it('opens on its page header (its h1) with the way back to Settings, then the index, then the tabs', async () => {
     const onBack = vi.fn();
     render(<DesignSystemPage t={t} onBack={onBack} />);
     const page = screen.getByTestId('design-system-page');
     const header = page.querySelector('.ui-header') as HTMLElement;
-    expect(header).toHaveAttribute('data-kind', 'section');
-    expect(within(header).getByRole('heading', { name: 'designSystem.title' })).toBeInTheDocument();
+    expect(header).toHaveAttribute('data-kind', 'list');
+    expect(within(header).getByRole('heading', { name: 'designSystem.title', level: 1 })).toBeInTheDocument();
+    expect(within(header).getByText('designSystem.hint')).toBeInTheDocument();
+    // Back to the Settings section that holds the link, not to the top of Settings.
     const back = within(header).getByRole('link', { name: 'designSystem.back' });
-    expect(back).toHaveAttribute('href', '/config');
+    expect(back).toHaveAttribute('href', '/config#settings-appearance');
     await userEvent.click(back);
     expect(onBack).toHaveBeenCalledTimes(1);
 
@@ -87,11 +89,31 @@ describe('DesignSystemPage — its own page, two tabs (KT-1987)', () => {
     const index = screen.getByRole('navigation', { name: 'designSystem.index' });
     await user.click(within(index).getByRole('link', { name: 'Tabs' }));
     expect(screen.getByRole('tab', { name: 'designSystem.components' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('heading', { name: 'Tabs', level: 4 })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: 'Tabs', level: 3 })).toHaveFocus();
 
     await user.click(within(index).getByRole('link', { name: 'designSystem.tokens' }));
     expect(screen.getByRole('tab', { name: 'designSystem.tokens' })).toHaveAttribute('aria-selected', 'true');
     expect(document.getElementById('ds-tokens')).toHaveFocus();
+  });
+
+  // A page of its own: its title is its one h1, then the parts (h2), then the
+  // token groups and the gallery entries (h3). A demo inside an entry draws
+  // its real heading (an h1 for ListHeader): it is not the page's outline.
+  it.each(['tokens', 'components'] as const)('has one h1 and skips no level among its own headings, on the %s tab', tab => {
+    render(<DesignSystemPage t={t} tab={tab} />);
+    const page = screen.getByTestId('design-system-page');
+    const own = [...page.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')].filter(h => !h.closest('.ds-demo'));
+    const levels = own.map(h => Number(h.tagName.slice(1)));
+    expect(own.filter(h => h.tagName === 'H1').map(h => h.textContent)).toEqual(['designSystem.title']);
+    expect(levels[0]).toBe(1);
+    const skips = own.filter((_, i) => i > 0 && levels[i] > levels[i - 1] + 1).map(h => `${h.tagName} ${h.textContent}`);
+    expect(skips).toEqual([]);
+    const part = tab === 'tokens' ? 'ds-tokens' : 'ds-components';
+    expect(document.getElementById(part)?.tagName).toBe('H2');
+    const entries = tab === 'tokens'
+      ? DESIGN_TOKEN_GROUPS.map(g => `ds-${g.scale}`)
+      : GALLERY_COMPONENTS.map(c => `ds-c-${c.id}`);
+    for (const id of entries) expect(document.getElementById(id)?.tagName, id).toBe('H3');
   });
 
   it('keeps the Tokens and Components parts in the page stylesheet without a horizontal overflow at 400px', () => {
@@ -122,7 +144,7 @@ describe('DesignSystemPage — tokens', () => {
   it('groups the tokens by scale, each under its title, in order', () => {
     render(<DesignSystemPage t={t} tab="tokens" />);
     const tokensPart = screen.getByRole('region', { name: 'designSystem.tokens' });
-    const titles = within(tokensPart).getAllByRole('heading', { level: 4 }).map(h => h.textContent);
+    const titles = within(tokensPart).getAllByRole('heading', { level: 3 }).map(h => h.textContent);
     expect(titles).toEqual(DESIGN_TOKEN_GROUPS.map(g => g.title));
     for (const group of DESIGN_TOKEN_GROUPS) {
       const section = document.querySelector(`section[data-scale="${group.scale}"]`) as HTMLElement;
@@ -190,7 +212,7 @@ describe('DesignSystemPage — index and components (KT-1880)', () => {
 
     render(<DesignSystemPage t={t} tab="components" />);
     const part = screen.getByRole('region', { name: 'designSystem.components' });
-    const headings = within(part).getAllByRole('heading', { level: 4 });
+    const headings = within(part).getAllByRole('heading', { level: 3 }).filter(h => !h.closest('.ds-demo'));
     expect(headings.map(h => h.textContent)).toEqual(GALLERY_COMPONENTS.map(c => c.name));
     for (const component of GALLERY_COMPONENTS) {
       const section = screen.getByRole('region', { name: component.name });
@@ -210,7 +232,7 @@ describe('DesignSystemPage — index and components (KT-1880)', () => {
       expect(path, link.textContent!).toBe('/config/design-system/components');
       const target = document.getElementById(anchor);
       expect(target, link.textContent!).toBeTruthy();
-      expect(target!.tagName).toBe('H4');
+      expect(target!.tagName).toBe('H3');
     }
     await userEvent.click(within(index).getByRole('link', { name: 'Menu' }));
     expect(screen.getByRole('heading', { name: 'Menu' })).toHaveFocus();
@@ -445,7 +467,7 @@ describe('DesignSystemPage — index and components (KT-1880)', () => {
     for (const [name] of HEADER_ENTRIES) {
       const results = await act(() => runAxe(screen.getByRole('region', { name })));
       // A demo renders its real heading (an h1 for ListHeader): the gallery's
-      // own h4 entry title that follows an h1 or h2 demo is the one jump
+      // own h3 entry title that follows an h1 or h2 demo is the one jump
       // allowed. A jump inside a demo, or on any other node, still fails.
       const own = results.violations.filter(v => !(
         v.id === 'heading-order' && v.nodes.every(n => String(n.target[0]).startsWith('#ds-c-'))

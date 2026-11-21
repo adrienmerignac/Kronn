@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { AppLink } from '../components/AppLink';
-import { SectionHeader } from '../components/ui/SectionHeader';
+import { ListHeader } from '../components/ui/ListHeader';
 import { Tabs } from '../components/ui/Tabs';
 import { DesignSystemComponents } from '../components/settings/DesignSystemComponents';
 import { DesignSystemTokens } from '../components/settings/DesignSystemTokens';
 import { GALLERY_COMPONENTS, TOKENS_ANCHOR, componentAnchor } from '../components/settings/designSystemGallery';
-import { PAGE_PATHS, designSystemPath, type DesignSystemTab } from '../lib/routes';
+import { SETTINGS_APPEARANCE_SECTION_ID, designSystemPath, settingsSectionPath, type DesignSystemTab } from '../lib/routes';
 import '../components/settings/DesignSystemSection.css';
 import './SettingsPage.css';
 
@@ -33,7 +33,7 @@ function goTo(target: HTMLElement) {
 }
 
 /** KT-1987 — Settings > Design system, a sub-page of its own (it used to
- *  close the Settings page): a section header with the way back to Settings,
+ *  close the Settings page): a ListHeader with the way back to Settings,
  *  the index of every entry, then the tokens (KT-1878) and the components of
  *  components/ui/ (KT-1880) in two tabs. Linked from the appearance settings. */
 export function DesignSystemPage({ t, tab, onTabChange, onBack }: Props) {
@@ -69,13 +69,13 @@ export function DesignSystemPage({ t, tab, onTabChange, onBack }: Props) {
     <div className="ds-page" data-testid="design-system-page">
       <div className="set-card ds-card">
         <div className="set-section">
-          <SectionHeader
+          <ListHeader
             className="ds-header"
             title={t('designSystem.title')}
             description={t('designSystem.hint')}
             leading={(
               <AppLink
-                to={PAGE_PATHS.settings}
+                to={settingsSectionPath(SETTINGS_APPEARANCE_SECTION_ID)}
                 className="ds-back"
                 aria-label={t('designSystem.back')}
                 title={t('designSystem.back')}
@@ -107,7 +107,7 @@ export function DesignSystemPage({ t, tab, onTabChange, onBack }: Props) {
                 label: t('designSystem.components'),
                 panel: (
                   <section className="ds-part" aria-labelledby="ds-components">
-                    <h3 id="ds-components" className="ds-part-title ds-sr-only" tabIndex={-1}>{t('designSystem.components')}</h3>
+                    <h2 id="ds-components" className="ds-part-title ds-sr-only" tabIndex={-1}>{t('designSystem.components')}</h2>
                     <p className="set-hint">{t('designSystem.componentsHint')}</p>
                     <DesignSystemComponents t={t} />
                   </section>

@@ -2,7 +2,12 @@ import { useEffect } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router';
 import { useKronnNavigate } from '../hooks/useKronnNavigate';
 import { useT } from '../lib/I18nContext';
-import { designSystemAnchorTab, designSystemPath, designSystemTabFromSegment } from '../lib/routes';
+import {
+  SETTINGS_APPEARANCE_SECTION_ID,
+  designSystemAnchorTab,
+  designSystemPath,
+  designSystemTabFromSegment,
+} from '../lib/routes';
 import { revealWhenSettled } from '../lib/revealWhenSettled';
 import { DesignSystemPage } from '../pages/DesignSystemPage';
 
@@ -36,7 +41,7 @@ export function DesignSystemRoute() {
       t={t}
       tab={tab}
       onTabChange={next => nav.toDesignSystem({ tab: next })}
-      onBack={() => nav.toPage('settings')}
+      onBack={() => nav.toSettingsSection(SETTINGS_APPEARANCE_SECTION_ID)}
     />
   );
 }

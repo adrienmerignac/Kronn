@@ -1053,7 +1053,7 @@ describe('Design system route (KT-1987)', () => {
     expect(window.location.pathname).toBe('/config/design-system');
   });
 
-  it('opens from the Settings link, and goes back to Settings', async () => {
+  it('opens from the Settings link, and goes back to the Settings section that holds it', async () => {
     await open('/config');
     expect(screen.queryByTestId('designSystem-page')).toBeNull();
 
@@ -1061,9 +1061,21 @@ describe('Design system route (KT-1987)', () => {
     expect(window.location.pathname).toBe('/config/design-system');
     expect(await screen.findByTestId('designSystem-page')).toBeInTheDocument();
 
-    await act(async () => received.designSystem().onBack?.());
-    expect(window.location.pathname).toBe('/config');
-    expect(await screen.findByTestId('settings-page')).toBeInTheDocument();
+    // The link sits in the appearance section, far down Settings: the way
+    // back opens Settings on that section, not at its top.
+    const anchor = document.createElement('div');
+    anchor.id = 'settings-appearance';
+    anchor.scrollIntoView = vi.fn();
+    document.body.appendChild(anchor);
+    try {
+      await act(async () => received.designSystem().onBack?.());
+      expect(window.location.pathname).toBe('/config');
+      expect(window.location.hash).toBe('#settings-appearance');
+      expect(await screen.findByTestId('settings-page')).toBeInTheDocument();
+      await waitFor(() => expect(anchor.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' }));
+    } finally {
+      anchor.remove();
+    }
   });
 
   it('holds its tab in the address: a step Back returns to the other tab', async () => {

@@ -44,6 +44,12 @@ right, a `compact` form. Pairs with [ui-components.md](ui-components.md) and
 - **Long titles ellipsize.** The identity shrinks to nothing before the
   actions do: the actions stay on screen at 400 px.
 - **Not a landmark.** The header is a `div`, so a page keeps its one banner.
+- **A sub-page of Settings is a page.** It opens on a `ListHeader` (its one
+  `h1`), its way back in `leading`, pointing at the Settings section that
+  links to it rather than at the top of Settings; its own headings follow
+  from `h2`. A `SectionHeader` there would leave the page without an `h1`.
+  The design system is the first (KT-1987)
+  `[src: file: frontend/src/pages/DesignSystemPage.tsx:72]`.
 - **Tokens only**, as every stylesheet of `components/ui/`.
 
 ## The discussion side panel (the one screen moved in KT-1884)
