@@ -248,7 +248,8 @@ on its search field. It is placed from its rendered size, measured on open,
 when the search or the catalogue changes it, and on resize: it stays inside
 the window and never covers its trigger; opened above, its bottom is anchored
 to the trigger. Never place it from an estimated size. It is 480 px wide at
-most, never wider than the window.
+most (580 px with four tracks, 520 px for the @ menu), never wider than the
+window.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:512#place]`
 Availability always goes through
 `AgentAvailabilityBadge` (`unavailable` and `disabled` block the choice,

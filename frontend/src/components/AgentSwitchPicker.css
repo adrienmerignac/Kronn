@@ -119,13 +119,18 @@
   flex-direction: column;
   width: max-content;
   min-width: 170px;
-  /* KT-1885 — 480px at most (a tier row stays one line there), never wider than the window. */
+  /* KT-1885 — 480px at most (a tier row stays one line there), 580px with four
+     tracks (the assistants' « Défaut »), never wider than the window. */
   max-width: min(480px, calc(100vw - 2 * var(--kr-space-2)));
   padding: 4px;
   border: 1px solid var(--kr-border);
   border-radius: var(--kr-r-md);
   background: var(--kr-bg-elevated);
   box-shadow: var(--kr-shadow-lg);
+}
+
+.kr-agent-switch-popover:has([data-tier='agent-default']) {
+  max-width: min(580px, calc(100vw - 2 * var(--kr-space-2)));
 }
 
 .kr-agent-switch-search {
@@ -203,23 +208,32 @@
   background: var(--kr-bg-hover);
 }
 
-/* The dot, the name and ONE state badge; the badge goes under the name
-   rather than being cut when the row is narrow. */
+/* The dot, the name and ONE state badge; the dot and the name stay a single
+   non-breaking pair, and the badge wraps under the name as one piece rather
+   than being cut when the row is narrow. */
 .kr-agent-switch-tier-agent {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0 var(--kr-space-2);
   min-width: 0;
+  overflow: hidden;
   color: var(--kr-text-secondary);
   font-size: var(--kr-type-sm);
   font-weight: 650;
   line-height: 1.25;
 }
 
+.kr-agent-switch-tier-agent > .kr-agent-switch-badge {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
 .kr-agent-switch-tier-name {
+  flex: 0 1 calc(100% - var(--kr-space-4));
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 /* Equal tracks wide enough for « Avancé · Advanced · Avanzado » with its

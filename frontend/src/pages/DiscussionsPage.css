@@ -5470,7 +5470,7 @@ button.disc-contact-open {
    and it scrolls inside. This cap only holds until that measure runs. The
    new discussion form measures its own room against its layout. */
 .disc-mention-popover.kr-agent-switch-palette {
-  width: min(480px, calc(100vw - 2 * var(--kr-space-6)));
+  width: min(520px, calc(100vw - 2 * var(--kr-space-4)));
   max-height: calc(100vh - 2 * var(--kr-space-8));
   overflow-y: auto;
   background: var(--kr-bg-elevated);
