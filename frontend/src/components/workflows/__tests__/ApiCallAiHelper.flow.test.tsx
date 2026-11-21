@@ -19,11 +19,12 @@ import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-libra
 import { buildApiMock } from '../../../test/apiMock';
 import type { McpServer, WorkflowStep } from '../../../types/generated';
 
-const { createMock, streamMock, deleteMock, stopMock } = vi.hoisted(() => ({
+const { createMock, streamMock, deleteMock, stopMock, connectionsMock } = vi.hoisted(() => ({
   createMock: vi.fn(),
   streamMock: vi.fn(),
   deleteMock: vi.fn(),
   stopMock: vi.fn(),
+  connectionsMock: vi.fn(),
 }));
 
 vi.mock('../../../lib/api', () => buildApiMock({
@@ -33,6 +34,7 @@ vi.mock('../../../lib/api', () => buildApiMock({
     delete: deleteMock as never,
     stop: stopMock as never,
   },
+  externalApi: { list: connectionsMock as never },
 }));
 
 import { ApiCallAiHelper } from '../ApiCallAiHelper';
@@ -128,6 +130,7 @@ beforeEach(() => {
   streamMock.mockReset();
   deleteMock.mockReset().mockResolvedValue(undefined);
   stopMock.mockReset().mockResolvedValue({ cancelled: true });
+  connectionsMock.mockReset().mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -358,20 +361,48 @@ describe('ApiCallAiHelper — minimize / restore / close', () => {
   });
 });
 
+// KT-1885 — the assistant's agent chooser is the shared agent picker: it keeps
+// the agent the assistant opens with and gains external connections and tiers.
 describe('ApiCallAiHelper — agent switch', () => {
-  it('opens the dropdown and switching agents keeps the old disc + creates a new one', async () => {
+  const openPicker = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'wf.apicall.helper.switchAgent' }));
+    });
+  };
+
+  it('opens on the first installed agent at its own default tier, without a connection', async () => {
     await openChat();
-    const headerTrigger = screen.getAllByRole('button').find(
-      btn => btn.getAttribute('aria-haspopup') === 'listbox',
-    )!;
-    fireEvent.click(headerTrigger);
-    expect(screen.getByRole('listbox')).toBeTruthy();
+    expect(createMock.mock.calls[0][0]).toEqual(expect.objectContaining({ agent: 'ClaudeCode' }));
+    expect(createMock.mock.calls[0][0]).not.toHaveProperty('tier');
+    expect(createMock.mock.calls[0][0]).not.toHaveProperty('connection_id');
+    expect(screen.getByRole('button', { name: 'wf.apicall.helper.switchAgent' })).toHaveTextContent('Claude Code');
+  });
+
+  it('opens the shared picker on its search field; switching agents keeps the old disc + creates a new one', async () => {
+    await openChat();
+    await openPicker();
+    expect(screen.getByRole('searchbox')).toHaveFocus();
     createMock.mockClear();
-    // Switch to Codex (a different installed agent).
-    fireEvent.click(screen.getByRole('option', { name: /Codex/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Codex · disc.defaultAgentModel' }));
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
     expect(deleteMock).not.toHaveBeenCalled();
     expect(createMock.mock.calls[0][0].agent).toBe('Codex');
+  });
+
+  it('offers the external connections and the tiers, and starts on the one chosen', async () => {
+    connectionsMock.mockResolvedValue([{
+      id: 'conn-team', display_name: 'Team proxy', mention_alias: 'team', endpoint: 'https://llm.example/v1',
+      credential_slug: 'team', origin_preset: 'other', economy_model: null, default_model: 'gpt-team',
+      reasoning_model: 'gpt-team-think', created_at: '', updated_at: '', has_credential: true,
+    }]);
+    await openChat();
+    await openPicker();
+    createMock.mockClear();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Team proxy · disc.tier.reasoning' }));
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
+    expect(createMock.mock.calls[0][0]).toEqual(expect.objectContaining({
+      agent: 'Custom', connection_id: 'conn-team', tier: 'reasoning',
+    }));
   });
 });
 

@@ -44,6 +44,9 @@ vi.mock('../../lib/api', () => ({
     list: listMock,
     update: updateMock,
   },
+  // KT-1885 — the shared agent picker lists the external connections and the model catalogue.
+  externalApi: { list: vi.fn().mockResolvedValue([]) },
+  modelCatalogApi: { list: vi.fn().mockResolvedValue({ targets: [] }), refresh: vi.fn().mockResolvedValue(null) },
 }));
 
 import { CustomApiAiHelper } from '../CustomApiAiHelper';
@@ -353,13 +356,12 @@ describe('CustomApiAiHelper — minimize / restore / close', () => {
 describe('CustomApiAiHelper — agent switch', () => {
   it('switching agents keeps the old disc + creates a new one with the new agent', async () => {
     await openChat({ installedAgents: ['ClaudeCode', 'Codex', 'GeminiCli'] });
-    const headerTrigger = screen.getAllByRole('button').find(
-      btn => btn.getAttribute('aria-haspopup') === 'listbox',
-    )!;
-    fireEvent.click(headerTrigger);
-    expect(screen.getByRole('listbox')).toBeTruthy();
+    // KT-1885 — the shared agent picker; the « agent default » entry keeps the agent's own tier.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'mcp.custom.helper.switchAgent' }));
+    });
     createMock.mockClear();
-    fireEvent.click(screen.getByRole('option', { name: /Gemini CLI/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Gemini CLI · disc.defaultAgentModel' }));
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
     expect(createMock.mock.calls[0][0].agent).toBe('GeminiCli');
     expect(deleteMock).not.toHaveBeenCalled();
