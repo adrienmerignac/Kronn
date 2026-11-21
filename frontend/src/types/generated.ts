@@ -2876,6 +2876,12 @@ review_base?: string,
  */
 tier?: ModelTier,
 /**
+ * KT-1993 — an exact model id pinned at creation (the picker's "Custom"
+ * choice). Wins over the tier, and over a model inherited from the Quick
+ * Prompt that launched this discussion. Absent = resolve from the tier.
+ */
+model?: string,
+/**
  * 0.8.5 — when this discussion is being spawned by a Quick Prompt
  * launch (single, batch, or compare-agents path that bypasses
  * `create_batch_run`), the originating QP id. The backend
@@ -12620,6 +12626,13 @@ tier?: ModelTier | null,
  * Switch the primary agent for this discussion.
  */
 agent?: AgentType | null,
+/**
+ * KT-1993 — the exact model. `Some(Some(id))` = set (validated like a
+ * Quick Prompt model), `Some(None)` = clear (the tier applies again),
+ * absent = no change. Changing `agent` or `connection_id`, or sending a
+ * `tier`, without a model clears the stored model.
+ */
+model?: string | null | null,
 /**
  * Change the sticky named connection (KT-545). `Some(Some("id"))` = set,
  * `Some(None)` = clear, absent = no change — same convention as

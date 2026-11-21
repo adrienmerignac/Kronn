@@ -1784,6 +1784,26 @@ pub struct SetAgentFallbackRequest {
 
 // ─── Model tiers ──────────────────────────────────────────────────────────
 
+/// Longest exact model id Kronn stores for a discussion, Quick Prompt or step.
+pub const MAX_EXACT_MODEL_CHARS: usize = 200;
+
+/// The one rule for an exact model id a user or agent pins (KT-1993): trimmed,
+/// not empty, one line of at most [`MAX_EXACT_MODEL_CHARS`] characters. The id
+/// is not checked against any catalogue here: an unknown id is refused at launch
+/// by the catalogue preflight, as for a Quick Prompt.
+pub fn normalize_exact_model(value: &str) -> Result<String, String> {
+    let model = value.trim();
+    if model.is_empty() {
+        return Err("model is empty".into());
+    }
+    if model.chars().count() > MAX_EXACT_MODEL_CHARS || model.chars().any(char::is_control) {
+        return Err(format!(
+            "model must be one line of at most {MAX_EXACT_MODEL_CHARS} characters"
+        ));
+    }
+    Ok(model.to_string())
+}
+
 /// Abstract model capability tier. Kronn maps each tier to a concrete --model flag per agent.
 /// Priority: AgentSettings.model (explicit) > ModelTier > Default (no flag).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default, TS)]

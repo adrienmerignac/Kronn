@@ -442,6 +442,16 @@ pub async fn create(
         },
         None => None,
     };
+    // KT-1993 — an exact model pinned at creation, checked by the Quick Prompt rule.
+    let explicit_model = match req
+        .model
+        .as_deref()
+        .map(crate::models::setup::normalize_exact_model)
+        .transpose()
+    {
+        Ok(model) => model,
+        Err(error) => return Json(ApiResponse::err(error)),
+    };
     // Input validation
     if req.title.len() > MAX_TITLE_LEN {
         return Json(ApiResponse::err(format!(
@@ -455,14 +465,16 @@ pub async fn create(
     // The model a Quick Prompt pins is stamped on the discussion at insert
     // (same agent + connection rule as below), so size the first prompt against
     // it exactly as `send_message` will size the next ones.
-    let pinned_model = launch_qp.as_ref().and_then(|(qp, _)| {
-        (qp.agent == req.agent && qp.connection_id == req.connection_id)
-            .then(|| {
-                qp.agent_settings
-                    .as_ref()
-                    .and_then(|settings| settings.model.clone())
-            })
-            .flatten()
+    let pinned_model = explicit_model.clone().or_else(|| {
+        launch_qp.as_ref().and_then(|(qp, _)| {
+            (qp.agent == req.agent && qp.connection_id == req.connection_id)
+                .then(|| {
+                    qp.agent_settings
+                        .as_ref()
+                        .and_then(|settings| settings.model.clone())
+                })
+                .flatten()
+        })
     });
     let prompt_limit = super::prompt_limit::resolve_for_targets(
         &state,
@@ -673,10 +685,14 @@ pub async fn create(
     match state
         .db
         .with_conn(move |conn| {
-            // 0.8.10 — a QP-launched discussion inherits the QP's explicit model
-            // (agent_settings.model), so a standalone launch runs on the same
-            // model the QP is pinned to. Set it before insert; None → tier resolve.
-            if let Some((qp, _)) = &launch_qp {
+            // KT-1993 — an explicit model from the request wins over the one a
+            // Quick Prompt would hand down.
+            if let Some(model) = explicit_model {
+                disc.model = Some(model);
+            } else if let Some((qp, _)) = &launch_qp {
+                // 0.8.10 — a QP-launched discussion inherits the QP's explicit model
+                // (agent_settings.model), so a standalone launch runs on the same
+                // model the QP is pinned to. Set it before insert; None → tier resolve.
                 if qp.agent == disc.agent && qp.connection_id == disc.connection_id {
                     disc.model = qp
                         .agent_settings
@@ -898,6 +914,15 @@ pub async fn update(
     let agent_handoffs_unlimited = req.agent_handoffs_unlimited;
     let attach_agents = req.attach_agents;
     let execution_variable_retention_days = req.execution_variable_retention_days;
+    // KT-1993 — `Some(Some(id))` is checked by the Quick Prompt rule; `Some(None)`
+    // clears; absent leaves the stored model alone.
+    let new_model = match req.model {
+        Some(Some(model)) => match crate::models::setup::normalize_exact_model(&model) {
+            Ok(model) => Some(Some(model)),
+            Err(error) => return Json(ApiResponse::err(error)),
+        },
+        other => other,
+    };
 
     // Reject conflicting directives on update
     if let Some(ref ids) = directive_ids {
@@ -1036,6 +1061,24 @@ pub async fn update(
                 updated = crate::db::discussions::update_execution_variable_retention_days(
                     conn, &id, days,
                 )? || updated;
+            }
+            // KT-1993 — applied last, so an explicit model wins over the clears the
+            // agent, connection and tier updates above just made. A tier sent
+            // without a model leaves the exact model: choosing a mode is choosing
+            // the tier, not the model.
+            match (&new_model, tier.is_some()) {
+                (Some(model), _) => {
+                    updated = crate::db::discussions::update_discussion_model(
+                        conn,
+                        &id,
+                        model.as_deref(),
+                    )? || updated;
+                }
+                (None, true) => {
+                    updated = crate::db::discussions::update_discussion_model(conn, &id, None)?
+                        || updated;
+                }
+                (None, false) => {}
             }
             Ok(updated)
         })
@@ -1541,6 +1584,292 @@ mod tests {
         assert_eq!(targets[0].tier, Some(ModelTier::Reasoning));
         assert_eq!(targets[1].agent_type, AgentType::Ollama);
         assert_eq!(targets[1].tier, Some(ModelTier::Economy));
+    }
+
+    async fn exact_model_stored(state: &AppState, id: &str) -> Option<String> {
+        let id = id.to_string();
+        state
+            .db
+            .with_conn(move |conn| crate::db::discussions::get_discussion(conn, &id))
+            .await
+            .expect("discussion loaded")
+            .and_then(|discussion| discussion.model)
+    }
+
+    async fn exact_model_seed(state: &AppState, id: &str, model: &str) {
+        let (id, model) = (id.to_string(), model.to_string());
+        state
+            .db
+            .with_conn(move |conn| {
+                crate::db::discussions::update_discussion_model(conn, &id, Some(&model))
+            })
+            .await
+            .expect("model seeded");
+    }
+
+    async fn exact_model_update(state: &AppState, id: &str, body: serde_json::Value) -> String {
+        let request: UpdateDiscussionRequest =
+            serde_json::from_value(body).expect("valid update payload");
+        let response = update(State(state.clone()), Path(id.to_string()), Json(request)).await;
+        response.0.error.unwrap_or_default()
+    }
+
+    fn exact_model_create_request(model: Option<&str>) -> CreateDiscussionRequest {
+        serde_json::from_value(serde_json::json!({
+            "project_id": null,
+            "title": "Exact model",
+            "agent": "ClaudeCode",
+            "language": "en",
+            "initial_prompt": "hello",
+            "tier": "reasoning",
+            "model": model,
+        }))
+        .expect("valid create payload")
+    }
+
+    #[tokio::test]
+    async fn exact_model_create_pins_the_requested_model_over_the_tier() {
+        let state = state_with_disc("exact-create").await;
+        let response = create(
+            State(state.clone()),
+            Json(exact_model_create_request(Some("  claude-exact-7  "))),
+        )
+        .await;
+        let discussion = response.0.data.expect("discussion created");
+        assert_eq!(discussion.model.as_deref(), Some("claude-exact-7"));
+        assert_eq!(
+            exact_model_stored(&state, &discussion.id).await.as_deref(),
+            Some("claude-exact-7"),
+            "the trimmed exact model is persisted"
+        );
+    }
+
+    #[tokio::test]
+    async fn exact_model_create_without_a_model_keeps_the_tier_only() {
+        let state = state_with_disc("exact-create-none").await;
+        let response = create(State(state.clone()), Json(exact_model_create_request(None))).await;
+        let discussion = response.0.data.expect("discussion created");
+        assert_eq!(discussion.model, None);
+        assert_eq!(exact_model_stored(&state, &discussion.id).await, None);
+    }
+
+    #[tokio::test]
+    async fn exact_model_create_refuses_an_invalid_id_and_creates_nothing() {
+        let state = state_with_disc("exact-refuse-create").await;
+        let too_long = "m".repeat(crate::models::setup::MAX_EXACT_MODEL_CHARS + 1);
+        for bad in ["   ", "bad\nmodel", too_long.as_str()] {
+            let response = create(
+                State(state.clone()),
+                Json(exact_model_create_request(Some(bad))),
+            )
+            .await;
+            assert!(!response.0.success, "{bad:?} must be refused");
+            let error = response.0.error.unwrap_or_default();
+            assert!(error.contains("model"), "clear error: {error}");
+        }
+        let count: i64 = state
+            .db
+            .with_conn(|conn| {
+                Ok(conn.query_row(
+                    "SELECT COUNT(*) FROM discussions WHERE title = 'Exact model'",
+                    [],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+            .expect("count");
+        assert_eq!(count, 0, "a refused create persists no discussion");
+    }
+
+    #[tokio::test]
+    async fn exact_model_update_set_keep_and_clear_follow_the_three_states() {
+        let state = state_with_disc("exact-update").await;
+        let error = exact_model_update(
+            &state,
+            "exact-update",
+            serde_json::json!({ "model": "claude-set-1" }),
+        )
+        .await;
+        assert!(error.is_empty(), "set refused: {error}");
+        assert_eq!(
+            exact_model_stored(&state, "exact-update").await.as_deref(),
+            Some("claude-set-1")
+        );
+
+        // Absent field: the stored model is unchanged.
+        let error = exact_model_update(
+            &state,
+            "exact-update",
+            serde_json::json!({ "title": "Renamed" }),
+        )
+        .await;
+        assert!(error.is_empty(), "unrelated update refused: {error}");
+        assert_eq!(
+            exact_model_stored(&state, "exact-update").await.as_deref(),
+            Some("claude-set-1"),
+            "an update without the field leaves the model"
+        );
+
+        // Explicit null: cleared, the tier applies again.
+        let error =
+            exact_model_update(&state, "exact-update", serde_json::json!({ "model": null })).await;
+        assert!(error.is_empty(), "clear refused: {error}");
+        assert_eq!(exact_model_stored(&state, "exact-update").await, None);
+    }
+
+    #[tokio::test]
+    async fn exact_model_update_refuses_an_invalid_id_and_keeps_the_stored_one() {
+        let state = state_with_disc("exact-refuse-update").await;
+        exact_model_seed(&state, "exact-refuse-update", "claude-kept").await;
+        let error = exact_model_update(
+            &state,
+            "exact-refuse-update",
+            serde_json::json!({ "model": "bad\u{7}model" }),
+        )
+        .await;
+        assert!(error.contains("model"), "clear error: {error}");
+        assert_eq!(
+            exact_model_stored(&state, "exact-refuse-update")
+                .await
+                .as_deref(),
+            Some("claude-kept"),
+            "a refused update changes nothing"
+        );
+    }
+
+    #[tokio::test]
+    async fn exact_model_update_clears_it_when_the_agent_changes() {
+        let state = state_with_disc("exact-agent").await;
+        exact_model_seed(&state, "exact-agent", "claude-old").await;
+        let error = exact_model_update(
+            &state,
+            "exact-agent",
+            serde_json::json!({ "agent": "Codex" }),
+        )
+        .await;
+        assert!(error.is_empty(), "agent change refused: {error}");
+        assert_eq!(
+            exact_model_stored(&state, "exact-agent").await,
+            None,
+            "an agent change without a model clears the exact model"
+        );
+    }
+
+    #[tokio::test]
+    async fn exact_model_update_keeps_a_model_sent_with_an_agent_change() {
+        let state = state_with_disc("exact-agent-model").await;
+        exact_model_seed(&state, "exact-agent-model", "claude-old").await;
+        let error = exact_model_update(
+            &state,
+            "exact-agent-model",
+            serde_json::json!({ "agent": "Codex", "model": "codex-new" }),
+        )
+        .await;
+        assert!(error.is_empty(), "agent and model refused: {error}");
+        assert_eq!(
+            exact_model_stored(&state, "exact-agent-model")
+                .await
+                .as_deref(),
+            Some("codex-new"),
+            "the model sent with the change is the one that stays"
+        );
+    }
+
+    #[tokio::test]
+    async fn exact_model_update_clears_it_when_the_connection_changes() {
+        let state = state_with_disc("exact-connection").await;
+        state
+            .db
+            .with_conn(|conn| {
+                // The row this id names is not needed to test the clear: the
+                // seeded id only has to be a sticky connection to change from.
+                conn.execute_batch("PRAGMA foreign_keys = OFF;")?;
+                crate::db::discussions::update_discussion_connection(
+                    conn,
+                    "exact-connection",
+                    Some("conn-a"),
+                )?;
+                Ok(())
+            })
+            .await
+            .expect("connection seeded");
+        exact_model_seed(&state, "exact-connection", "claude-behind-a").await;
+        let error = exact_model_update(
+            &state,
+            "exact-connection",
+            serde_json::json!({ "connection_id": null }),
+        )
+        .await;
+        assert!(error.is_empty(), "connection change refused: {error}");
+        assert_eq!(exact_model_stored(&state, "exact-connection").await, None);
+    }
+
+    #[tokio::test]
+    async fn exact_model_update_clears_it_when_a_tier_is_chosen_without_a_model() {
+        let state = state_with_disc("exact-tier").await;
+        exact_model_seed(&state, "exact-tier", "claude-pinned").await;
+        let error = exact_model_update(
+            &state,
+            "exact-tier",
+            serde_json::json!({ "tier": "economy" }),
+        )
+        .await;
+        assert!(error.is_empty(), "tier refused: {error}");
+        assert_eq!(
+            exact_model_stored(&state, "exact-tier").await,
+            None,
+            "choosing a tier means leaving the exact model"
+        );
+
+        exact_model_seed(&state, "exact-tier", "claude-again").await;
+        let error = exact_model_update(
+            &state,
+            "exact-tier",
+            serde_json::json!({ "tier": "reasoning", "model": "claude-explicit" }),
+        )
+        .await;
+        assert!(error.is_empty(), "tier and model refused: {error}");
+        assert_eq!(
+            exact_model_stored(&state, "exact-tier").await.as_deref(),
+            Some("claude-explicit"),
+            "a model sent with the tier wins"
+        );
+    }
+
+    #[tokio::test]
+    async fn exact_model_run_resolves_the_exact_model_and_not_the_tier() {
+        let state = state_with_disc("exact-run").await;
+        let response = create(
+            State(state.clone()),
+            Json(exact_model_create_request(Some("claude-exact-run"))),
+        )
+        .await;
+        let discussion_id = response.0.data.expect("discussion created").id;
+        let discussion = state
+            .db
+            .with_conn(move |conn| crate::db::discussions::get_discussion(conn, &discussion_id))
+            .await
+            .expect("loaded")
+            .expect("discussion exists");
+        assert_eq!(discussion.tier, ModelTier::Reasoning);
+        // The run's model resolution: an explicit model wins over the tier.
+        let tier_only = crate::agents::runner::effective_model_flag(
+            None,
+            &AgentType::ClaudeCode,
+            discussion.tier,
+            None,
+        );
+        let resolved = crate::agents::runner::effective_model_flag(
+            discussion.model.as_deref(),
+            &AgentType::ClaudeCode,
+            discussion.tier,
+            None,
+        );
+        assert_eq!(resolved.as_deref(), Some("claude-exact-run"));
+        assert_ne!(
+            resolved, tier_only,
+            "the tier alone would run another model"
+        );
     }
 
     #[tokio::test]
