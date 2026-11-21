@@ -509,7 +509,8 @@ export function GitPanel({
     && workspace.state === 'attached';
 
   // The expand toggle is in the header of both views; inside the side panel
-  // it, the refresh and the way back go to the shell's one header (KT-1884).
+  // it and the refresh go to the actions of the shell's one header, the way
+  // back to its leading zone, on the left of the title (KT-1884).
   const expandToggle = (testId?: string) => (
     <button
       type="button"
@@ -544,7 +545,8 @@ export function GitPanel({
       >
         <SidePanelHeaderSlot
           meta={<span className="git-header-path" title={diffPath}>{diffPath}</span>}
-          actions={<>{backButton}{expandToggle()}</>}
+          leading={backButton}
+          actions={expandToggle()}
           standalone={(
             <header className="disc-tool-panel-header git-header">
               {backButton}

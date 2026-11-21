@@ -2811,6 +2811,7 @@ const zh: TranslationDict = {
   "planning.taskTitle": "任务标题",
   "planning.priorityField": "优先级",
   "planning.createAction": "添加任务",
+  "planning.closeTaskDetail": "关闭任务",
   "planning.possibleDuplicates": "可能的重复项：",
   "planning.allStatuses": "所有状态",
   "planning.allProjects": "所有项目",

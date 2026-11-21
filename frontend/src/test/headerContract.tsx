@@ -84,6 +84,62 @@ export function describeHeaderContract(name: string, Header: ComponentType<Heade
       }
     });
 
+    // `status={shared && <StatusBadge … />}` hands `false`, `description={hint}`
+    // can hand `''`: each of the four means "no slot", in both forms.
+    const EMPTY: Array<[string, null | undefined | false | '']> = [
+      ['null', null], ['undefined', undefined], ['false', false], ["''", ''],
+    ];
+    const SLOTS = ['leading', 'meta', 'status', 'description', 'actions'] as const;
+    it.each(EMPTY.flatMap(([label, value]) => [false, true].map(compact => [label, value, compact] as const)))(
+      'draws no wrapper for a slot given %s (compact=%s)',
+      (_label, value, compact) => {
+        const empty = Object.fromEntries(SLOTS.map(slot => [slot, value]));
+        const { container } = render(<Header title="Nightly digest" compact={compact} {...empty} />);
+        const root = container.firstElementChild as HTMLElement;
+        for (const slot of SLOTS) {
+          expect(root.querySelector(`.ui-header-${slot}`), slot).toBeNull();
+        }
+        // The kind's own trailing control (the drawer's close) is not a slot:
+        // without it the header is its identity alone.
+        expect(root.children).toHaveLength(1);
+        expect(root.textContent).toBe('Nightly digest');
+      },
+    );
+
+    it.each(SLOTS)('draws the %s slot alone when every other slot is empty', slot => {
+      const others = Object.fromEntries(SLOTS.filter(other => other !== slot).map(other => [other, false]));
+      const { container } = render(
+        <Header title="Nightly digest" {...others} {...{ [slot]: <span data-testid="filled">x</span> }} />,
+      );
+      const root = container.firstElementChild as HTMLElement;
+      expect(root.querySelector(`.ui-header-${slot}`)).toContainElement(screen.getByTestId('filled'));
+      for (const other of SLOTS.filter(name => name !== slot)) {
+        expect(root.querySelector(`.ui-header-${other}`), other).toBeNull();
+      }
+    });
+
+    it('ends a long description with an ellipsis in the compact form, a plain string as its children', () => {
+      const long = 'Shared or generated assets of this discussion, with a much longer name in another locale';
+      const { container } = render(
+        <Header compact title="Nightly digest" description={long} actions={<button type="button">Run now</button>} />,
+      );
+      const description = container.querySelector('.ui-header-description') as HTMLElement;
+      // The text is the description's own line (no extra box that would be
+      // clipped instead of cut with « … »).
+      expect(description.firstChild?.nodeType).toBe(Node.TEXT_NODE);
+      expect(description).toHaveTextContent(long);
+      // `text-overflow` acts on the line of a block container, never on a
+      // flex box: the compact rule is a one-line block that ellipsizes.
+      const compactRule = rule(css('headerFrame.css'), '.ui-header[data-compact] .ui-header-description');
+      expect(compactRule).toMatch(/display:\s*block/);
+      expect(compactRule).toMatch(/overflow:\s*hidden/);
+      expect(compactRule).toMatch(/text-overflow:\s*ellipsis/);
+      expect(compactRule).toMatch(/white-space:\s*nowrap/);
+      // Nothing in the kind's own stylesheet turns it back into a flex box.
+      const own = rule(css(`${name}.css`), `.ui-${kind}-header[data-compact] .ui-header-description`);
+      expect(own).not.toMatch(/display:\s*(flex|inline-flex|grid)/);
+    });
+
     it('takes its title sizes from the text scale, smaller in the compact form', () => {
       const own = css(`${name}.css`);
       const normal = titleSize(own, `.ui-${kind}-header .ui-header-title`);

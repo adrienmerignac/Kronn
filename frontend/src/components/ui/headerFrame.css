@@ -75,11 +75,20 @@
   font-size: var(--kr-type-md);
 }
 
+/* Compact: one line that ends with an ellipsis when it does not fit. A block,
+   not a flex box: `text-overflow` acts on the line of a block container, so
+   a plain string and the inline text of its children are cut with « … »
+   instead of mid-letter. Its children are inline, spaced by a margin. */
 .ui-header[data-compact] .ui-header-description {
-  flex-wrap: nowrap;
+  display: block;
   overflow: hidden;
   font-size: var(--kr-type-sm);
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ui-header[data-compact] .ui-header-description > * + * {
+  margin-inline-start: var(--kr-space-2);
 }
 
 .ui-header-actions {

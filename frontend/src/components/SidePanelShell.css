@@ -35,21 +35,29 @@
   width: 0;
 }
 
-/* The active view's name, then what that view hands to the header. */
+/* The active view's name, then what that view hands to the header: inline
+   text on the compact description's one line, so the line ends with « … »
+   when it does not fit (the frame's block + `text-overflow: ellipsis`). */
 .side-panel-shell-view {
-  flex-shrink: 0;
+  display: inline;
   color: var(--kr-text-secondary);
   font-weight: var(--kr-weight-semibold);
 }
 
 .side-panel-shell-meta {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--kr-space-1);
-  overflow: hidden;
+  display: inline;
   color: var(--kr-text-muted);
-  white-space: nowrap;
+}
+
+/* Whatever a view hands over sits on the view name's line, in its size: no
+   box of its own (a flex or block child would be clipped, not ellipsized),
+   no margin or size a standalone header gave it (two classes: this wins
+   over a view's own one-class rule, whatever the stylesheet order). */
+.side-panel-shell-header .side-panel-shell-meta > * {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .side-panel-shell-meta:empty {
@@ -58,6 +66,23 @@
 
 .side-panel-shell-meta:not(:empty)::before {
   content: '·';
+  margin-inline-end: var(--kr-space-1);
+}
+
+/* The view's own leading control (the Git diff's way back): before the
+   title, first in the tab order. No box when the view hands none, so the
+   frame's leading zone takes no room and no gap. */
+.side-panel-shell-header .ui-header-leading {
+  display: contents;
+}
+
+.side-panel-shell-view-leading {
+  display: inline-flex;
+  align-items: center;
+}
+
+.side-panel-shell-view-leading:empty {
+  display: none;
 }
 
 .side-panel-shell-view-actions {

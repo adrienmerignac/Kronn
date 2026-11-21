@@ -2829,6 +2829,7 @@ const es: TranslationDict = {
   'planning.taskTitle': 'Título de la tarea',
   'planning.priorityField': 'Prioridad',
   'planning.createAction': 'Añadir tarea',
+  'planning.closeTaskDetail': 'Cerrar la tarea',
   'planning.possibleDuplicates': 'Posibles duplicados:',
   'planning.allStatuses': 'Todos los estados',
   'planning.allProjects': 'Todos los proyectos',

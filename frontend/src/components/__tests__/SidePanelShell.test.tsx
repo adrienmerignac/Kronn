@@ -263,3 +263,85 @@ describe('SidePanelShell — the rail, the header and the menu stay reachable (K
     expect(narrow).toMatch(/\.side-panel-shell \.side-panel-shell-body > \*\s*\{[^}]*min-width:\s*0/);
   });
 });
+
+// ── The view's line: name, then meta, cut with « … » (KT-1884) ────────────────
+// happy-dom computes no layout either: the DOM is checked by render, the
+// one-line ellipsis by the rules that make it.
+
+describe('SidePanelShell — the view name and its meta on one line that ellipsizes (KT-1884)', () => {
+  const shell = cssText(SHELL_CSS);
+  const frame = cssText(join(SRC, 'components', 'ui', 'headerFrame.css'));
+  const body = (text: string, selector: string) =>
+    rulesOf(text).filter(r => r.selector === selector).map(r => r.body).join(';');
+  const META_CHILD = '.side-panel-shell-header .side-panel-shell-meta > *';
+  /** What the six views hand to the meta (Plan, Git diff, Files and Notes hand a span). */
+  const VIEW_META_CLASSES = ['plan-panel-meta', 'plan-panel-progress', 'git-header-path'];
+
+  it('puts a long meta in the compact description, as inline text after the view name', () => {
+    const long = 'Fifty-seven assets shared or generated, in a locale that says it at much greater length';
+    function LongMeta() {
+      return (
+        <SidePanelShell
+          ariaLabel="Panels"
+          title="My discussion"
+          railLabel="Panels"
+          items={[{ id: 'files', label: 'A rather long view name', icon: null }]}
+          activeId="files"
+          onSelect={vi.fn()}
+          onClose={vi.fn()}
+          closeLabel="Close"
+        >
+          <SidePanelHeaderSlot meta={<span className="plan-panel-progress">{long}</span>} standalone={null} />
+        </SidePanelShell>
+      );
+    }
+    const { container } = render(<LongMeta />);
+    const header = container.querySelector('.ui-drawer-header')!;
+    expect(header).toHaveAttribute('data-compact');
+    const description = header.querySelector('.ui-header-description')!;
+    expect([...description.children].map(child => child.className))
+      .toEqual(['side-panel-shell-view', 'side-panel-shell-meta']);
+    expect(description.querySelector('.side-panel-shell-meta')).toHaveTextContent(long);
+  });
+
+  it('ends the line with an ellipsis: a block line in the frame, inline text in the shell', () => {
+    const line = body(frame, '.ui-header[data-compact] .ui-header-description');
+    expect(line).toMatch(/display:\s*block/);
+    expect(line).toMatch(/text-overflow:\s*ellipsis/);
+    expect(line).toMatch(/white-space:\s*nowrap/);
+    expect(line).toMatch(/overflow:\s*hidden/);
+    // A box inside the line would be clipped, not cut with « … »: the view
+    // name, the meta and what a view hands to it are all inline.
+    expect(body(shell, '.side-panel-shell-view')).toMatch(/display:\s*inline\s*(;|$)/);
+    expect(body(shell, '.side-panel-shell-meta')).toMatch(/display:\s*inline\s*(;|$)/);
+    expect(body(shell, META_CHILD)).toMatch(/display:\s*inline\s*(;|$)/);
+  });
+
+  it('sets every view\'s meta on the view name\'s line and in its size, whatever the view\'s own rules', () => {
+    const reset = body(shell, META_CHILD);
+    expect(reset).toMatch(/margin:\s*0/);
+    expect(reset).toMatch(/font-size:\s*inherit/);
+    expect(reset).toMatch(/line-height:\s*inherit/);
+    const moving = /(?:^|;)\s*(display|margin[\w-]*|font-size|line-height)\s*:/;
+    const rivals = cssFiles(SRC).filter(file => file !== SHELL_CSS).flatMap(file =>
+      rulesOf(cssText(file))
+        .filter(({ selector, body: rules }) => {
+          const last = selector.split(/[\s>+~]+/).pop() ?? '';
+          return VIEW_META_CLASSES.some(name => new RegExp(`\\.${name}(?![\\w-])`).test(last)) && moving.test(rules);
+        })
+        .map(({ selector }) => ({ file: file.slice(SRC.length + 1), selector })));
+    // The Plan's standalone progress (smaller, 3px lower) is among them: not vacuous.
+    expect(rivals.map(r => r.selector)).toContain('.plan-panel-progress');
+    for (const { file, selector } of rivals) {
+      expect(greater(specificity(META_CHILD), specificity(selector)), `${file}: ${selector}`).toBe(true);
+    }
+  });
+
+  it('leaves the leading zone empty and without a box when the view hands no way back', () => {
+    render(<ViewsHarness onRefresh={vi.fn()} />);
+    const header = screen.getByTestId('shell').querySelector('.ui-drawer-header')!;
+    expect(header.querySelector('.side-panel-shell-view-leading')).toBeEmptyDOMElement();
+    expect(body(shell, '.side-panel-shell-header .ui-header-leading')).toMatch(/display:\s*contents/);
+    expect(body(shell, '.side-panel-shell-view-leading:empty')).toMatch(/display:\s*none/);
+  });
+});

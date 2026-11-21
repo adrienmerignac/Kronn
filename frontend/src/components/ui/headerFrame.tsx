@@ -5,7 +5,7 @@
 // The frame is plain content: never sticky, never fixed, never over the page.
 // Where it sits (top of a page, of a drawer, of a card) is the caller's layout.
 import type { ReactNode } from 'react';
-import { HEADER_LEVELS, type HeaderKind } from './headerKinds';
+import { HEADER_LEVELS, hasSlot, type HeaderKind } from './headerKinds';
 import './headerFrame.css';
 
 export interface HeaderSlots {
@@ -39,7 +39,7 @@ export function HeaderFrame({
   kind, title, titleId, leading, meta, status, description, actions, trailing, compact = false, className, testId,
 }: HeaderFrameProps) {
   const Heading = `h${HEADER_LEVELS[kind]}` as 'h1' | 'h2' | 'h3';
-  const hasActions = actions != null || trailing != null;
+  const hasActions = hasSlot(actions) || hasSlot(trailing);
   return (
     <div
       className={['ui-header', `ui-${kind}-header`, className].filter(Boolean).join(' ')}
@@ -48,14 +48,14 @@ export function HeaderFrame({
       data-testid={testId}
     >
       <div className="ui-header-identity">
-        {leading != null && <div className="ui-header-leading">{leading}</div>}
+        {hasSlot(leading) && <div className="ui-header-leading">{leading}</div>}
         <div className="ui-header-text">
           <div className="ui-header-title-row">
             <Heading id={titleId} className="ui-header-title">{title}</Heading>
-            {meta != null && <div className="ui-header-meta">{meta}</div>}
-            {status != null && <div className="ui-header-status">{status}</div>}
+            {hasSlot(meta) && <div className="ui-header-meta">{meta}</div>}
+            {hasSlot(status) && <div className="ui-header-status">{status}</div>}
           </div>
-          {description != null && <div className="ui-header-description">{description}</div>}
+          {hasSlot(description) && <div className="ui-header-description">{description}</div>}
         </div>
       </div>
       {hasActions && (

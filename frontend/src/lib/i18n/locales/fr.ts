@@ -2839,6 +2839,7 @@ const fr: TranslationDict = {
   'planning.taskTitle': 'Titre de la tâche',
   'planning.priorityField': 'Priorité',
   'planning.createAction': 'Ajouter la tâche',
+  'planning.closeTaskDetail': 'Fermer la tâche',
   'planning.possibleDuplicates': 'Doublons possibles :',
   'planning.allStatuses': 'Tous les statuts',
   'planning.allProjects': 'Tous les projets',

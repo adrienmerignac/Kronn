@@ -1,9 +1,10 @@
 // One side panel for the discussion and the Artifact pages: full window height
 // (over the top navigation), a vertical rail of named views on its left, and
-// ONE header above it (KT-1884, a `DrawerHeader`): the subject's title, the
-// active view's name and meta under it, the view's own actions, a « ⋯ » menu
-// and the close button. A view inside the shell draws no header of its own:
-// it hands its meta and actions to this one (`SidePanelHeaderSlot`).
+// ONE header above it (KT-1884, a `DrawerHeader`): the view's way back if it
+// has one, the subject's title, the active view's name and meta under it, the
+// view's own actions, a « ⋯ » menu and the close button. A view inside the
+// shell draws no header of its own: it hands its leading control, meta and
+// actions to this one (`SidePanelHeaderSlot`).
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, MutableRefObject, ReactNode } from 'react';
 import { DrawerHeader } from './ui/DrawerHeader';
@@ -83,11 +84,12 @@ export function SidePanelShell({
   const localRef = useRef<HTMLElement | null>(null);
   const asideRef = panelRef ?? localRef;
   const [reserved, setReserved] = useState(0);
+  const [leadingTarget, setLeadingTarget] = useState<HTMLElement | null>(null);
   const [metaTarget, setMetaTarget] = useState<HTMLElement | null>(null);
   const [actionsTarget, setActionsTarget] = useState<HTMLElement | null>(null);
   const headerTargets = useMemo(
-    () => ({ meta: metaTarget, actions: actionsTarget }),
-    [metaTarget, actionsTarget],
+    () => ({ leading: leadingTarget, meta: metaTarget, actions: actionsTarget }),
+    [leadingTarget, metaTarget, actionsTarget],
   );
 
   // The panel floats over the navigation, so a spacer keeps the page content
@@ -142,6 +144,7 @@ export function SidePanelShell({
           compact
           className="side-panel-shell-header"
           title={title}
+          leading={<span ref={setLeadingTarget} className="side-panel-shell-view-leading" />}
           description={(
             <>
               {activeItem && <span className="side-panel-shell-view">{activeItem.label}</span>}

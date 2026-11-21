@@ -1,6 +1,7 @@
 // KT-1884 — the six kinds of header and the one heading level each renders.
 // Kept out of the component files so they export components only (fast
 // refresh). Where each kind goes: docs/conventions/header-kinds.md.
+import type { ReactNode } from 'react';
 
 export type HeaderKind = 'list' | 'detail' | 'tab' | 'section' | 'drawer' | 'card';
 
@@ -22,6 +23,14 @@ export const HEADER_LEVELS: Readonly<Record<HeaderKind, 1 | 2 | 3>> = {
    *  names the card, beside its status. An h3 there would skip a level. */
   card: 2,
 };
+
+/** Whether a header slot holds something to draw. `null`, `undefined`,
+ *  `false`, `true` and `''` draw nothing in React, so they are no slot at
+ *  all: the usual `status={shared && <StatusBadge … />}` leaves no empty
+ *  wrapper and no gap. Every slot of the frame goes through it. */
+export function hasSlot(node: ReactNode): boolean {
+  return node != null && typeof node !== 'boolean' && node !== '';
+}
 
 /** The kinds in the order the gallery and the docs list them. */
 export const HEADER_KINDS: readonly HeaderKind[] = ['list', 'detail', 'tab', 'section', 'drawer', 'card'];
