@@ -105,6 +105,33 @@ describe('AgentSwitchPicker.css — one line per agent, tiers on equal tracks (K
   });
 });
 
+// KT-1885 review 4 — the dot and the name are one box that never splits across
+// lines; the state badge sits beside the name when there is room, under it only
+// when there is not (the name must not take the whole line).
+describe('AgentSwitchPicker.css — the agent identity keeps its dot with its name (KT-1885 review 4)', () => {
+  const TSX = read('components/AgentSwitchPicker.tsx');
+
+  it('the markup wraps the dot and the name in one identity box', () => {
+    expect(TSX).toMatch(
+      /className="kr-agent-switch-tier-id">\s*<span\s+className="kr-agent-switch-option-dot"[\s\S]*?<span className="kr-agent-switch-tier-name">/,
+    );
+  });
+
+  it('the identity box is one inline-flex line that takes only its own width', () => {
+    const id = rule(PICKER, '.kr-agent-switch-tier-id');
+    expect(declaration(id, 'display')).toBe('inline-flex');
+    expect(declaration(id, 'flex')).toBe('0 1 auto');
+    expect(declaration(id, 'max-width')).toBe('100%');
+  });
+
+  it('the name takes its own width, not the whole line, so the badge can sit beside it', () => {
+    const name = rule(PICKER, '.kr-agent-switch-tier-name');
+    expect(declaration(name, 'flex')).toBe('0 1 auto');
+    expect(name).not.toMatch(/calc\(100%/);
+    expect(declaration(name, 'overflow-wrap')).toBe('anywhere');
+  });
+});
+
 describe('AgentSwitchPicker.css — triggers and popovers (KT-1885 review)', () => {
   it('the compact chip is a 24 px target', () => {
     expect(declaration(rule(PICKER, ".kr-agent-switch[data-compact='true'] > .kr-agent-switch-btn"), 'min-height'))

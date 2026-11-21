@@ -831,11 +831,13 @@ function TierPicker({
                   aria-label={targetLabel(target)}
                 >
                   <span className="kr-agent-switch-tier-agent">
-                    <span
-                      className="kr-agent-switch-option-dot"
-                      style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }}
-                    />
-                    <span className="kr-agent-switch-tier-name">{targetLabel(target)}</span>
+                    <span className="kr-agent-switch-tier-id">
+                      <span
+                        className="kr-agent-switch-option-dot"
+                        style={{ background: AGENT_COLORS[target.agent] ?? 'var(--kr-text-faint)' }}
+                      />
+                      <span className="kr-agent-switch-tier-name">{targetLabel(target)}</span>
+                    </span>
                     <AgentAvailabilityBadge
                       availability={rowAvailability(badge, tierRowState(tierOptions, tier => resolvedTier(target, tier), t))}
                     />

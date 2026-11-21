@@ -261,7 +261,10 @@ Availability always goes through
 **A row with tier choices** (field and chip modes, the API assistants, the @
 palette: one implementation, `AgentPickerTierChoices`) is one line per agent
 at desktop widths. On the left: the dot, the agent's name, its kind or role,
-and ONE state badge. On the right: the tiers, one-line buttons (icon and
+and ONE state badge. The dot and the name are one box (`kr-agent-switch-tier-id`,
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:834]), so they never
+split across lines; the badge sits beside the name when there is room and
+wraps under it only when there is not. On the right: the tiers, one-line buttons (icon and
 name, 26 px high) on equal tracks shared by every row, so Éco / Standard /
 Avancé line up from row to row. The state the tiers share (more than half of
 them) is written once, in the row's badge; a tier carries its own state, as a
