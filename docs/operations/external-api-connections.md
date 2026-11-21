@@ -149,7 +149,7 @@ the shared selector, and creation persists the connection-qualified initial
 target rather than only the generic `Custom` wire type.
 [src: file: frontend/src/components/NewDiscussionForm.tsx:219-230#launchTargets]
 [src: file: frontend/src/lib/externalAgentIdentity.ts:63-79#externalAgentTargets]
-[src: file: frontend/src/components/NewDiscussionForm.tsx:646-653#initialTargets]
+[src: file: frontend/src/components/NewDiscussionForm.tsx:659-666#initialTargets]
 
 Discussion headers, messages and comparison views recover the provider name
 from that durable `MessageTarget.connection_id`; editable titles are not the

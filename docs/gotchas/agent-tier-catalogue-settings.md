@@ -116,7 +116,7 @@ CLI tiers. No embedded model list participates in the display helper anymore.
 [src: file: frontend/src/lib/constants.ts:60-75#modelForAgentTier]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:12-49#resolveCatalogTier]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:77-88#catalogTierEntry]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:553-563#resolvedTier]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:618-628#resolvedTier]
 
 The shared picker keeps an unavailable configured entry disabled. A failed
 snapshot read reports the error and retains previous data as cached, not live.
@@ -146,8 +146,8 @@ refetches the catalogue. An unknown configured ID remains searchable, and a
 known unavailable choice remains disabled; accessible descriptions retain the
 model, provenance and unavailable state after filtering.
 [src: file: frontend/src/lib/modelCatalogSelection.ts:53-62#matchesCatalogSearch]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:572-578#visibleChoices]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:550-585#tierOptions]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:637-643#visibleChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:591-626#tierOptions]
 
 The search field is outside the menu, within a portalled non-modal dialog.
 Arrow keys move among enabled choices; Home/End retain their caret behavior in
@@ -155,11 +155,11 @@ search and navigate choices when an option has focus. Escape inside the picker
 does not propagate to its parent form. Closing with Escape or completing an
 asynchronous selection restores trigger focus. Reopening clears the query,
 an empty result is explicit, and the popup's height is bounded by the viewport.
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:545-570#navigateChoices]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:414-423#place]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:432-437#restoreFocusRef]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:652-658#setQuery]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:667-687#createPortal]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:610-635#navigateChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:450-459#place]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:445-450#restoreFocusRef]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:720-723#setQuery]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:732-751#createPortal]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.catalog.test.tsx:167-204#reports]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.catalog.test.tsx:228-255#closes]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.accessibility.test.tsx:40-76#repositions]
@@ -181,10 +181,10 @@ and an explicit error; typing within an open palette does not refetch.
 [src: file: frontend/src/lib/modelCatalogSelection.ts:12-49#resolveCatalogTier]
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:32-93#useModelCatalogSnapshot]
 [src: file: frontend/src/components/AgentSwitchPicker.tsx:104-106#AgentPickerTierChoices]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:158#lastChecked]
-[src: file: frontend/src/components/ChatInput.tsx:517#useModelCatalogSnapshot]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:163#lastChecked]
+[src: file: frontend/src/components/ChatInput.tsx:518#useModelCatalogSnapshot]
 [src: file: frontend/src/components/ChatInput.tsx:741-751#mentionTierResolution]
-[src: file: frontend/src/components/NewDiscussionForm.tsx:200#useModelCatalogSnapshot]
+[src: file: frontend/src/components/NewDiscussionForm.tsx:201#useModelCatalogSnapshot]
 
 Untouched principal insertion preserves its saved model override and does not
 write a tier preference. Explicit tier choices resolve their own configuration.
@@ -195,8 +195,8 @@ keep their exact session and stable ordinal, expose no model tier, and do not
 change native preferences. New-discussion submissions retain the immutable
 connection and explicitly selected tier.
 [src: file: frontend/src/lib/mentionTierSelection.ts:6-16#nextMentionTierIndex]
-[src: file: frontend/src/components/NewDiscussionForm.tsx:879-885#applyMentionSuggestion]
-[src: file: frontend/src/components/NewDiscussionForm.tsx:646-653#initialTargets]
+[src: file: frontend/src/components/NewDiscussionForm.tsx:515-521#applyMentionSuggestion]
+[src: file: frontend/src/components/NewDiscussionForm.tsx:659-666#initialTargets]
 [src: file: frontend/src/components/__tests__/ComposerMentionCatalog.test.tsx:166-174#untouched]
 [src: file: frontend/src/components/__tests__/ComposerMentionCatalog.test.tsx:176-187#persists]
 [src: file: frontend/src/components/__tests__/ComposerMentionCatalog.test.tsx:216-243#cli_ordinal]
