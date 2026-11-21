@@ -12,7 +12,7 @@ the resolved npx executable and arguments. The version comes from that command's
 successful `--version` output; failed or empty output leaves it unknown. Settings
 shows the command and explicitly warns about npx fallback. Refreshing detection
 also clears cached fallback versions.
-[src: file: backend/src/models/setup.rs:1986-1989#fallback_command]
+[src: file: backend/src/models/setup.rs:2035-2038#fallback_command]
 [src: file: backend/src/agents/mod.rs:755#fallback_command]
 [src: file: backend/src/agents/mod.rs:1175-1245#probe_npx_invocation]
 [src: file: backend/src/agents/mod.rs:1540-1567#version_from_output]
@@ -27,10 +27,10 @@ five-minute cache keyed by command and working directory. Workflow attempts reta
 facts separately from the output, including through serialization and templates.
 Settings detection is a cached backend-level probe, not a record of a particular
 project's run. A missing version remains unknown.
-[src: file: backend/src/agents/runner.rs:4865-4898#record_npx_fallback]
+[src: file: backend/src/agents/runner.rs:4904-4937#record_npx_fallback]
 [src: file: backend/src/agents/provenance.rs:7-19#AgentRuntimeProvenance]
 [src: file: backend/src/agents/provenance.rs:23-34#record_npx_fallback]
-[src: file: backend/src/models/workflows.rs:2357-2391#WorkflowAgentAttempt]
+[src: file: backend/src/models/workflows.rs:2369-2403#WorkflowAgentAttempt]
 [src: file: backend/src/workflows/steps.rs:1455-1476#npx_fallback_command]
 [src: file: backend/src/workflows/template.rs:157-198#set_step_provenance]
 [src: file: backend/src/agents/mod.rs:44-45#RUNTIME_CACHE]
