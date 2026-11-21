@@ -1,5 +1,5 @@
 // KT-1883 — the app's top bar publishes its height, so the toast stack sits
-// just under it below --kr-bp-sm (toastStack.css).
+// just under it below --kr-bp-md (toastStack.css).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
 import { useRef } from 'react';

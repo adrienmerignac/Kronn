@@ -225,4 +225,27 @@ describe('useToast — a persistent toast is never evicted (KT-1883)', () => {
     act(() => { screen.getByText('fire').click(); });
     expect([...document.querySelectorAll('.kr-toast')].map(e => e.textContent)).toEqual(['First', 'Second']);
   });
+
+  it('scrolls the stack to the newest toast when one is added, once it is taller than the window', () => {
+    // toastStack.css caps the stack's height and lets it scroll; jsdom lays
+    // nothing out, so the stack's content height is given here.
+    const height = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains('kr-toast-stack') ? this.querySelectorAll('.kr-toast').length * 240 : 0;
+      });
+    try {
+      let n = 0;
+      render(<ToastDemo run={t => { n += 1; t(`Error ${n}`, 'error'); }} />);
+      for (let i = 0; i < 4; i++) act(() => { screen.getByText('fire').click(); });
+      const stack = document.querySelector('.kr-toast-stack') as HTMLElement;
+      expect(stack.scrollTop).toBe(4 * 240);
+
+      // Back at the oldest to close it, then a new error arrives: it is in view.
+      stack.scrollTop = 0;
+      act(() => { screen.getByText('fire').click(); });
+      expect((document.querySelector('.kr-toast-stack') as HTMLElement).scrollTop).toBe(5 * 240);
+    } finally {
+      height.mockRestore();
+    }
+  });
 });

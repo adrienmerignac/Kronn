@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useT } from '../lib/I18nContext';
 import { isServerFailureMessage } from '../lib/notifications';
-import { ToastItem } from './ToastItem';
+import { ToastStack } from './ToastStack';
 import type { Toast, ToastFn, ToastType } from './toastTypes';
-import './toastStack.css';
 
 export type { ToastFn } from './toastTypes';
 
@@ -105,15 +104,10 @@ export function useToast() {
     }
   }, [dismiss, t]);
 
-  const ToastContainer = useCallback(() => (
-    // KT-1883 — placement in toastStack.css: bottom left from --kr-bp-sm up,
-    // under the app's top bar below it; newest at the bottom.
-    <div className="kr-toast-stack">
-      {toasts.map(item => (
-        <ToastItem key={item.id} toast={item} onDismiss={() => dismiss(item.id)} />
-      ))}
-    </div>
-  ), [toasts, dismiss]);
+  const ToastContainer = useCallback(
+    () => <ToastStack toasts={toasts} onDismiss={dismiss} />,
+    [toasts, dismiss],
+  );
 
   return { toast, ToastContainer };
 }

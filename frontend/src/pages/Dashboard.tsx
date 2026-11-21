@@ -58,7 +58,7 @@ export function Dashboard({ onReset }: DashboardProps) {
   // can widen the document and push a page sidebar outside the viewport.
   const isMobile = useIsMobile(1100);
   const { toast, ToastContainer } = useToast();
-  // KT-1883 — under --kr-bp-sm the toast stack sits just under this bar.
+  // KT-1883 — under --kr-bp-md the toast stack sits just under this bar.
   const navRef = useRef<HTMLElement>(null);
   useAppBarHeight(navRef);
   // The address names the page: back, forward and reload all follow it.

@@ -76,10 +76,13 @@ describe('Skeleton', () => {
     expect(SKELETON_KINDS).toEqual(['list', 'detail']);
   });
 
-  it('draws the rows of a list, hidden from assistive technology, under one named busy status', () => {
+  it('draws the rows of a list, hidden from assistive technology, under one named status that is read', () => {
     render(<Skeleton kind="list" rows={6} label="Loading the projects" />);
     const status = screen.getByRole('status');
-    expect(status).toHaveAttribute('aria-busy', 'true');
+    // aria-busy on a live region holds its announcement until it is no longer
+    // busy; the skeleton unmounts before that, so the label would go unread.
+    expect(status).not.toHaveAttribute('aria-busy');
+    expect(status.querySelector('[aria-busy]')).toBeNull();
     expect(status).toHaveTextContent('Loading the projects');
     const list = status.querySelector('.ui-skeleton-list')!;
     expect(list).toHaveAttribute('aria-hidden', 'true');

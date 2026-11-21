@@ -143,6 +143,32 @@ describe('LoadingState', () => {
     act(() => { armBootScreen(); vi.advanceTimersByTime(150); });
     expect(bootScreenActive()).toBe(false);
   });
+
+  it.each([
+    ['its size becomes sm', { size: 'sm' as const }],
+    ['it stops holding the screen', { holdsBootScreen: false }],
+  ])('releases the start-up screen and draws itself when %s (KT-1883)', (_case, after) => {
+    mountBootScreen();
+    const { rerender } = render(<LoadingState size="md" message="Chargement…" />);
+    act(() => { armBootScreen(); vi.advanceTimersByTime(1_000); });
+    expect(bootScreenActive()).toBe(true);
+    expect(screen.queryByRole('status')).toBeNull();
+
+    rerender(<LoadingState size="md" message="Chargement…" {...after} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Chargement…');
+    act(() => { vi.advanceTimersByTime(150); });
+    expect(bootScreenActive()).toBe(false);
+  });
+
+  it('holds the start-up screen once it is asked to, while that screen is still up (KT-1883)', () => {
+    mountBootScreen();
+    const { rerender } = render(<LoadingState size="sm" message="Chargement…" />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    rerender(<LoadingState size="md" message="Chargement…" />);
+    expect(screen.queryByRole('status')).toBeNull();
+    act(() => { armBootScreen(); vi.advanceTimersByTime(1_000); });
+    expect(bootScreenActive()).toBe(true);
+  });
 });
 
 describe('BootHold', () => {
