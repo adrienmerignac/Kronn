@@ -91,6 +91,7 @@ describe('DesignSystemSection', () => {
       'designSystem.index', 'designSystem.tokens', 'designSystem.components', 'designSystem.componentsHint',
       'ui.searchField.clear', 'ui.overlay.close', 'ui.confirm.cancel',
       'ui.field.optional', 'ui.formFooter.cancel', 'ui.formFooter.blockers',
+      'ui.notice.dismiss', 'ui.emptyState.clear', 'ui.loading.label',
       ...DESIGN_TOKEN_GROUPS.map(g => g.title),
       ...DESIGN_TOKENS.map(token => token.use),
       ...GALLERY_COMPONENTS.map(c => c.caption),
@@ -263,6 +264,41 @@ describe('DesignSystemSection — index and components (KT-1880)', () => {
   it('passes axe on the form components of the gallery (KT-1882)', async () => {
     render(<main><DesignSystemSection t={t} /></main>);
     for (const name of ['Field', 'Select', 'Switch', 'FormFooter']) {
+      const results = await act(() => runAxe(screen.getByRole('region', { name })));
+      expect(describeViolations(results), name).toEqual([]);
+    }
+  });
+
+  it('shows Notice in its four tones, with its action and a cross that dismisses it (KT-1883)', async () => {
+    const user = userEvent.setup();
+    render(<DesignSystemSection t={t} />);
+    const section = screen.getByRole('region', { name: 'Notice' });
+    const notices = [...section.querySelectorAll('.ui-notice')];
+    expect(notices.map(n => n.getAttribute('data-tone'))).toEqual(['info', 'warning', 'danger', 'success']);
+    await user.click(within(section).getByRole('button', { name: 'designSystem.demo.retry' }));
+    expect(screen.getByTestId('ds-notice-retried')).toHaveAttribute('data-count', '1');
+    await user.click(within(section).getByRole('button', { name: 'ui.notice.dismiss' }));
+    expect(section.querySelector('.ui-notice[data-tone="success"]')).toBeNull();
+    await user.click(within(section).getByRole('button', { name: 'designSystem.demo.showNoticeAgain' }));
+    expect(section.querySelector('.ui-notice[data-tone="success"]')).toBeInTheDocument();
+  });
+
+  it('shows EmptyState in its three cases, and LoadingState in three sizes with both skeletons (KT-1883)', () => {
+    render(<DesignSystemSection t={t} />);
+    const empty = screen.getByRole('region', { name: 'EmptyState' });
+    expect([...empty.querySelectorAll('.ui-empty-state')].map(e => e.getAttribute('data-kind')))
+      .toEqual(['firstUse', 'noResult', 'nothingSelected']);
+    within(empty).getByRole('button', { name: 'designSystem.demo.emptyFirstUseAction' });
+    within(empty).getByRole('button', { name: 'ui.emptyState.clear' });
+
+    const loading = screen.getByRole('region', { name: 'LoadingState' });
+    expect([...loading.querySelectorAll('.ui-loading-state')].map(l => l.getAttribute('data-size'))).toEqual(['sm', 'md', 'lg']);
+    expect([...loading.querySelectorAll('.ui-skeleton')].map(s => s.getAttribute('data-kind'))).toEqual(['list', 'detail']);
+  });
+
+  it('passes axe on the feedback components of the gallery (KT-1883)', async () => {
+    render(<main><DesignSystemSection t={t} /></main>);
+    for (const name of ['Notice', 'EmptyState', 'LoadingState']) {
       const results = await act(() => runAxe(screen.getByRole('region', { name })));
       expect(describeViolations(results), name).toEqual([]);
     }

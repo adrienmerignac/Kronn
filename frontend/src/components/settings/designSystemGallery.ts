@@ -30,6 +30,9 @@ export const GALLERY_COMPONENTS: readonly GalleryComponent[] = [
   component('select', 'Select'),
   component('switch', 'Switch'),
   component('formFooter', 'FormFooter'),
+  component('notice', 'Notice'),
+  component('emptyState', 'EmptyState'),
+  component('loadingState', 'LoadingState'),
 ];
 
 /** Anchor of the tokens part of the page. */

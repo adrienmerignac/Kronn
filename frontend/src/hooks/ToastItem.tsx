@@ -44,7 +44,9 @@ export function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () =>
         color: textVar,
         background: `rgba(var(--kr-${colorVar}-rgb), 0.95)`,
         border: `1px solid rgba(var(--kr-${colorVar}-rgb), 0.3)`,
-        backdropFilter: 'blur(10px)', maxWidth: 420, minWidth: 240,
+        backdropFilter: 'blur(10px)', // KT-1883 — never wider than the window less the stack's
+        // 16 px margins, so at 400 px it does not run off the left edge.
+        maxWidth: 'min(420px, calc(100vw - 32px))', minWidth: 'min(240px, calc(100vw - 32px))',
         animation: 'toastSlideIn 0.3s ease-out', pointerEvents: 'auto',
         display: 'flex', flexDirection: 'column', gap: 6,
       }}

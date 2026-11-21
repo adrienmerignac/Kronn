@@ -64,9 +64,9 @@ function declsFor(block: string, selector: string): string {
 describe('components/ui stylesheets', () => {
   it('finds the stylesheets, so the checks below are not vacuous', () => {
     expect(CSS.map(c => c.file).sort()).toEqual([
-      'Button.css', 'ConfirmDialog.css', 'Dialog.css', 'Drawer.css', 'Field.css', 'FormFooter.css', 'IconButton.css',
-      'Menu.css', 'SearchField.css', 'Select.css', 'StatusBadge.css', 'Switch.css', 'Tabs.css', 'Tooltip.css',
-      'overlay.css', 'visuallyHidden.css',
+      'Button.css', 'ConfirmDialog.css', 'Dialog.css', 'Drawer.css', 'EmptyState.css', 'Field.css', 'FormFooter.css',
+      'IconButton.css', 'LoadingState.css', 'Menu.css', 'Notice.css', 'SearchField.css', 'Select.css', 'StatusBadge.css',
+      'Switch.css', 'Tabs.css', 'Tooltip.css', 'overlay.css', 'visuallyHidden.css',
     ]);
   });
 
@@ -180,8 +180,9 @@ describe('components/ui stylesheets', () => {
   it('gives every component its stylesheet and its test, next to it', () => {
     const components = files.filter(f => /^[A-Z]\w+\.tsx$/.test(f) && !f.endsWith('.test.tsx'));
     expect(components.sort()).toEqual([
-      'Button.tsx', 'ConfirmDialog.tsx', 'Dialog.tsx', 'Drawer.tsx', 'Field.tsx', 'FormFooter.tsx', 'IconButton.tsx',
-      'Menu.tsx', 'SearchField.tsx', 'Select.tsx', 'StatusBadge.tsx', 'Switch.tsx', 'Tabs.tsx', 'Tooltip.tsx',
+      'Button.tsx', 'ConfirmDialog.tsx', 'Dialog.tsx', 'Drawer.tsx', 'EmptyState.tsx', 'Field.tsx', 'FormFooter.tsx',
+      'IconButton.tsx', 'LoadingState.tsx', 'Menu.tsx', 'Notice.tsx', 'SearchField.tsx', 'Select.tsx', 'StatusBadge.tsx',
+      'Switch.tsx', 'Tabs.tsx', 'Tooltip.tsx',
     ]);
     for (const component of components) {
       const name = component.replace(/\.tsx$/, '');

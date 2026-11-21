@@ -4,10 +4,13 @@ import { Button, type ButtonSize, type ButtonVariant } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Dialog } from '../ui/Dialog';
 import { Drawer } from '../ui/Drawer';
+import { EmptyState } from '../ui/EmptyState';
 import { Field } from '../ui/Field';
 import { FormFooter } from '../ui/FormFooter';
 import { IconButton } from '../ui/IconButton';
+import { LoadingState, Skeleton } from '../ui/LoadingState';
 import { Menu, type MenuItem } from '../ui/Menu';
+import { Notice } from '../ui/Notice';
 import { SearchField } from '../ui/SearchField';
 import { Select, type SelectOption } from '../ui/Select';
 import { StatusBadge } from '../ui/StatusBadge';
@@ -389,6 +392,104 @@ function FormFooterDemo({ t }: { t: T }) {
   );
 }
 
+/** KT-1883 — a Notice in each of its four tones; the danger one with its
+ *  action, the success one dismissible. */
+function NoticeDemo({ t }: { t: T }) {
+  const [dismissed, setDismissed] = useState(false);
+  const [retried, setRetried] = useState(0);
+  return (
+    <>
+      <Row label={t('designSystem.demo.tone.info')}>
+        <Notice tone="info" title={t('designSystem.demo.noticeInfoTitle')}>{t('designSystem.demo.noticeInfo')}</Notice>
+      </Row>
+      <Row label={t('designSystem.demo.tone.warning')}>
+        <Notice tone="warning" title={t('designSystem.demo.noticeWarningTitle')}>{t('designSystem.demo.noticeWarning')}</Notice>
+      </Row>
+      <Row label={t('designSystem.demo.tone.danger')}>
+        <Notice
+          tone="danger"
+          title={t('designSystem.demo.noticeDangerTitle')}
+          action={{ label: t('designSystem.demo.retry'), onClick: () => setRetried(n => n + 1) }}
+        >
+          <span data-testid="ds-notice-retried" data-count={retried}>{t('designSystem.demo.noticeDanger')}</span>
+        </Notice>
+      </Row>
+      <Row label={t('designSystem.demo.tone.success')}>
+        {dismissed
+          ? <Button onClick={() => setDismissed(false)}>{t('designSystem.demo.showNoticeAgain')}</Button>
+          : (
+            <Notice tone="success" title={t('designSystem.demo.noticeSuccessTitle')} onDismiss={() => setDismissed(true)}>
+              {t('designSystem.demo.noticeSuccess')}
+            </Notice>
+          )}
+      </Row>
+    </>
+  );
+}
+
+/** KT-1883 — the three cases of an EmptyState, each with its way out. */
+function EmptyStateDemo({ t }: { t: T }) {
+  const none = () => {};
+  return (
+    <>
+      <Row label={t('designSystem.demo.empty.firstUse')}>
+        <div className="ds-demo-frame">
+          <EmptyState
+            kind="firstUse"
+            title={t('designSystem.demo.emptyFirstUseTitle')}
+            description={t('designSystem.demo.emptyFirstUse')}
+            action={{ label: t('designSystem.demo.emptyFirstUseAction'), icon: <Plus />, onClick: none }}
+          />
+        </div>
+      </Row>
+      <Row label={t('designSystem.demo.empty.noResult')}>
+        <div className="ds-demo-frame">
+          <EmptyState
+            kind="noResult"
+            title={t('designSystem.demo.emptyNoResultTitle')}
+            description={t('designSystem.demo.emptyNoResult')}
+            onClear={none}
+          />
+        </div>
+      </Row>
+      <Row label={t('designSystem.demo.empty.nothingSelected')}>
+        <div className="ds-demo-frame">
+          <EmptyState
+            kind="nothingSelected"
+            title={t('designSystem.demo.emptyNothingSelectedTitle')}
+            description={t('designSystem.demo.emptyNothingSelected')}
+          />
+        </div>
+      </Row>
+    </>
+  );
+}
+
+/** KT-1883 — LoadingState in its three sizes, then the list and detail
+ *  skeletons. */
+function LoadingStateDemo({ t }: { t: T }) {
+  const message = t('designSystem.demo.loadingTasks');
+  return (
+    <>
+      <Row label={t('designSystem.demo.size.sm')}>
+        <LoadingState size="sm" message={message} />
+      </Row>
+      <Row label={t('designSystem.demo.size.md')}>
+        <div className="ds-demo-frame"><LoadingState size="md" message={message} /></div>
+      </Row>
+      <Row label={t('designSystem.demo.size.lg')}>
+        <div className="ds-demo-frame"><LoadingState size="lg" message={message} /></div>
+      </Row>
+      <Row label={t('designSystem.demo.skeleton.list')}>
+        <div className="ds-demo-frame"><Skeleton kind="list" label={message} /></div>
+      </Row>
+      <Row label={t('designSystem.demo.skeleton.detail')}>
+        <div className="ds-demo-frame"><Skeleton kind="detail" label={message} /></div>
+      </Row>
+    </>
+  );
+}
+
 const DEMOS: Record<string, (props: { t: T }) => ReactNode> = {
   button: ButtonDemo,
   iconButton: IconButtonDemo,
@@ -404,6 +505,9 @@ const DEMOS: Record<string, (props: { t: T }) => ReactNode> = {
   select: SelectDemo,
   switch: SwitchDemo,
   formFooter: FormFooterDemo,
+  notice: NoticeDemo,
+  emptyState: EmptyStateDemo,
+  loadingState: LoadingStateDemo,
 };
 
 /** KT-1880 — each component of components/ui/ under its own heading, with its

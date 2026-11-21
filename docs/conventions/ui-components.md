@@ -4,7 +4,8 @@ KT-1880 (design-system lot 1). These components replace the parallel base
 buttons, tab styles, menus and native `title=` tooltips. No screen is migrated
 in KT-1880; the screens move to them in lots 2-5. KT-1882 adds the form
 components (`Field`, `Select`, `Switch`, `FormFooter`); lot 5 migrates the
-forms to them. Pairs with
+forms to them. KT-1883 adds the feedback components (`Notice`,
+`EmptyState`, `LoadingState` with its `Skeleton`). Pairs with
 [design-tokens.md](design-tokens.md) and [ui-text.md](ui-text.md).
 
 ## Where they live
@@ -30,6 +31,9 @@ fails if a component lacks one of the three.
 | `Select` | The native `<select>`, one look: `options` (an entry or a group), `value`, `onChange(value)`, `placeholder`, `size` sm / md. No label of its own: a `Field` names it, or an `aria-label`. | native |
 | `Switch` | An on/off setting that applies at once: a checkbox with `role="switch"`, named by its visible `label` (`hideLabel` keeps it for assistive technology only), `description` under it. | Space; a click on the label |
 | `FormFooter` | The end of a form: `blockers` (what still holds the action), then Cancel (`onCancel`), then the action (`submitLabel`, `tone` primary / danger, `busy`), on the right, `pinned` to the bottom of what scrolls (default). Without `onSubmit` the action submits the form around it. | a held action stays focusable |
+| `Notice` | A message inside the page it concerns (see [feedback-channels.md](feedback-channels.md)): `tone` info / warning / danger / success, optional `title`, one `action` (`{ label, onClick }`), `onDismiss` adds a cross named "Dismiss". Tone on the icon, the inline-start border and the tint; text in `--kr-text-primary`. `role="alert"` for danger only, `status` otherwise. | native |
+| `EmptyState` | `kind` firstUse (its `action`, the primary button, is required), noResult (`onClear`, required, "Clear the filters" unless `clearLabel`), nothingSelected (no action); `title`, `description`, `icon`. The type refuses a case without its way out. | native |
+| `LoadingState` | `size` sm (a ring beside the text, inline) / md (the mark over its sentence, a panel; default) / lg (a whole page); `fullscreen` (the window, lg), `phase`, `onRetry`. md and lg keep the cold-start screen of `index.html` instead of drawing a second one. Same file: `Skeleton`, `kind` list (`rows`) / detail, one named busy status, shapes hidden from assistive technology. | — |
 
 `Menu` and `Tooltip` render into `document.body` at a fixed position
 (`anchor.ts`), so a container with `overflow: hidden` does not clip them.
@@ -133,6 +137,30 @@ Escape closes one layer, the innermost first
 - **`.ui-visually-hidden`** now lives in `visuallyHidden.css`, imported by
   each component that uses it (it was in `SearchField.css`, which `Switch`
   and `FormFooter` would otherwise depend on).
+
+## Feedback components (KT-1883)
+
+- **Which channel.** A toast answers a gesture just made, errors included;
+  the bell holds what lasts or happens in the background; a banner (a
+  `Notice`) stays inside the page it concerns, in its one slot under the
+  page header. The rule and one example per channel:
+  [feedback-channels.md](feedback-channels.md).
+- **Notice reads at 4.5:1.** As `StatusBadge`, the tone colour never writes
+  the text: the test composites the tint on every surface of the seven
+  themes and measures the text on it
+  `[src: file: frontend/src/components/ui/Notice.test.tsx:49]`.
+- **An empty state always has its way out.** `EmptyState` is a union on
+  `kind`: a first use without `action`, a no-result without `onClear`, or a
+  nothing-selected with an action do not compile (`@ts-expect-error` lines
+  in its test) `[src: file: frontend/src/components/ui/EmptyState.tsx:44#EmptyStateProps]`.
+- **One LoadingState.** `components/LoadingState.tsx` re-exports
+  `ui/LoadingState` (and `BootHold`) for its ten users; the sizes replace the
+  14 sizes of `<Loader2>` as screens move (lots 2-5). Every animation stops
+  under `prefers-reduced-motion`, which the test reads from the stylesheet
+  `[src: file: frontend/src/components/ui/LoadingState.tsx:38#LoadingState]`.
+- **Variants** live in `feedbackKinds.ts` (`NOTICE_TONES`,
+  `EMPTY_STATE_KINDS`, `LOADING_SIZES`, `SKELETON_KINDS`), so the component
+  files export components only (fast refresh).
 
 ## Rules
 

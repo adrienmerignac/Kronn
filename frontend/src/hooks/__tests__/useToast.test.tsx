@@ -3,7 +3,8 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
-import { useToast } from '../useToast';
+import { MAX_TRANSIENT_TOASTS, useToast, withToast } from '../useToast';
+import type { Toast } from '../toastTypes';
 
 function ToastDemo({ run }: { run: (toast: ReturnType<typeof useToast>['toast']) => void }) {
   const { toast, ToastContainer } = useToast();
@@ -136,8 +137,7 @@ describe('useToast — warning variant', () => {
     }
     render(<FireExplicit />);
     act(() => { screen.getByText('fire').click(); });
-    // Both toasts ship — but the 3-slot cap (prev.slice(-2) + new = 3)
-    // still applies, so we get 2 visible.
+    // Both toasts ship, under the cap of 3 transient toasts.
     expect(screen.getAllByText('Explicit retry')).toHaveLength(2);
   });
 
@@ -160,5 +160,72 @@ describe('useToast — warning variant', () => {
     // First toast still on screen, second one ALSO surfaces because
     // the dedup window expired.
     expect(screen.getAllByText('Welcome')).toHaveLength(2);
+  });
+});
+
+// KT-1883 — the counter-audit (KT-1983) found a persistent error toast dropped
+// as soon as three newer toasts arrived (`prev.slice(-2)` whatever the kind),
+// and the stack fixed top right, over the bell and the detail header actions.
+describe('useToast — a persistent toast is never evicted (KT-1883)', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  const toastOf = (id: number, persistent: boolean): Toast =>
+    ({ id, message: `m${id}`, type: persistent ? 'error' : 'info', persistent, copyable: null });
+
+  it('keeps every persistent toast and the newest transient ones, in arrival order', () => {
+    let stack: Toast[] = [];
+    stack = withToast(stack, toastOf(1, true));
+    for (let id = 2; id <= 40; id++) stack = withToast(stack, toastOf(id, false));
+    stack = withToast(stack, toastOf(41, true));
+    stack = withToast(stack, toastOf(42, false));
+    expect(stack.map(t => t.id)).toEqual([1, 39, 40, 41, 42]);
+    expect(stack.filter(t => !t.persistent)).toHaveLength(MAX_TRANSIENT_TOASTS);
+  });
+
+  it('keeps an error on screen after any number of later transient toasts, until it is dismissed', () => {
+    function Burst() {
+      const { toast, ToastContainer } = useToast();
+      return (
+        <>
+          <button onClick={() => toast('Save failed: disk full', 'error')}>error</button>
+          <button onClick={() => {
+            for (let i = 0; i < 25; i++) toast(`Step ${i} done`, i % 2 ? 'success' : 'info');
+          }}>burst</button>
+          <ToastContainer />
+        </>
+      );
+    }
+    render(<Burst />);
+    act(() => { screen.getByText('error').click(); });
+    act(() => { screen.getByText('burst').click(); });
+    expect(screen.getByText('Save failed: disk full')).toBeInTheDocument();
+    expect(document.querySelectorAll('.kr-toast:not([data-type="error"])')).toHaveLength(MAX_TRANSIENT_TOASTS);
+    act(() => { screen.getByText('burst').click(); });
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect(screen.getByText('Save failed: disk full')).toBeInTheDocument();
+    expect(document.querySelectorAll('.kr-toast')).toHaveLength(1);
+
+    act(() => { screen.getByRole('button', { name: 'Close' }).click(); });
+    expect(screen.queryByText('Save failed: disk full')).toBeNull();
+  });
+
+  it('stacks the toasts at the bottom right, away from the bell and the header actions at the top', () => {
+    render(<ToastDemo run={t => t('Saved', 'success')} />);
+    act(() => { screen.getByText('fire').click(); });
+    const stack = document.querySelector('.kr-toast-stack') as HTMLElement;
+    expect(stack).toContainElement(screen.getByText('Saved'));
+    expect(stack.style.position).toBe('fixed');
+    expect(stack.style.bottom).toBe('16px');
+    expect(stack.style.right).toBe('16px');
+    expect(stack.style.top).toBe('');
+  });
+
+  it('keeps a toast inside a 400 px window', () => {
+    render(<ToastDemo run={t => t('A long message that would otherwise run off the edge of a narrow window', 'info')} />);
+    act(() => { screen.getByText('fire').click(); });
+    const toast = document.querySelector('.kr-toast') as HTMLElement;
+    expect(toast.style.maxWidth).toBe('min(420px, calc(100vw - 32px))');
+    expect(toast.style.minWidth).toBe('min(240px, calc(100vw - 32px))');
   });
 });

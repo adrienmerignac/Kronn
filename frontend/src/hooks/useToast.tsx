@@ -34,6 +34,20 @@ export function resetServerFailureToast(): void {
   lastServerFailureToastAt = 0;
 }
 
+/** KT-1883 — at most this many transient toasts on screen; the oldest goes
+ *  first. A persistent toast (an error by default) is never evicted: it stays
+ *  until the user dismisses it, whatever comes after it. */
+export const MAX_TRANSIENT_TOASTS = 3;
+
+/** The stack once `item` is added: every persistent toast, and the newest
+ *  MAX_TRANSIENT_TOASTS transient ones, in arrival order. */
+export function withToast(prev: readonly Toast[], item: Toast): Toast[] {
+  const next = [...prev, item];
+  const transient = next.filter(t => !t.persistent);
+  const evicted = new Set(transient.slice(0, Math.max(0, transient.length - MAX_TRANSIENT_TOASTS)).map(t => t.id));
+  return next.filter(t => !evicted.has(t.id));
+}
+
 export function useToast() {
   const { t } = useT();
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -64,7 +78,7 @@ export function useToast() {
     // agent-disc-finished-toasts — multi-agent QP runs broadcast N
     // identical "batch finished" events in rapid succession from
     // multiple WS subscribers in the dashboard, each calling toast()
-    // separately. The cap-to-3 (`prev.slice(-2)` below) limited the
+    // separately. The cap-to-3 (`withToast` below) limited the
     // visible damage but didn't fix the root cause. This dedup does.
     const dedupEnabled = options?.dedup ?? true;
     if (dedupEnabled) {
@@ -85,7 +99,7 @@ export function useToast() {
     const persistent = options?.persistent ?? type === 'error';
     const copyable = options?.copyable ?? null;
 
-    setToasts(prev => [...prev.slice(-2), { id, message, type, persistent, copyable }]);
+    setToasts(prev => withToast(prev, { id, message, type, persistent, copyable }));
 
     if (!persistent) {
       window.setTimeout(() => dismiss(id), AUTO_DISMISS_MS[type]);
@@ -102,11 +116,15 @@ export function useToast() {
             to { transform: translateX(0); opacity: 1; }
           }
         `}</style>
+        {/* KT-1883 — bottom right: the bell and the detail header actions sit at
+            the top right, and a toast there covered them. Newest at the bottom. */}
         <div
+          className="kr-toast-stack"
           style={{
             position: 'fixed',
-            top: 16,
+            bottom: 16,
             right: 16,
+            alignItems: 'flex-end',
             zIndex: 'var(--kr-z-toast)',
             display: 'flex',
             flexDirection: 'column',
