@@ -1,5 +1,5 @@
 import {
-  Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState,
+  Fragment, useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState,
   type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref, type RefObject,
 } from 'react';
 import { agentPaletteOptionId } from '../lib/agentPickerPalette';
@@ -317,11 +317,8 @@ export function AgentPickerPalette({ id, rows, status, ariaLabel, className, sty
   const fallbackId = useId();
   const listId = id ?? fallbackId;
   const ownRef = useRef<HTMLDivElement | null>(null);
-  const setRef = useCallback((node: HTMLDivElement | null) => {
-    ownRef.current = node;
-    if (typeof listRef === 'function') listRef(node);
-    else if (listRef) (listRef as { current: HTMLDivElement | null }).current = node;
-  }, [listRef]);
+  // The caller's ref gets the list's node through React, never written by hand.
+  useImperativeHandle(listRef, () => ownRef.current as HTMLDivElement, []);
   const highlightedKey = rows.find(row => row.highlighted)?.key;
   // The keys move the highlight past the list's fold: keep it in view.
   useEffect(() => {
@@ -331,8 +328,12 @@ export function AgentPickerPalette({ id, rows, status, ariaLabel, className, sty
   }, [highlightedKey]);
   // Never taller than the room it really has: from its anchored edge to the
   // boundary's far edge (or the window's), so its first row is always visible.
+  // The latest `boundary`, updated after each commit and before `fit` runs
+  // below (layout effects run in order), never written during render.
   const boundaryRef = useRef(boundary);
-  boundaryRef.current = boundary;
+  useLayoutEffect(() => {
+    boundaryRef.current = boundary;
+  });
   const fit = useCallback(() => {
     const node = ownRef.current;
     if (!node || !boundaryRef.current) return;
@@ -355,7 +356,7 @@ export function AgentPickerPalette({ id, rows, status, ariaLabel, className, sty
   }, [fit, bounded]);
   return (
     <div
-      ref={setRef}
+      ref={ownRef}
       id={listId}
       className={['kr-agent-switch-palette', className].filter(Boolean).join(' ')}
       role="listbox"
@@ -610,8 +611,12 @@ function usePopover(layoutKey: unknown, busy = false) {
     popover.dataset.placement = below ? 'below' : 'above';
   }, []);
 
+  // What `close` reads: kept in step with the state once it is committed
+  // (never written during render), and set at once by `close` itself.
   const openRef = useRef(open);
-  openRef.current = open;
+  useLayoutEffect(() => {
+    openRef.current = open;
+  }, [open]);
   const close = useCallback((restoreFocus = true) => {
     // Already closed (an outside click while a choice was saving): the focus
     // stays where the user put it, no return to the trigger is scheduled.
@@ -1201,14 +1206,13 @@ function TierPicker({
       : Boolean(onChange) && choices.length > 1;
   const triggerVariant = variant ?? (compact ? 'compact' : 'chip');
 
-  const popover = usePopover(query, saving);
-  const { catalog, catalogError } = useModelCatalogSnapshot(popover.open);
-  const { place } = popover;
+  const { open, setOpen, place, close, rootRef, popoverRef, searchRef } = usePopover(query, saving);
+  const { catalog, catalogError } = useModelCatalogSnapshot(open);
   // The catalogue's models and states change the list's size: placed again.
   useLayoutEffect(() => {
-    if (popover.open) place();
-  }, [popover.open, place, catalog, catalogError]);
-  const navigateChoices = usePopoverKeys(popover.popoverRef, popover.searchRef, popover.close);
+    if (open) place();
+  }, [open, place, catalog, catalogError]);
+  const navigateChoices = usePopoverKeys(popoverRef, searchRef, close);
 
   const targetLabel = defaultTargetLabel;
   const targetAvailability = (target: AgentSwitchTarget): AgentAvailability | null =>
@@ -1287,7 +1291,7 @@ function TierPicker({
         await onChange(target.agent);
       }
       if (tierPicker && tier !== undefined) remember({ agent: target.agent, connectionId: target.connectionId, tier });
-      popover.close();
+      close();
     } catch {
       // The caller owns the user-facing error. Keep the picker open so
       // another available combination can be selected.
@@ -1308,7 +1312,7 @@ function TierPicker({
     try {
       await customModel.onSelect(target, chosen);
       remember({ agent: target.agent, connectionId: target.connectionId, model: chosen });
-      popover.close();
+      close();
     } catch (error) {
       setModelError({ key: targetKey(target), row, message: userError(error) });
     } finally {
@@ -1340,11 +1344,11 @@ function TierPicker({
 
   return (
     <span
-      ref={popover.rootRef}
+      ref={rootRef}
       className="kr-agent-switch"
       data-compact={triggerVariant === 'compact'}
       data-variant={triggerVariant}
-      data-open={popover.open}
+      data-open={open}
       onClick={event => event.stopPropagation()}
     >
       <button
@@ -1358,15 +1362,15 @@ function TierPicker({
             : title}
         aria-label={ariaLabel}
         aria-haspopup="dialog"
-        aria-expanded={popover.open}
+        aria-expanded={open}
         disabled={disabled || saving}
         onClick={() => {
-          if (!popover.open) {
+          if (!open) {
             setQuery('');
             setModelError(null);
             if (customModel) setRecents(readAgentPickerRecents());
           }
-          popover.setOpen(value => !value);
+          setOpen(value => !value);
         }}
       >
         {saving ? <Loader2 size={9} className="spin" /> : <RefreshCw size={9} />}
@@ -1385,16 +1389,16 @@ function TierPicker({
         {effectiveSuffix && <span className="kr-agent-switch-suffix"> · {effectiveSuffix}</span>}
         <ChevronDown size={9} />
       </button>
-      {popover.open && createPortal(
+      {open && createPortal(
         <span
-          ref={popover.popoverRef}
+          ref={popoverRef}
           className="kr-agent-switch-popover"
           role="dialog"
           aria-label={ariaLabel}
           onKeyDown={navigateChoices}
         >
           <SearchField
-            ref={popover.searchRef}
+            ref={searchRef}
             className="kr-agent-switch-search"
             size="sm"
             label={t('agentPicker.search')}
@@ -1512,13 +1516,12 @@ function ExactModelPicker({
   const targets = valueKey
     ? [...listed.filter(target => targetKey(target) === valueKey), ...listed.filter(target => targetKey(target) !== valueKey)]
     : listed;
-  const popover = usePopover(query);
-  const { catalog } = useModelCatalogSnapshot(popover.open);
-  const { place } = popover;
+  const { open, setOpen, place, close, rootRef, popoverRef, searchRef } = usePopover(query);
+  const { catalog } = useModelCatalogSnapshot(open);
   useLayoutEffect(() => {
-    if (popover.open) place();
-  }, [popover.open, place, catalog]);
-  const navigate = usePopoverKeys(popover.popoverRef, popover.searchRef, popover.close);
+    if (open) place();
+  }, [open, place, catalog]);
+  const navigate = usePopoverKeys(popoverRef, searchRef, close);
   const triggerVariant = variant ?? (compact ? 'compact' : 'chip');
 
   const resolve = (target: AgentSwitchTarget, tier: ModelTier) => resolveCatalogTier(catalog, target, tier, modelTiers);
@@ -1537,7 +1540,7 @@ function ExactModelPicker({
 
   const fullLabel = agentModelLabel(value, main, targets, t, modelTiers);
   const pick = (next: ShadowAgent | undefined, recent?: AgentPickerRecent) => {
-    popover.close();
+    close();
     if (recent) setRecents(recordAgentPickerRecent(recent));
     onChange(next);
   };
@@ -1559,12 +1562,12 @@ function ExactModelPicker({
 
   return (
     <span
-      ref={popover.rootRef}
+      ref={rootRef}
       className={`kr-agent-switch wf-shadow-picker${className ? ` ${className}` : ''}`}
       data-compact={triggerVariant === 'compact'}
       data-variant={triggerVariant}
       data-mode="exact-model"
-      data-open={popover.open}
+      data-open={open}
       onClick={event => event.stopPropagation()}
     >
       <button
@@ -1573,15 +1576,15 @@ function ExactModelPicker({
         data-testid={testId}
         aria-label={ariaLabel}
         aria-haspopup="dialog"
-        aria-expanded={popover.open}
+        aria-expanded={open}
         title={children ? undefined : [fullLabel, custom ? t('agentPicker.custom') : ''].filter(Boolean).join(' · ')}
         disabled={disabled}
         onClick={() => {
-          if (!popover.open) {
+          if (!open) {
             setQuery('');
             setRecents(readAgentPickerRecents());
           }
-          popover.setOpen(open => !open);
+          setOpen(value => !value);
         }}
       >
         {children ?? <span className="kr-agent-switch-name">{fullLabel}</span>}
@@ -1594,9 +1597,9 @@ function ExactModelPicker({
         {!children && !value && <em className="wf-shadow-picker-hint">{t('wf.shadow.rows.sameAgent')}</em>}
         <ChevronDown size={9} aria-hidden />
       </button>
-      {popover.open && createPortal(
+      {open && createPortal(
         <span
-          ref={popover.popoverRef}
+          ref={popoverRef}
           className="kr-agent-switch-popover"
           data-mode="exact-model"
           role="dialog"
@@ -1604,7 +1607,7 @@ function ExactModelPicker({
           onKeyDown={navigate}
         >
           <SearchField
-            ref={popover.searchRef}
+            ref={searchRef}
             className="kr-agent-switch-search"
             size="sm"
             label={t('agentPicker.searchModel')}
