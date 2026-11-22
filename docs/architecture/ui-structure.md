@@ -44,7 +44,7 @@ Views that take the whole window, outside the dashboard shell:
 
 A mosaic's members and layout are its query string; changing the layout
 rewrites the address in place. An invalid mosaic (fewer than two members)
-redirects to `/projects`. `[src: file: frontend/src/lib/routes.ts:538-549#STANDALONE_ROOT]`
+redirects to `/projects`. `[src: file: frontend/src/lib/routes.ts:546-557#STANDALONE_ROOT]`
 `[src: file: frontend/src/lib/discussion-mosaic-navigation.ts:7-17#discussionMosaicRoute]`
 `[src: file: frontend/src/routes/StandaloneDiscussionsMosaicRoute.tsx:7-19]`
 
