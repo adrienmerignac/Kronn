@@ -506,7 +506,7 @@ the participant chips and their details, and the discussion list rows.
   agent's last reply on that mode, else « default model ». None of them reads
   the catalogue, which the picker loads only when it opens: their text does
   not change when the list opens.
-  `[src: file: frontend/src/lib/agentModelResolution.ts:119#discussionAgentModel]`
+  `[src: file: frontend/src/lib/agentModelResolution.ts:130#discussionAgentModel]`
   `[src: file: frontend/src/lib/agentModelResolution.ts:36#resolveIdentityModel]`
 - **The roles:** main agent, one-off agent, CLI session, workflow step
   (`ui.agentIdentity.role.*`); `roleLabel` writes another word in the chip
@@ -737,7 +737,7 @@ a refusal is shown next to the entry and the previous choice stays: the picker
 trims, it never re-validates.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:74-78#OTHER_MODELS_RENDER_LIMIT]`
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:1407-1408#selectModel]`
-`[src: file: frontend/src/components/ChatHeader.tsx:357]`
+`[src: file: frontend/src/components/ChatHeader.tsx:363]`
 `[src: file: frontend/src/pages/DiscussionsPage.tsx:2469]`
 
 « Récents » sits on top of those lists: the last three distinct choices
@@ -749,8 +749,20 @@ the same choice in its group is, with that row's title: its mode (an
 unavailable mode; in the shadow picker the step's own run, which is its
 explicit model, else the mode it runs on), or the catalogue entry of its exact
 model; a refusal of a recent exact model is shown next to that recent (KT-2013).
+When the header falls back to the last reply, it skips the replies of the exact
+models the open page saw the discussion hold and drop, and a reply whose
+trigger names, for the agent, another connection than the one it runs on (a
+mention); a trigger naming no connection is an ordinary turn of the
+discussion's own connection. Known limits, waiting for a backend field (a reply
+records neither whether it ran the discussion's exact model nor the connection
+of an inherited turn): (a) the dropped exact models are the open page's memory
+only, so after a reload and until the next reply the header names the cleared
+exact model again; (b) after the discussion moves to another connection, the
+replies of the previous connection read as the new one's.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:1123#renderRecent]`
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:1657#isMain]`
+`[src: file: frontend/src/lib/agentModelResolution.ts:100#lastReplyModel]`
+`[src: file: frontend/src/components/ChatHeader.tsx:139#droppedExact]`
 `[src: file: frontend/src/lib/agentPickerRecents.ts:54#readAgentPickerRecents]`
 `[src: file: frontend/src/lib/uiPreferences.ts:53]`
 

@@ -61,9 +61,15 @@ export function modeModelIdFor(
  */
 export interface LastReplyScope {
   /**
-   * The connection the agent runs on now. A reply counts only when its turn
-   * names that very connection (none for an agent without one); a Custom
-   * agent, whose every run is on a connection, needs one.
+   * The connection the agent runs on now. A reply is skipped only when the
+   * targets of its trigger name, for this agent, a connection different from
+   * this one (a mention of another connection). A trigger that names no
+   * connection for the agent — no target at all, or a discussion-agent target
+   * without one — is an ordinary turn: it inherits the discussion's
+   * connection, so its reply counts. Absent, the connection is unknown (the
+   * page knows it for a Custom agent only) and no reply is skipped for its
+   * connection; a Custom agent, whose every run is on a connection, needs
+   * one, else no reply is read.
    */
   connectionId?: string | null;
   messageTargets?: MessageTargets | null;
@@ -71,16 +77,23 @@ export interface LastReplyScope {
   exclude?: readonly string[];
 }
 
-/** The connection a reply's turn ran on, `undefined` when its turn names none. */
-function replyConnection(
+/**
+ * Whether a reply's trigger addressed this agent on other connections only.
+ * A trigger naming no connection for the agent is the discussion's own turn.
+ */
+function repliedOnOtherConnection(
   message: ReplyModelSource,
   agent: AgentType,
+  connectionId: string,
   targets: MessageTargets | null | undefined,
-): string | null | undefined {
+): boolean {
   const trigger = message.reply_to_message_id;
-  if (!trigger) return undefined;
-  const turn = targets?.[trigger]?.find(target => target.agent_type === agent);
-  return turn ? turn.connection_id ?? null : undefined;
+  if (!trigger) return false;
+  const named = (targets?.[trigger] ?? [])
+    .filter(target => target.agent_type === agent)
+    .map(target => target.connection_id?.trim() || null);
+  if (named.length === 0 || named.includes(null)) return false;
+  return !named.includes(connectionId);
 }
 
 /** The model the agent last replied with on this mode, newest first. */
@@ -92,8 +105,6 @@ export function lastReplyModel(
 ): string | null {
   if (!messages) return null;
   const connectionId = scope.connectionId?.trim() || null;
-  // A reply's connection is checked whenever the agent may run on one.
-  const checksConnection = connectionId !== null || agent === 'Custom';
   if (agent === 'Custom' && !connectionId) return null;
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
@@ -101,7 +112,7 @@ export function lastReplyModel(
     if (message.model_tier && message.model_tier !== tier) continue;
     const model = message.model?.trim();
     if (!model || scope.exclude?.includes(model)) continue;
-    if (checksConnection && replyConnection(message, agent, scope.messageTargets) !== connectionId) continue;
+    if (connectionId && repliedOnOtherConnection(message, agent, connectionId, scope.messageTargets)) continue;
     return model;
   }
   return null;

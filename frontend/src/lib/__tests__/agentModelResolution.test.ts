@@ -106,26 +106,69 @@ describe('lastReplyModel scope (KT-2013)', () => {
     expect(lastReplyModel(messages, 'Codex', 'default', { exclude: ['gpt-exact-pin', 'gpt-5.5-codex'] })).toBeNull();
   });
 
-  it('reads only the replies of the connection the agent runs on, through the targets of their trigger', () => {
-    const messages = [reply('r-a', 'model-of-a', 'ask-a'), reply('r-b', 'model-of-b', 'ask-b'), reply('r-x', 'model-unknown')];
+  it('skips only the reply to a mention of another connection', () => {
+    const messages = [reply('r-a', 'model-of-a', 'ask-a'), reply('r-b', 'model-of-b', 'ask-b')];
     expect(lastReplyModel(messages, 'Custom', 'default', { connectionId: 'conn-a', messageTargets: targets })).toBe('model-of-a');
     expect(lastReplyModel(messages, 'Custom', 'default', { connectionId: 'conn-b', messageTargets: targets })).toBe('model-of-b');
-    // A reply whose turn names no connection, or another connection: nothing.
+    // Both triggers name another connection: nothing.
     expect(lastReplyModel(messages, 'Custom', 'default', { connectionId: 'conn-c', messageTargets: targets })).toBeNull();
-    expect(lastReplyModel(messages, 'Custom', 'default', { connectionId: 'conn-a' })).toBeNull();
     // A Custom agent whose connection is unknown names no reply.
     expect(lastReplyModel(messages, 'Custom', 'default', { messageTargets: targets })).toBeNull();
   });
 
+  // The review measured it on real data: an ordinary turn's trigger names no
+  // connection (no target, or a discussion-agent target without one); the turn
+  // inherits the discussion's connection, so its reply is this connection's.
+  const litellm = (id: string, model: string, replyTo?: string) => ({
+    id, role: 'Agent', agent_type: 'LiteLlm' as const, model, reply_to_message_id: replyTo ?? null,
+  });
+  const ordinaryTargets = {
+    'ask-plain-target': [{ kind: 'discussion_agent' as const, agent_type: 'LiteLlm' as const }],
+    'ask-null-target': [{ kind: 'discussion_agent' as const, agent_type: 'LiteLlm' as const, connection_id: null }],
+    'ask-other': [{ kind: 'discussion_agent' as const, agent_type: 'LiteLlm' as const, connection_id: 'conn-other' }],
+  };
+
+  it('reads an ordinary reply of a connection-backed discussion', () => {
+    const scope = { connectionId: 'conn-1', messageTargets: ordinaryTargets };
+    // A trigger with no target at all, and a reply with no trigger.
+    expect(lastReplyModel([litellm('r1', 'llm-no-target', 'ask-without-target')], 'LiteLlm', 'default', scope))
+      .toBe('llm-no-target');
+    expect(lastReplyModel([litellm('r1', 'llm-no-trigger')], 'LiteLlm', 'default', scope)).toBe('llm-no-trigger');
+    // A discussion-agent target that names no connection.
+    expect(lastReplyModel([litellm('r1', 'llm-plain', 'ask-plain-target')], 'LiteLlm', 'default', scope))
+      .toBe('llm-plain');
+    expect(lastReplyModel([litellm('r1', 'llm-null', 'ask-null-target')], 'LiteLlm', 'default', scope))
+      .toBe('llm-null');
+    // No targets map at all.
+    expect(lastReplyModel([litellm('r1', 'llm-bare', 'ask-x')], 'LiteLlm', 'default', { connectionId: 'conn-1' }))
+      .toBe('llm-bare');
+  });
+
+  it('skips the reply to a mention of another connection and reads the ordinary one before it', () => {
+    const messages = [litellm('r1', 'llm-own', 'ask-plain-target'), litellm('r2', 'llm-other', 'ask-other')];
+    expect(lastReplyModel(messages, 'LiteLlm', 'default', { connectionId: 'conn-1', messageTargets: ordinaryTargets }))
+      .toBe('llm-own');
+    // The connection unknown (the page knows it for a Custom agent only): no reply is skipped for it.
+    expect(lastReplyModel(messages, 'LiteLlm', 'default', { messageTargets: ordinaryTargets })).toBe('llm-other');
+  });
+
   it('the list row and the bubbles read the connection of the discussion the same way', () => {
+    const none = { economy_model: null, default_model: null, reasoning_model: null };
     const disc = {
       agent: 'Custom' as const, tier: 'economy' as const,
       messages: [reply('r-a', 'model-of-a', 'ask-a'), reply('r-b', 'model-of-b', 'ask-b')],
       message_targets: targets,
     };
-    const none = { economy_model: null, default_model: null, reasoning_model: null };
     expect(discussionAgentModel(disc, { connection: connection({ id: 'conn-a', ...none }) }))
       .toEqual({ kind: 'id', id: 'model-of-a' });
     expect(discussionAgentModel(disc)).toEqual({ kind: 'providerDefault' });
+    // An ordinary LiteLlm discussion on a connection mapping no model for its mode.
+    const ordinary = {
+      agent: 'LiteLlm' as const, tier: 'default' as const,
+      messages: [litellm('r1', 'llm-plain', 'ask-plain-target'), litellm('r2', 'llm-no-target', 'ask-none'), litellm('r3', 'llm-other', 'ask-other')],
+      message_targets: ordinaryTargets,
+    };
+    expect(discussionAgentModel(ordinary, { connection: connection({ id: 'conn-1', ...none }) }))
+      .toEqual({ kind: 'id', id: 'llm-no-target' });
   });
 });

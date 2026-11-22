@@ -129,6 +129,12 @@ export function ChatHeader({
   // KT-2013 — the exact models this discussion held while shown: once one is
   // cleared, the replies it gave are not what the next turn runs. A reply does
   // not say it ran an exact model, so this page remembers them.
+  // Known limits, waiting for a backend field (a reply records neither whether
+  // it ran the discussion's exact model nor the connection of an inherited
+  // turn): (a) this memory is the open page's only — after a reload, and until
+  // the next reply, the header names the cleared exact model again; (b) after
+  // the discussion moves to another connection, the replies of the previous
+  // connection read as the new one's.
   const heldExact = discussion.model?.trim() || '';
   const [droppedExact, setDroppedExact] = useState<{ discussionId: string; models: readonly string[] }>(
     () => ({ discussionId: discussion.id, models: heldExact ? [heldExact] : [] }),
@@ -142,7 +148,7 @@ export function ChatHeader({
   const messageTargets = (discussion as DiscussionWithMessageTargets).message_targets;
   const lastReplyModel = useMemo(
     () => lastReplyModelOf(discussion.messages, discussion.agent, currentTier, {
-      // A reply of another connection is not this one's model.
+      // A reply to a mention of another connection is not this one's model.
       connectionId: externalConnectionId,
       messageTargets,
       exclude: excludedReplyModels,

@@ -415,6 +415,46 @@ describe('ChatHeader — shared agent switcher', () => {
       expect(model).not.toHaveTextContent('vendor/model-of-b');
     });
 
+    // KT-2013 (review) — an ordinary turn names no connection: it inherits the
+    // discussion's, so its reply is this connection's model.
+    it('names the reply of an ordinary turn of a connection-backed discussion', async () => {
+      const connection = (id: string, alias: string): ExternalApiConnectionView => ({
+        id, display_name: alias, mention_alias: alias, endpoint: 'https://example.invalid/v1',
+        credential_slug: alias, origin_preset: 'open_router',
+        economy_model: null, default_model: null, reasoning_model: 'vendor/reasoner',
+        created_at: '', updated_at: '', has_credential: true,
+      });
+      const discussion = makeDiscussion() as Discussion & { message_targets: Record<string, Array<{
+        kind: 'discussion_agent'; agent_type: 'Custom'; connection_id?: string | null;
+      }>> };
+      discussion.agent = 'Custom';
+      const user = (id: string) => ({ ...agentReply(id, null), role: 'User' as const, agent_type: null });
+      discussion.messages = [
+        user('ask-a'),
+        { ...agentReply('reply-a', 'vendor/model-of-a'), agent_type: 'Custom', reply_to_message_id: 'ask-a' },
+        user('ask-plain'),
+        { ...agentReply('reply-plain', 'vendor/model-ordinary'), agent_type: 'Custom', reply_to_message_id: 'ask-plain' },
+        user('ask-no-connection'),
+        { ...agentReply('reply-no-connection', 'vendor/model-ordinary-2'), agent_type: 'Custom', reply_to_message_id: 'ask-no-connection' },
+        user('ask-b'),
+        { ...agentReply('reply-b', 'vendor/model-of-b'), agent_type: 'Custom', reply_to_message_id: 'ask-b' },
+      ];
+      discussion.message_targets = {
+        'ask-a': [{ kind: 'discussion_agent', agent_type: 'Custom', connection_id: 'conn-a' }],
+        // `ask-plain` has no target; this one a discussion-agent target without a connection.
+        'ask-no-connection': [{ kind: 'discussion_agent', agent_type: 'Custom', connection_id: null }],
+        'ask-b': [{ kind: 'discussion_agent', agent_type: 'Custom', connection_id: 'conn-b' }],
+      };
+      renderHeader({ modelTiers: tiers, discussion, externalConnections: [connection('conn-a', 'alpha'), connection('conn-b', 'beta')] });
+      const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
+      await waitFor(() => expect(trigger).toBeEnabled());
+      expect(trigger).toHaveTextContent('@alpha');
+      const model = trigger.querySelector('[data-testid="agent-identity-model"]');
+      // The mention of conn-b is skipped; the ordinary turn before it is read.
+      expect(model).toHaveTextContent('vendor/model-ordinary-2');
+      expect(model).toHaveAttribute('data-state', 'id');
+    });
+
     it('keeps the role and the model together in the static form', () => {
       render(
         <AgentSwitchPicker
