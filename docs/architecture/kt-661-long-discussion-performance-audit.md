@@ -68,15 +68,15 @@ alone does not establish a user-visible duration.
 4. A `MessageBubble` passes normal text through `MessageBody`, which splits
    injected context and sends the content to `ReactMarkdown` with
    `remark-gfm` and `remark-emoji`.
-   [src: file: frontend/src/components/MessageBubble.tsx:2301-2349#MessageBody]
+   [src: file: frontend/src/components/MessageBubble.tsx:2308-2356#MessageBody]
    [src: file: frontend/src/components/MessageBubble.tsx:2252-2265#ReactMarkdown]
    Each message first renders as plain text and upgrades to Markdown once it is
    near the viewport or the browser is idle, so every message is still parsed.
-   [src: file: frontend/src/components/MessageBubble.tsx:2202-2234#canDefer]
+   [src: file: frontend/src/components/MessageBubble.tsx:2209-2241#canDefer]
    There is a per-message
    200,000-character fallback that avoids this Markdown path for very large
    individual messages; it does not cap the count of ordinary messages.
-   [src: file: frontend/src/components/MessageBubble.tsx:2009-2016#MAX_MARKDOWN_CHARS]
+   [src: file: frontend/src/components/MessageBubble.tsx:2012-2019#MAX_MARKDOWN_CHARS]
 5. The active-detail change also triggers an effect that filters the complete
    array to mark the discussion seen.
    [src: file: frontend/src/pages/DiscussionsPage.tsx:1991-2005#markDiscussionSeen]

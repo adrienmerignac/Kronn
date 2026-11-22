@@ -337,7 +337,7 @@ Escape closes one layer, the innermost first
   scroll there; no padding on the containers), with sample data whose
   numbers are written with `Intl.NumberFormat` in the interface's locale;
   the test is `DesignSystemDataComponents.test.tsx`.
-  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:744-748#WideAndNarrow]`
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:807-811#WideAndNarrow]`
 - **A size container needs a width of its own.** Inline-size containment
   ignores the content, so a `Table` or `KeyValueList` placed as a flex item
   with no width or flex-basis collapses to 0 px and vanishes. In the gallery
