@@ -120,13 +120,16 @@ CLI tiers. No embedded model list participates in the display helper anymore.
 
 The shared picker keeps an unavailable configured entry disabled. A failed
 snapshot read reports the error and retains previous data as cached, not live.
-Saved per-discussion and Quick Prompt overrides are shown for the current
-selection; alternative choices resolve their own tiers. The Quick Prompt
-caller still explicitly clears its old override when choosing a new agent/tier.
+Saved Quick Prompt overrides are shown for the current selection; alternative
+choices resolve their own tiers. The Quick Prompt caller still explicitly
+clears its old override when choosing a new agent/tier. A discussion's exact
+model (KT-1993) is no tier override: the header passes it as `customModel` and
+the picker shows it as « Personnalisé » unless it is the current mode's own
+model (KT-1994).
 [src: file: frontend/src/lib/modelCatalogSelection.ts:110-173#catalogModelOptions]
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:32-93#useModelCatalogSnapshot]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:90-93#catalogModelProvenance]
-[src: file: frontend/src/components/ChatHeader.tsx:332#currentModel]
+[src: file: frontend/src/components/ChatHeader.tsx:334#customModel]
 [src: file: frontend/src/pages/WorkflowsPage.tsx:1717-1748#changeQuickPromptAgent]
 [src: file: frontend/src/pages/WorkflowsPage.tsx:3375-3376#currentModel]
 
