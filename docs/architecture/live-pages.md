@@ -78,8 +78,8 @@ What the exported content names and the file does not hold is listed in
 profile that no longer exists, and the id of a saved Page, workflow or Quick
 object pasted in a step text. The Workflows and Artifacts pages show that list
 before the file is downloaded.
-[src: file: backend/src/api/artifact_portability/import.rs:618-624#approved_quick_exec_ids]
-[src: file: backend/src/api/artifact_portability/import.rs:843-845#digest]
+[src: file: backend/src/api/artifact_portability/import.rs:621-627#approved_quick_exec_ids]
+[src: file: backend/src/api/artifact_portability/import.rs:846-848#digest]
 [src: file: frontend/src/components/ArtifactImportDialog.tsx:71-74#setApprovedExecIds]
 
 An export carries no dataset values. A file exported before #273 still does:
@@ -91,7 +91,7 @@ When a Page uses such a dataset for a personal default, recollect using the
 recipient's configured connection and reopen the Page before checking that
 default; do not infer the viewer from an imported identity snapshot.
 [src: file: backend/src/api/artifact_portability.rs:144-148#has_current]
-[src: file: backend/src/api/artifact_portability/import.rs:974#initial]
+[src: file: backend/src/api/artifact_portability/import.rs:977#initial]
 [src: file: frontend/src/lib/live-page-sandbox.ts:314-333#runtimeData]
 
 Configured connections, their stored credentials, agent-library entries and
@@ -116,7 +116,7 @@ datasets, points, origin mappings and the library activation commit in one
 SQLite transaction; an error rolls everything back. Origin mappings identify
 earlier imported copies without overwriting their source or local definitions.
 [src: file: backend/src/lib.rs:1213-1234#artifact_portability]
-[src: file: backend/src/api/artifact_portability/import.rs:1210-1212#preview_digest]
+[src: file: backend/src/api/artifact_portability/import.rs:1213-1215#preview_digest]
 [src: file: backend/src/db/sql/188_artifact_import_origins.sql:4-9#artifact_import_origins]
 
 ## Status
@@ -843,7 +843,7 @@ Quick APIs, Quick Execs, root and child workflows. A late validation or SQL
 failure rolls everything back and preserves existing resources. The Page
 creation helper accepts the caller's transaction; starting and committing a
 separate Page transaction inside an import would break this guarantee.
-[src: file: backend/src/api/workflows.rs:5296-5298#create_live_page_in_transaction]
+[src: file: backend/src/api/workflows.rs:5337-5339#create_live_page_in_transaction]
 [src: file: backend/src/db/live_pages.rs:131-263#create_live_page_in_transaction]
 
 Kronn-bundled declarative charts are the default. Custom JavaScript and D3 are
@@ -891,7 +891,7 @@ bridge-token list and the handlers refuse a bridge caller.
   in flight is never relaunched; one row waits 2 s between trusted launches
   and one action allows 30 per minute.
 - **Revocation.** Deletes the row; the next click opens the card.
-[src: file: backend/src/api/workflows.rs:5450-5646#create_manual_run_admitted]
+[src: file: backend/src/api/workflows.rs:5491-5687#create_manual_run_admitted]
 [src: file: backend/src/workflows/run_pins.rs:81-91#pin_within]
 [src: file: backend/src/db/live_page_action_trusts.rs:31-35#ROW_MIN_INTERVAL_SECS]
 
@@ -1106,7 +1106,7 @@ says so before opening the Artifact.
 [src: file: backend/src/api/artifact_portability/import.rs:92-105#origins_to_allow]
 [src: file: backend/src/api/artifact_portability/import.rs:1234-1239#apply_changes]
 [src: file: backend/src/core/embed_origins.rs:217-218#MAX_EMBED_ORIGINS]
-[src: file: backend/src/api/artifact_portability/import.rs:1254-1258#not_allowed_embed_origins]
+[src: file: backend/src/api/artifact_portability/import.rs:1257-1261#not_allowed_embed_origins]
 
 Security reasoning, in short: the destination Kronn alone decides which sites
 may be framed, and checks every URL at render time, including ones added by

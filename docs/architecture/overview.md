@@ -73,7 +73,7 @@ Three Docker services behind nginx gateway:
   content is withheld even when tags are split across chunks or never closed;
   once visible answer content starts, identically named literal tags are
   preserved. The same final sanitizer runs on persisted discussion output.
-  [src: file: backend/src/agents/runner.rs:8833-8943#LeadingThinkingFilter]
+  [src: file: backend/src/agents/runner.rs:8883-8993#LeadingThinkingFilter]
   [src: file: backend/src/api/discussions/streaming.rs:5513-5514#strip_leading_thinking_blocks]
 
 ### Discussions
@@ -260,7 +260,7 @@ is still cut, by its own (wider) bound, with a reason naming the tool instead
 of accusing the model of a silence it never had.
 [src: file: backend/src/agents/idle_watchdog.rs:45-58#TOOL_TIMEOUT_MULTIPLIER] [src: file: backend/src/agents/idle_watchdog.rs:131-170#begin_tool]
 [src: file: backend/src/agents/idle_watchdog.rs:282-295#tool_stall_reason]
-[src: file: backend/src/agents/runner.rs:5916-5924#IdleWatchdog] [src: file: backend/src/agents/runner.rs:6022-6037#begin_tool]
+[src: file: backend/src/agents/runner.rs:5966-5974#IdleWatchdog] [src: file: backend/src/agents/runner.rs:6072-6087#begin_tool]
 [src: file: backend/src/agents/runner_idle_test.rs:1823-1946#a_long_silent_acp_tool_call_is_not_mistaken_for_a_dead_model]
 [src: file: backend/src/acp.rs:1553-1567#ToolCallEnded] [src: file: backend/src/acp.rs:523-528#Activity]
 
@@ -1000,5 +1000,5 @@ approval check, so a Gate approval or an interrupted resume — which reload the
 definition from the database — keep it, and the step provenance names the agent
 actually used. Only agent, model and effort are replaced; tier, budget, tools
 stay, and a named connection stays only while the agent does.
-`[src: file: backend/src/workflows/step_agents.rs:58-134#validate]` `[src: file: backend/src/workflows/step_agents.rs:181-238#apply_to_step]` `[src: file: backend/src/workflows/runner.rs:1306-1326#apply_from_run]`
-`[src: file: backend/src/api/workflows.rs:5651-5653#admit_step_agents]` `[src: file: backend/src/api/workflows.rs:5651-5707#admit_step_agents]` `[src: file: backend/src/api/workflows.rs:5561#TRIGGER_CONTEXT_KEY]`
+`[src: file: backend/src/workflows/step_agents.rs:58-134#validate]` `[src: file: backend/src/workflows/step_agents.rs:188-245#apply_to_step]` `[src: file: backend/src/workflows/runner.rs:1306-1326#apply_from_run]`
+`[src: file: backend/src/api/workflows.rs:5692-5694#admit_step_agents]` `[src: file: backend/src/api/workflows.rs:5692-5748#admit_step_agents]` `[src: file: backend/src/api/workflows.rs:5602#TRIGGER_CONTEXT_KEY]`

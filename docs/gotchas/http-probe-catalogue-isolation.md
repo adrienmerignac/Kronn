@@ -14,7 +14,7 @@ The saved connection is captured before discovery; its row and active credential
 are checked again before persistence. A changed or deleted connection, or a
 rotated credential, makes the result ineligible for durable reconciliation.
 The response still describes the submitted test, not a new saved configuration.
-[src: file: backend/src/api/external_api_connections.rs:1532-1571#saved_connection]
+[src: file: backend/src/api/external_api_connections.rs:1551-1590#saved_connection]
 [src: file: backend/src/api/external_api_connections.rs:1676-1721#persisted]
 
 Credential comparison is held under the configuration read lock, while the row
@@ -22,7 +22,7 @@ comparison, catalogue reconciliation and refresh log use one SQLite transaction.
 A persistence error is surfaced instead of reporting a partially updated or
 silently cached catalogue. This is a probe commit boundary, not a claim that all
 connection CRUD and the separate configuration file form one transaction.
-[src: file: backend/src/api/external_api_connections.rs:1625-1719#persisted]
+[src: file: backend/src/api/external_api_connections.rs:1644-1738#persisted]
 
 Successful empty discovery marks previously live models as disappeared without
 deleting them. A failed saved probe preserves availability and last-seen values,
