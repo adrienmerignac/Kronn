@@ -1811,4 +1811,37 @@ mod model_id_guard_tests {
         assert!(refused.error.expect("import refuses").contains("'-'"));
         assert_eq!(stored(&state).await.len(), before, "import wrote nothing");
     }
+
+    /// KT-1998 — the model is judged as stored: line breaks, a tab or a long
+    /// run of spaces around an id are refused on create and update; nothing
+    /// is written.
+    #[tokio::test]
+    async fn model_id_guard_quick_prompt_judges_the_stored_text() {
+        let state = state();
+        let padded = format!("{}gpt-5", " ".repeat(100_000));
+        for bad in ["\ngpt-5\n", "\tgpt-5", padded.as_str()] {
+            let Json(refused) = create_as(state.clone(), request(bad), None).await;
+            let error = refused.error.expect("create refuses");
+            assert!(error.contains("one line"), "{bad:?}: {error}");
+        }
+        assert!(stored(&state).await.is_empty(), "create wrote nothing");
+        let Json(created) = create_as(state.clone(), request(" gpt-5 "), None).await;
+        let id = created.data.expect("plain spaces stay tolerated").id;
+        for bad in ["\ngpt-5\n", "\tgpt-5", padded.as_str()] {
+            let Json(refused) = update_as(state.clone(), id.clone(), request(bad), None).await;
+            assert!(refused.error.expect("update refuses").contains("one line"));
+        }
+        let lookup = id.clone();
+        let kept = state
+            .db
+            .with_conn(move |conn| crate::db::quick_prompts::get_quick_prompt(conn, &lookup))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            kept.agent_settings.and_then(|s| s.model).as_deref(),
+            Some(" gpt-5 "),
+            "update wrote nothing"
+        );
+    }
 }

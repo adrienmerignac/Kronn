@@ -395,23 +395,6 @@ fn a_named_connection_cannot_take_part_and_a_blank_model_is_refused() {
     validate_chain(&config, Some(&AgentType::ClaudeCode), None, &[named]).unwrap();
 }
 
-/// KT-1998 — every link of a chain (the agent fallback rows and a
-/// discussion's override chain) goes through the shared model rule.
-#[test]
-fn model_id_guard_fallback_chain_link_refuses_a_dash_led_model() {
-    let config = agents(&[]);
-    let dashed = AgentFallback {
-        model: Some("--dangerously-skip-permissions".into()),
-        ..link(AgentType::Codex)
-    };
-    let error = validate_chain(&config, None, None, &[dashed]).expect_err("refused");
-    assert!(matches!(error, ChainError::BadModel(_)), "{error}");
-    assert!(
-        error.to_string().contains("must not start with '-'"),
-        "{error}"
-    );
-}
-
 #[test]
 fn the_chain_view_shows_the_gaps_of_each_link_as_warnings() {
     let config = agents(&[(

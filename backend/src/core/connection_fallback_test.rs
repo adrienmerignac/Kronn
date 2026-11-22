@@ -58,7 +58,14 @@ fn a_bad_model_is_refused() {
 #[test]
 fn model_id_guard_connection_fallback_refuses_a_dash_led_model() {
     let config = agents();
-    for model in ["-c", "  --help"] {
+    let padded = format!("{}flux-dev", " ".repeat(100_000));
+    for model in [
+        "-c",
+        "  --help",
+        "\nflux-dev\n",
+        "\tflux-dev",
+        padded.as_str(),
+    ] {
         let target = ConnectionFallbackTarget {
             connection: "conn-a".into(),
             model: Some(model.into()),
@@ -70,7 +77,7 @@ fn model_id_guard_connection_fallback_refuses_a_dash_led_model() {
             "{error}"
         );
         assert!(
-            error.to_string().contains("must not start with '-'"),
+            error.to_string().starts_with("Fallback refused: model "),
             "{error}"
         );
     }

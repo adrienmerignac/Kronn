@@ -220,18 +220,19 @@ fn clean(value: Option<String>) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// KT-1998 — the three tier models of a connection through the shared rule
-/// `models::setup::check_optional_model`; a blank slot is still "no model".
-fn check_tier_models(
-    economy: Option<&str>,
-    default: Option<&str>,
-    reasoning: Option<&str>,
-) -> Result<(), String> {
+/// KT-1998 — every model slot of a connection (the three tiers, decision,
+/// image, video) through the shared rule `models::setup::check_optional_model`;
+/// a blank slot is still "no model".
+fn check_connection_models(req: &UpsertConnectionRequest) -> Result<(), String> {
     for (slot, model) in [
-        ("economy_model", economy),
-        ("default_model", default),
-        ("reasoning_model", reasoning),
+        ("economy_model", &req.economy_model),
+        ("default_model", &req.default_model),
+        ("reasoning_model", &req.reasoning_model),
+        ("decision_model", &req.decision_model),
+        ("image_model", &req.image_model),
+        ("video_model", &req.video_model),
     ] {
+        let model = model.as_deref();
         crate::models::setup::check_optional_model(model)
             .map_err(|error| format!("{slot}: {error}"))?;
     }
@@ -1877,6 +1878,9 @@ pub async fn create(
             return Json(ApiResponse::err(locked));
         }
     }
+    if let Err(message) = check_connection_models(&req) {
+        return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
+    }
     let display_name = req.display_name.trim().to_string();
     if display_name.is_empty() {
         return Json(ApiResponse::err_coded(
@@ -1898,13 +1902,6 @@ pub async fn create(
         }
     };
     if let Err(message) = validate_credential_format(req.origin_preset, req.api_key.as_deref()) {
-        return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
-    }
-    if let Err(message) = check_tier_models(
-        req.economy_model.as_deref(),
-        req.default_model.as_deref(),
-        req.reasoning_model.as_deref(),
-    ) {
         return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
     }
 
@@ -2019,6 +2016,9 @@ async fn update_inner(
             return Json(ApiResponse::err(locked));
         }
     }
+    if let Err(message) = check_connection_models(&req) {
+        return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
+    }
     let display_name = req.display_name.trim().to_string();
     if display_name.is_empty() {
         return Json(ApiResponse::err_coded(
@@ -2040,13 +2040,6 @@ async fn update_inner(
         }
     };
     if let Err(message) = validate_credential_format(req.origin_preset, req.api_key.as_deref()) {
-        return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
-    }
-    if let Err(message) = check_tier_models(
-        req.economy_model.as_deref(),
-        req.default_model.as_deref(),
-        req.reasoning_model.as_deref(),
-    ) {
         return Json(ApiResponse::err_coded(ApiErrorCode::Validation, message));
     }
 
@@ -2223,33 +2216,65 @@ pub async fn delete(
     Json(ApiResponse::ok(()))
 }
 
-#[cfg(all(test, feature = "full-tests"))]
-mod tests {
+#[cfg(test)]
+mod model_id_guard_tests {
     use super::*;
 
-    /// KT-1998 — create and update refuse a dash-led tier model with the
-    /// shared rule, before anything is written.
+    /// A dash-led id, line breaks or a tab around an id, and a long run of
+    /// spaces before one.
+    fn bad_models() -> Vec<String> {
+        vec![
+            "--help".into(),
+            " -c".into(),
+            "\ngpt-5\n".into(),
+            "\tgpt-5".into(),
+            format!("{}gpt-5", " ".repeat(100_000)),
+        ]
+    }
+
+    const SLOTS: [&str; 6] = [
+        "economy_model",
+        "default_model",
+        "reasoning_model",
+        "decision_model",
+        "image_model",
+        "video_model",
+    ];
+
+    fn request(slot: &str, model: &str) -> UpsertConnectionRequest {
+        let mut body = serde_json::json!({
+            "display_name": "Proxy", "mention_alias": "proxy",
+            "endpoint": "https://proxy.example/v1", "origin_preset": "other",
+            "economy_model": null, "default_model": null, "reasoning_model": null,
+        });
+        body[slot] = serde_json::Value::String(model.into());
+        serde_json::from_value(body).unwrap()
+    }
+
+    fn assert_refusal(error: &str, slot: &str, bad: &str) {
+        assert!(error.contains(slot), "{slot} {bad:?}: {error}");
+        assert!(
+            error.contains("must not start with '-'") || error.contains("one line"),
+            "{slot} {bad:?}: {error}"
+        );
+    }
+
+    /// KT-1998 — create and update refuse a bad model in any of the six model
+    /// slots of a connection (tiers, decision, image, video), before anything
+    /// is written.
     #[tokio::test]
-    async fn model_id_guard_connection_models_refuse_a_dash_led_model() {
+    async fn model_id_guard_connection_models_refuse_a_bad_model() {
         let db = std::sync::Arc::new(crate::db::Database::open_in_memory().expect("db"));
         let state = AppState::new_defaults(
             std::sync::Arc::new(tokio::sync::RwLock::new(config::default_config())),
             db,
             crate::DEFAULT_MAX_CONCURRENT_AGENTS,
         );
-        let request = |slot: &str, model: &str| -> UpsertConnectionRequest {
-            let mut body = serde_json::json!({
-                "display_name": "Proxy", "mention_alias": "proxy",
-                "endpoint": "https://proxy.example/v1", "origin_preset": "other",
-                "economy_model": null, "default_model": null, "reasoning_model": null,
-            });
-            body[slot] = serde_json::Value::String(model.into());
-            serde_json::from_value(body).unwrap()
-        };
-        for slot in ["economy_model", "default_model", "reasoning_model"] {
-            let Json(refused) = create(State(state.clone()), Json(request(slot, "--help"))).await;
-            let error = refused.error.expect("a dash-led model is refused");
-            assert!(error.contains(slot) && error.contains("'-'"), "{error}");
+        for bad in bad_models() {
+            for slot in SLOTS {
+                let Json(refused) = create(State(state.clone()), Json(request(slot, &bad))).await;
+                assert_refusal(&refused.error.expect("create refuses"), slot, &bad);
+            }
         }
         let rows = state.db.with_conn(store::list).await.unwrap();
         assert!(rows.is_empty(), "create wrote nothing");
@@ -2266,7 +2291,7 @@ mod tests {
             reasoning_model: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
-            image_model: None,
+            image_model: Some("flux-dev".into()),
             video_model: None,
             decision_model: None,
             tools_enabled: None,
@@ -2278,13 +2303,13 @@ mod tests {
             .with_conn(move |conn| store::insert(conn, &row))
             .await
             .unwrap();
-        let Json(refused) = update_inner(
-            state.clone(),
-            "conn-1".into(),
-            request("default_model", " -c"),
-        )
-        .await;
-        assert!(refused.error.expect("update refuses").contains("'-'"));
+        for bad in bad_models() {
+            for slot in SLOTS {
+                let Json(refused) =
+                    update_inner(state.clone(), "conn-1".into(), request(slot, &bad)).await;
+                assert_refusal(&refused.error.expect("update refuses"), slot, &bad);
+            }
+        }
         let kept = state
             .db
             .with_conn(|conn| store::get(conn, "conn-1"))
@@ -2296,7 +2321,17 @@ mod tests {
             Some("gpt-5"),
             "update wrote nothing"
         );
+        assert_eq!(
+            kept.image_model.as_deref(),
+            Some("flux-dev"),
+            "update wrote nothing"
+        );
     }
+}
+
+#[cfg(all(test, feature = "full-tests"))]
+mod tests {
+    use super::*;
 
     #[test]
     fn http_error_hint_names_the_model_that_failed() {

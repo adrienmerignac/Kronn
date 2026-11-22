@@ -84,13 +84,12 @@ fn validate_runtime_target_projection(
 
 fn validate_manual_fields(req: &UpsertManualModelRequest) -> Result<()> {
     validate_runtime_target_projection(&req.runtime_target_id, &req.agent_type)?;
-    for (name, value) in [
-        ("model_id", req.model_id.as_str()),
-        ("display_name", req.display_name.as_str()),
-    ] {
-        if value.trim().is_empty() || value.len() > 256 || value.chars().any(char::is_control) {
-            anyhow::bail!("{name} must contain 1 to 256 printable characters");
-        }
+    // KT-1998 — the shared model id rule, the one every other save uses.
+    crate::models::setup::check_model_id(&req.model_id)
+        .map_err(|error| anyhow::anyhow!("model_id: {error}"))?;
+    let name = req.display_name.as_str();
+    if name.trim().is_empty() || name.len() > 256 || name.chars().any(char::is_control) {
+        anyhow::bail!("display_name must contain 1 to 256 printable characters");
     }
     if req.capabilities.len() > 16 || req.reasoning_modes.len() > 16 {
         anyhow::bail!("capabilities and reasoning modes are limited to 16 values");

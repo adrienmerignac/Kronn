@@ -68,9 +68,7 @@ impl std::fmt::Display for ConnectionChainError {
                 f,
                 "A fallback chain would be {links} links long; at most {MAX_CHAIN_DEPTH} are allowed."
             ),
-            ConnectionChainError::BadModel(why) => {
-                write!(f, "The fallback model is refused: {why}.")
-            }
+            ConnectionChainError::BadModel(why) => write!(f, "Fallback refused: {why}."),
             ConnectionChainError::NoOwner => write!(f, "The source of this fallback is missing."),
         }
     }
@@ -133,8 +131,7 @@ pub fn validate_row(
         return Err(ConnectionChainError::SelfFallback(owner.to_string()));
     }
     if let Some(model) = &target.model {
-        crate::models::setup::normalize_exact_model(model)
-            .map_err(ConnectionChainError::BadModel)?;
+        crate::models::setup::check_model_id(model).map_err(ConnectionChainError::BadModel)?;
     }
     let mut trial = agents.clone();
     set_row(&mut trial, owner, mode, Some(target.clone()));

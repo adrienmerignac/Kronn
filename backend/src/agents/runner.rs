@@ -3664,10 +3664,12 @@ pub fn effective_model_flag(
 }
 
 /// KT-1998 — the model an agent CLI launch receives, resolved like
-/// [`effective_model_flag`]. A value starting with `-` is refused: the CLI
-/// reads the token after `--model` as an option. Saves refuse it already;
-/// this is the last check, for rows saved before that rule and hand-edited
-/// config. No other model is substituted.
+/// [`effective_model_flag`]. A value starting with `-` is refused (the CLI
+/// reads the token after `--model` as an option), and so is one holding a
+/// control character (no model id has one, and a NUL makes the spawn itself
+/// fail with an unclear error). Saves refuse both already; this is the last
+/// check, for rows saved before that rule, restored databases and hand-edited
+/// config. No length rule here. No other model is substituted.
 pub fn launch_model_flag(
     model_override: Option<&str>,
     agent_type: &AgentType,
@@ -3675,28 +3677,76 @@ pub fn launch_model_flag(
     model_tiers: Option<&ModelTiersConfig>,
 ) -> Result<Option<String>, String> {
     let model = effective_model_flag(model_override, agent_type, tier, model_tiers);
+    check_launch_model(model, || {
+        LaunchModelSource::of(model_override, agent_type, tier, model_tiers)
+    })
+}
+
+/// Where the model of a launch comes from, named in a refusal.
+#[derive(Debug, Clone, PartialEq)]
+pub enum LaunchModelSource {
+    /// An explicit model on the run (discussion, Quick Prompt, workflow step).
+    Pinned,
+    /// A tier slot the owner set in Settings → Agents.
+    Configured { agent: AgentType, tier: ModelTier },
+    /// The tier model the model catalogue assigns.
+    Catalogue { agent: AgentType, tier: ModelTier },
+}
+
+impl LaunchModelSource {
+    /// The branch [`effective_model_flag`] takes for these inputs.
+    pub fn of(
+        model_override: Option<&str>,
+        agent_type: &AgentType,
+        tier: ModelTier,
+        model_tiers: Option<&ModelTiersConfig>,
+    ) -> Self {
+        let agent = agent_type.clone();
+        if model_override.is_some_and(|m| !m.trim().is_empty()) {
+            Self::Pinned
+        } else if configured_model_flag(agent_type, tier, model_tiers).is_some() {
+            Self::Configured { agent, tier }
+        } else {
+            Self::Catalogue { agent, tier }
+        }
+    }
+
+    fn describe(&self) -> String {
+        match self {
+            Self::Pinned => {
+                "the model pinned on this run (discussion, Quick Prompt or workflow step)".into()
+            }
+            Self::Configured { agent, tier } => format!(
+                "the {} tier model of {agent:?} in Settings → Agents",
+                tier.as_str()
+            ),
+            Self::Catalogue { agent, tier } => format!(
+                "the {} tier model the catalogue assigns to {agent:?}",
+                tier.as_str()
+            ),
+        }
+    }
+}
+
+/// The check of [`launch_model_flag`] on a resolved model; `source` is only
+/// computed for a refusal.
+pub fn check_launch_model(
+    model: Option<String>,
+    source: impl FnOnce() -> LaunchModelSource,
+) -> Result<Option<String>, String> {
     let Some(value) = model.as_deref() else {
         return Ok(None);
     };
-    if crate::models::setup::refuse_option_like_model(value).is_ok() {
-        return Ok(model);
-    }
-    let source = if model_override.is_some_and(|m| !m.trim().is_empty()) {
-        "the model pinned on this run (discussion, Quick Prompt or workflow step)".to_string()
-    } else if configured_model_flag(agent_type, tier, model_tiers).is_some() {
-        format!(
-            "the {} tier model of {agent_type:?} in Settings → Agents",
-            tier.as_str()
-        )
+    let problem = if value.chars().any(char::is_control) {
+        "contains a control character, which no model id has"
+    } else if crate::models::setup::refuse_option_like_model(value).is_err() {
+        "starts with '-', so the agent CLI would read it as an option"
     } else {
-        format!(
-            "the {} tier model the catalogue assigns to {agent_type:?}",
-            tier.as_str()
-        )
+        return Ok(model);
     };
+    let source = source().describe();
     Err(format!(
-        "Agent launch refused: the model {value:?} ({source}) starts with '-', so the agent CLI \
-         would read it as an option. Set a model id there."
+        "Agent launch refused: the model {value:?} ({source}) {problem}. Set a model id there."
     ))
 }
 
@@ -15877,6 +15927,10 @@ pub mod runner_test;
 #[cfg(all(test, feature = "full-tests"))]
 #[path = "runner_idle_test.rs"]
 mod runner_idle_test;
+
+#[cfg(test)]
+#[path = "runner_model_id_guard_tests.rs"]
+mod model_id_guard_tests;
 
 /// KT-1495 — live, opt-in (`KRONN_LIVE_VAULT_PROBE=1`): see the module doc.
 #[cfg(all(test, feature = "full-tests"))]

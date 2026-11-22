@@ -1752,7 +1752,7 @@ mod tests {
     #[tokio::test]
     async fn exact_model_create_refuses_an_invalid_id_and_creates_nothing() {
         let state = state_with_disc("exact-refuse-create").await;
-        let too_long = "m".repeat(crate::models::setup::MAX_EXACT_MODEL_CHARS + 1);
+        let too_long = "m".repeat(crate::models::setup::MAX_MODEL_ID_CHARS + 1);
         for bad in [
             "   ",
             "bad\nmodel",
