@@ -341,8 +341,8 @@ describe('a custom model: chosen, saved, labelled (KT-1994)', () => {
     const trigger = screen.getByRole('button', { name: 'Agent' });
     const chip = trigger.querySelector('.kr-agent-switch-custom')!;
     expect(chip).toHaveTextContent('agentPicker.custom');
-    expect(trigger.querySelector('.kr-agent-switch-current-tier')).toBeNull();
-    expect(trigger.querySelector('.kr-agent-switch-suffix')).toHaveTextContent('· claude-fable-b');
+    expect(trigger.querySelector('.ui-agent-identity-tier')).toBeNull();
+    expect(trigger.querySelector('[data-testid="agent-identity-model"]')).toHaveTextContent('claude-fable-b');
     await open();
     const claude = group('Claude Code');
     const custom = within(claude).getByRole('menuitem', { name: 'Claude Code · agentPicker.custom · claude-fable-b' });
@@ -594,11 +594,11 @@ describe('the trigger writes the model id, catalogue loaded or not (KT-1994 revi
     ])] });
     render(<FullList currentAgent="Custom" currentConnectionId="openrouter" />);
     const trigger = screen.getByRole('button', { name: 'Agent' });
-    const suffix = () => trigger.querySelector('.kr-agent-switch-suffix');
+    const suffix = () => trigger.querySelector('[data-testid="agent-identity-model"]');
     expect(list).not.toHaveBeenCalled();
-    expect(suffix()).toHaveTextContent(/^· vendor\/model-002$/);
+    expect(suffix()).toHaveTextContent(/^vendor\/model-002$/);
     await open();
-    expect(suffix()).toHaveTextContent(/^· vendor\/model-002$/);
+    expect(suffix()).toHaveTextContent(/^vendor\/model-002$/);
     expect(trigger).toHaveAttribute('title', 'Agent · Standard · Vendor Two');
   });
 
@@ -609,12 +609,12 @@ describe('the trigger writes the model id, catalogue loaded or not (KT-1994 revi
         compact title="Agent" ariaLabel="Agent" />,
     );
     const trigger = screen.getByRole('button', { name: 'Agent' });
-    const suffix = () => trigger.querySelector('.kr-agent-switch-suffix');
-    expect(suffix()).toHaveTextContent(/^· Default model of Claude Code$/);
+    const suffix = () => trigger.querySelector('[data-testid="agent-identity-model"]');
+    expect(suffix()).toHaveTextContent(/^Default model of Claude Code$/);
     await open();
     // The catalogue names Sonnet for the Standard mode: the list says so, the trigger does not move.
     expect(modelText(within(group('Claude Code')).getByRole('menuitem', { name: 'Claude Code · Standard' }))).toBe('claude-sonnet-4-5');
-    expect(suffix()).toHaveTextContent(/^· Default model of Claude Code$/);
+    expect(suffix()).toHaveTextContent(/^Default model of Claude Code$/);
   });
 });
 

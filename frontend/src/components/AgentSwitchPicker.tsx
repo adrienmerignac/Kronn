@@ -20,6 +20,7 @@ import {
   AGENT_LABELS,
   ALL_AGENT_TYPES,
   MODEL_TIER_ICONS,
+  agentColor,
   agentTextColor,
 } from '../lib/constants';
 import { agentTransport, type AgentTransport } from '../lib/shadowMerge';
@@ -28,6 +29,8 @@ import {
   type AgentAvailability, type AgentAvailabilityState,
 } from '../lib/agentAvailability';
 import { SearchField } from './ui/SearchField';
+import { AgentIdentity } from './ui/AgentIdentity';
+import { agentModel, type AgentIdentityModel } from './ui/agentIdentityKinds';
 import { agentModelLabel } from './workflows/shadowRowModel';
 import type {
   AgentType,
@@ -1244,12 +1247,32 @@ function TierPicker({
   const configuredId = currentTier
     ? modeModelId(resolveCatalogTier(null, currentTarget, currentTier, modelTiers, currentModel), currentTier)
     : '';
-  const effectiveSuffix = suffix
-    ?? (custom || (showsCurrentModel && currentTier
-      ? configuredId || currentModelFallback?.trim() || defaultModelLabel
-      : undefined));
-  const roleLabel = role && (
-    <span className="kr-agent-switch-role" data-testid="agent-switch-role">{role}</span>
+  // KT-1936 — the model written next to the agent: the custom model, the
+  // caller's suffix, the configured id, the model the agent last replied with,
+  // else the explicit « default model of <agent> » state; never a blank, the
+  // role or the tier alone.
+  const identityModel: AgentIdentityModel | null = custom
+    ? { kind: 'id', id: custom }
+    : suffix?.trim()
+      ? { kind: 'id', id: suffix.trim() }
+      : showsCurrentModel && currentTier
+        ? agentModel(configuredId || currentModelFallback, 'providerDefault')
+        : null;
+  const identityTier = tierPicker && currentTier && !custom ? currentTier : null;
+  const identity = (name: string, color?: string) => identityModel ? (
+    <AgentIdentity
+      className="kr-agent-switch-identity"
+      name={name}
+      color={color}
+      model={identityModel}
+      agentLabel={targetLabel(currentTarget)}
+      roleLabel={role}
+      tier={identityTier}
+      tierLabel={identityTier ? tierTitle(currentTarget, identityTier) : undefined}
+      truncateModel
+    />
+  ) : (
+    <span className="kr-agent-switch-name" style={color ? { color } : undefined}>{name}</span>
   );
   const visibleChoices = choices.filter(target => matchesCatalogSearch(query, [
     targetLabel(target),
@@ -1323,13 +1346,8 @@ function TierPicker({
 
   if (!canChange) {
     return (
-      <span
-        className={staticClassName ?? 'kr-agent-switch-static'}
-        style={{ color: agentTextColor(currentTarget.agent) }}
-      >
-        {displayName ?? targetLabel(currentTarget)}
-        {roleLabel}
-        {effectiveSuffix && <span className="kr-agent-switch-suffix"> · {effectiveSuffix}</span>}
+      <span className={staticClassName ?? 'kr-agent-switch-static'}>
+        {identity(displayName ?? targetLabel(currentTarget), agentTextColor(currentTarget.agent))}
       </span>
     );
   }
@@ -1354,7 +1372,7 @@ function TierPicker({
       <button
         type="button"
         className="kr-agent-switch-btn"
-        style={multiple ? undefined : { color: agentTextColor(currentTarget.agent) }}
+        style={multiple ? undefined : { ['--agent-switch-tone' as string]: agentColor(currentTarget.agent) }}
         title={custom
           ? `${title} · ${t('agentPicker.custom')} · ${custom}`
           : tierPicker && currentTier
@@ -1374,20 +1392,11 @@ function TierPicker({
         }}
       >
         {saving ? <Loader2 size={9} className="spin" /> : <RefreshCw size={9} />}
-        <span className="kr-agent-switch-name">{triggerText}</span>
-        {roleLabel}
+        {multiple
+          ? <span className="kr-agent-switch-name">{triggerText}</span>
+          : identity(triggerText, agentTextColor(currentTarget.agent))}
         {custom && <span className="kr-agent-switch-custom">{t('agentPicker.custom')}</span>}
-        {tierPicker && currentTier && !custom && (
-          <span
-            className="kr-agent-switch-current-tier"
-            data-tier={currentTier}
-            title={tierTitle(currentTarget, currentTier)}
-          >
-            {MODEL_TIER_ICONS[currentTier]}
-          </span>
-        )}
-        {effectiveSuffix && <span className="kr-agent-switch-suffix"> · {effectiveSuffix}</span>}
-        <ChevronDown size={9} />
+        <ChevronDown size={12} aria-hidden="true" />
       </button>
       {open && createPortal(
         <span

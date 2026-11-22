@@ -501,7 +501,7 @@ describe('ApiCallAiHelper — resume (KT-1111)', () => {
     });
     const trigger = screen.getByRole('button', { name: 'wf.apicall.helper.switchAgent' });
     await waitFor(() => expect(trigger).toHaveTextContent('Team proxy'));
-    expect(trigger.querySelector('.kr-agent-switch-current-tier')).toHaveAttribute('data-tier', 'reasoning');
+    expect(trigger.querySelector('.ui-agent-identity-tier')).toHaveAttribute('data-tier', 'reasoning');
     await act(async () => { fireEvent.click(trigger); });
     // The choice in effect is the current one: choosing it again starts nothing.
     const current = await screen.findByRole('menuitem', { name: 'Team proxy · disc.tier.reasoning' });

@@ -1,6 +1,9 @@
 .kr-agent-switch-static {
-  color: var(--kr-text-faint);
-  font-size: var(--kr-fs-xs);
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--kr-text-secondary);
+  font-size: var(--kr-type-sm);
   font-weight: 600;
 }
 
@@ -8,22 +11,31 @@
   position: relative;
   display: inline-flex;
   min-width: 0;
+  max-width: 100%;
 }
 
+/* KT-1936 — the trigger's text is AgentIdentity, at the 12px floor. The border
+   takes the agent's brand colour (--agent-switch-tone, set inline): a brand
+   colour stays on borders, the name is written in its text-safe token. */
 .kr-agent-switch-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--kr-space-1);
+  min-width: 0;
   max-width: 100%;
-  padding: 2px 6px;
-  border: 1px solid currentColor;
+  padding: 2px var(--kr-space-1);
+  border: 1px solid var(--agent-switch-tone, var(--kr-border));
   border-radius: var(--kr-r-sm);
-  color: var(--kr-text-faint);
+  color: var(--kr-text-secondary);
   background: transparent;
   font-family: inherit;
-  font-size: var(--kr-fs-xs);
-  font-weight: 700;
+  font-size: var(--kr-type-sm);
+  font-weight: 600;
   cursor: pointer;
+}
+
+.kr-agent-switch-btn > svg {
+  flex-shrink: 0;
 }
 
 .kr-agent-switch-btn:hover,
@@ -36,34 +48,22 @@
   opacity: 0.65;
 }
 
-.kr-agent-switch-suffix {
-  color: var(--kr-text-tertiary);
-  font-weight: 500;
+/* The identity shrinks first: its model is cut with an ellipsis (17
+   characters at most), the full id stays in the button's title and name. */
+.kr-agent-switch-identity {
+  flex: 0 1 auto;
 }
 
-/* The agent's role, as its own label: never in place of the model. */
-.kr-agent-switch-role {
-  padding: 0 5px;
-  border: 1px solid var(--kr-border);
-  border-radius: var(--kr-r-sm);
-  color: var(--kr-text-tertiary);
-  background: var(--kr-bg-subtle);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.kr-agent-switch-static .kr-agent-switch-role {
-  margin-left: 4px;
-}
-
+/* The exact-model trigger's mode icon (the shadow editor). */
 .kr-agent-switch-current-tier {
   display: inline-grid;
+  flex-shrink: 0;
   place-items: center;
-  width: 15px;
-  height: 15px;
+  width: var(--kr-space-4);
+  height: var(--kr-space-4);
   border-radius: 50%;
   background: var(--kr-bg-subtle);
-  font-size: 9px;
+  font-size: var(--kr-type-sm);
 }
 
 .kr-agent-switch-name {
@@ -100,10 +100,10 @@
 }
 
 .kr-agent-switch[data-compact='true'] .kr-agent-switch-btn {
-  gap: 3px;
+  gap: var(--kr-space-1);
   padding: 0;
   border: 0;
-  font-size: 9.5px;
+  font-size: var(--kr-type-sm);
   line-height: 1.1;
 }
 
@@ -161,7 +161,7 @@
   color: var(--kr-text-secondary);
   background: transparent;
   font-family: inherit;
-  font-size: var(--kr-fs-xs);
+  font-size: var(--kr-type-sm);
   text-align: left;
   cursor: pointer;
 }

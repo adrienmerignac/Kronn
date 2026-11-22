@@ -15,7 +15,9 @@ describe('AgentSwitchPicker — accessible agent identity colours', () => {
     );
 
     const trigger = screen.getByRole('button', { name: 'Switch agent' });
-    expect(trigger.style.color).toBe('var(--kr-agent-nvidia-text)');
+    // KT-1936 — the name in the text-safe token, the brand colour on the border.
+    expect(trigger.querySelector<HTMLElement>('.kr-agent-switch-name')?.style.color).toBe('var(--kr-agent-nvidia-text)');
+    expect(trigger.style.getPropertyValue('--agent-switch-tone')).toBe('#76B900');
 
     fireEvent.click(trigger);
     const nvidiaOption = screen.getByRole('menuitem', { name: /NVIDIA/ });
@@ -33,7 +35,7 @@ describe('AgentSwitchPicker — accessible agent identity colours', () => {
       />,
     );
 
-    expect(container.querySelector<HTMLElement>('.kr-agent-switch-static')?.style.color)
+    expect(container.querySelector<HTMLElement>('.kr-agent-switch-static .kr-agent-switch-name')?.style.color)
       .toBe('var(--kr-agent-nvidia-text)');
   });
 

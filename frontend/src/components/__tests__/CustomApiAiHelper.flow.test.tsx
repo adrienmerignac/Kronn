@@ -496,7 +496,7 @@ describe('CustomApiAiHelper — kept conversation (KT-1111)', () => {
     });
     const trigger = screen.getByRole('button', { name: 'mcp.custom.helper.switchAgent' });
     await waitFor(() => expect(trigger).toHaveTextContent('Team proxy'));
-    expect(trigger.querySelector('.kr-agent-switch-current-tier')).toHaveAttribute('data-tier', 'economy');
+    expect(trigger.querySelector('.ui-agent-identity-tier')).toHaveAttribute('data-tier', 'economy');
     await act(async () => { fireEvent.click(trigger); });
     expect(await screen.findByRole('menuitem', { name: 'Team proxy · disc.tier.economy' })).toBeDisabled();
     expect(createMock).not.toHaveBeenCalled();

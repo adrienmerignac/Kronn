@@ -296,12 +296,12 @@ describe('ChatHeader — shared agent switcher', () => {
       await waitFor(() => expect(trigger).toBeEnabled());
 
       expect(trigger).toHaveTextContent('@claude');
-      const role = within(trigger).getByTestId('agent-switch-role');
+      const role = within(trigger).getByText('disc.targetDiscussionAgent', { selector: '.ui-agent-identity-role span' });
       expect(role).toHaveTextContent(/^disc\.targetDiscussionAgent$/);
-      expect(trigger.querySelector('.kr-agent-switch-suffix')).toHaveTextContent('· sonnet');
-      // The tier stays an icon, its name in the tooltip.
-      expect(trigger.querySelector('.kr-agent-switch-current-tier')).toHaveAttribute(
-        'title', 'disc.tier.default · sonnet',
+      expect(trigger.querySelector('[data-testid="agent-identity-model"]')).toHaveTextContent('sonnet');
+      // The tier stays an icon, its name its accessible name.
+      expect(trigger.querySelector('.ui-agent-identity-tier')).toHaveAttribute(
+        'aria-label', 'disc.tier.default · sonnet',
       );
     });
 
@@ -309,8 +309,8 @@ describe('ChatHeader — shared agent switcher', () => {
       renderHeader({ modelTiers: tiers, discussion: { ...makeDiscussion(), model: 'opus' } });
       const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
       await waitFor(() => expect(trigger).toBeEnabled());
-      expect(within(trigger).getByTestId('agent-switch-role')).toBeInTheDocument();
-      expect(trigger.querySelector('.kr-agent-switch-suffix')).toHaveTextContent('· opus');
+      expect(within(trigger).getByText('disc.targetDiscussionAgent', { selector: '.ui-agent-identity-role span' })).toBeInTheDocument();
+      expect(trigger.querySelector('[data-testid="agent-identity-model"]')).toHaveTextContent('opus');
     });
 
     it('falls back to the model of the last agent reply when nothing resolves one', async () => {
@@ -327,9 +327,9 @@ describe('ChatHeader — shared agent switcher', () => {
       const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
       await waitFor(() => expect(trigger).toBeEnabled());
 
-      expect(within(trigger).getByTestId('agent-switch-role')).toBeInTheDocument();
-      const model = trigger.querySelector('.kr-agent-switch-suffix');
-      expect(model).toHaveTextContent('· gpt-5.5-codex');
+      expect(within(trigger).getByText('disc.targetDiscussionAgent', { selector: '.ui-agent-identity-role span' })).toBeInTheDocument();
+      const model = trigger.querySelector('[data-testid="agent-identity-model"]');
+      expect(model).toHaveTextContent('gpt-5.5-codex');
       expect(model).not.toHaveTextContent('disc.targetDiscussionAgent');
       expect(model).not.toHaveTextContent('config.defaultModel');
       expect(trigger).toHaveAttribute('title', 'disc.switchAgentAndTier · disc.tier.default · gpt-5.5-codex');
@@ -346,8 +346,10 @@ describe('ChatHeader — shared agent switcher', () => {
       const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
       await waitFor(() => expect(trigger).toBeEnabled());
 
-      const model = trigger.querySelector('.kr-agent-switch-suffix');
-      expect(model).toHaveTextContent('· disc.defaultModelOf(Codex)');
+      const model = trigger.querySelector('[data-testid="agent-identity-model"]');
+      // KT-1936 — the explicit unknown state, not a blank or the tier.
+      expect(model).toHaveTextContent('ui.agentIdentity.model.providerDefault');
+      expect(model).toHaveAttribute('data-state', 'providerDefault');
       expect(model).not.toHaveTextContent('config.defaultModel');
       expect(model).not.toHaveTextContent('disc.tier.default');
     });
@@ -364,15 +366,15 @@ describe('ChatHeader — shared agent switcher', () => {
           currentTier="default"
           modelTiers={tiers}
           defaultModelLabel="config.defaultModel"
-          currentModelFallback="disc.defaultModelOf(Claude Code)"
+          currentModelFallback="claude-sonnet-4-5"
         />,
       );
       expect(screen.queryByRole('button', { name: 'disc.switchAgentAndTier' })).toBeNull();
       const label = document.querySelector('.kr-agent-switch-static')!;
       expect(label).toHaveTextContent('@claude');
-      expect(within(label as HTMLElement).getByTestId('agent-switch-role'))
+      expect(within(label as HTMLElement).getByText('disc.targetDiscussionAgent', { selector: '.ui-agent-identity-role span' }))
         .toHaveTextContent('disc.targetDiscussionAgent');
-      expect(label.querySelector('.kr-agent-switch-suffix')).toHaveTextContent('· sonnet');
+      expect(label.querySelector('[data-testid="agent-identity-model"]')).toHaveTextContent('sonnet');
     });
 
     it('names the fallback model, not the role, in the static form', () => {
@@ -386,11 +388,11 @@ describe('ChatHeader — shared agent switcher', () => {
           currentTier="default"
           modelTiers={tiers}
           defaultModelLabel="config.defaultModel"
-          currentModelFallback="disc.defaultModelOf(Codex)"
+          currentModelFallback="gpt-5.5-codex"
         />,
       );
-      const model = document.querySelector('.kr-agent-switch-static .kr-agent-switch-suffix');
-      expect(model).toHaveTextContent('· disc.defaultModelOf(Codex)');
+      const model = document.querySelector('.kr-agent-switch-static [data-testid="agent-identity-model"]');
+      expect(model).toHaveTextContent('gpt-5.5-codex');
     });
   });
 
@@ -454,7 +456,7 @@ describe('ChatHeader — shared agent switcher', () => {
       const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
       await waitFor(() => expect(trigger).toBeEnabled());
       expect(trigger.querySelector('.kr-agent-switch-custom')).toHaveTextContent('agentPicker.custom');
-      expect(trigger.querySelector('.kr-agent-switch-suffix')).toHaveTextContent('· claude-fable-b');
+      expect(trigger.querySelector('[data-testid="agent-identity-model"]')).toHaveTextContent('claude-fable-b');
       fireEvent.click(trigger);
       const custom = screen.getByRole('menuitem', { name: 'Claude Code · agentPicker.custom · claude-fable-b' });
       expect(custom).toHaveAttribute('data-current', 'true');

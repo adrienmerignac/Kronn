@@ -130,8 +130,8 @@ export function ChatHeader({
     }
     return null;
   }, [discussion.messages, discussion.agent, currentTier]);
-  const headerModelFallback = lastReplyModel
-    ?? t('disc.defaultModelOf', externalConnection?.display_name ?? AGENT_LABELS[discussion.agent] ?? discussion.agent);
+  // Nothing recorded: the picker writes the explicit « default model of <agent> » state.
+  const headerModelFallback = lastReplyModel ?? undefined;
 
   const installedAgentsList = agents.filter(isUsable);
   const nativeAgentDisabled = nativeAgentMode?.discussionId === discussion.id

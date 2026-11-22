@@ -295,7 +295,7 @@ describe('MessageBubble — author pseudo / avatar (User)', () => {
     expect(chip).not.toBeNull();
     expect(chip?.dataset.agent).toBe('Codex');
     expect(chip?.textContent).toBe('@codex · agent ponctuel');
-    expect(chip?.style.color).toBe('#10a37f');
+    expect(chip?.style.color).toBe('var(--kr-agent-codex-text)');
     expect(screen.getByText('vérifie ce patch')).toBeInTheDocument();
   });
 

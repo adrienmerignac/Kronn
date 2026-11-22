@@ -1365,7 +1365,7 @@ describe('NewDiscussionForm — default model tier (0.8.6 phase 4)', () => {
     await act(async () => { fireEvent.click(advancedToggle); });
 
     await waitFor(() => {
-      const currentTier = document.querySelector('.kr-agent-switch-current-tier') as HTMLElement;
+      const currentTier = document.querySelector('.ui-agent-identity-tier') as HTMLElement;
       expect(currentTier).toBeTruthy();
       expect(currentTier.getAttribute('data-tier')).toBe('reasoning');
     });
@@ -1406,7 +1406,7 @@ describe('NewDiscussionForm — default model tier (0.8.6 phase 4)', () => {
     await act(async () => { fireEvent.click(advancedToggle); });
 
     await waitFor(() => {
-      const currentTier = document.querySelector('.kr-agent-switch-current-tier') as HTMLElement;
+      const currentTier = document.querySelector('.ui-agent-identity-tier') as HTMLElement;
       expect(currentTier.getAttribute('data-tier')).toBe('default');
     });
   });
