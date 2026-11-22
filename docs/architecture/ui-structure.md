@@ -44,7 +44,7 @@ Views that take the whole window, outside the dashboard shell:
 
 A mosaic's members and layout are its query string; changing the layout
 rewrites the address in place. An invalid mosaic (fewer than two members)
-redirects to `/projects`. `[src: file: frontend/src/lib/routes.ts:546-557#STANDALONE_ROOT]`
+redirects to `/projects`. `[src: file: frontend/src/lib/routes.ts:588-599#STANDALONE_ROOT]`
 `[src: file: frontend/src/lib/discussion-mosaic-navigation.ts:7-17#discussionMosaicRoute]`
 `[src: file: frontend/src/routes/StandaloneDiscussionsMosaicRoute.tsx:7-19]`
 
@@ -66,7 +66,7 @@ the page has already scrolled: the route is told so in memory, for that one
 move only, never in the history entry, so a reload, Back or Forward to the
 entry is an arrival like any other.
 `[src: file: frontend/src/routes/SettingsRoute.tsx:56-75]`
-`[src: file: frontend/src/lib/routes.ts:314#settingsRedirectPath]`
+`[src: file: frontend/src/lib/routes.ts:348-356#settingsRedirectPath]`
 `[src: file: frontend/src/lib/revealWhenSettled.ts:32-93#revealWhenSettled]`
 `[src: file: frontend/src/lib/legacyRoutes.ts:11-49]`
 `[src: file: frontend/src/App.tsx:182-185#legacyHashToPath]`
