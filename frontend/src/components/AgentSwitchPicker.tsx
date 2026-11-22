@@ -1,6 +1,6 @@
 import {
   Fragment, useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState,
-  type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref, type RefObject,
+  type CSSProperties, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref, type RefObject,
 } from 'react';
 import { agentPaletteOptionId } from '../lib/agentPickerPalette';
 import { createPortal } from 'react-dom';
@@ -10,6 +10,7 @@ import {
   type ResolvedCatalogTier,
 } from '../lib/modelCatalogSelection';
 import { useModelCatalogSnapshot } from '../hooks/useModelCatalogSnapshot';
+import { isFreeModel } from '../lib/freeModel';
 import { useT } from '../lib/I18nContext';
 import {
   readAgentPickerRecents, recordAgentPickerRecent, recentKey, type AgentPickerRecent,
@@ -46,6 +47,24 @@ import './AgentSwitchPicker.css';
 
 type Translate = (key: string, ...args: (string | number)[]) => string;
 type TranslatePlural = (key: string, count: number, ...args: (string | number)[]) => string;
+
+/**
+ * KT-2010 — « Gratuit » / "Free" after the id of a free model (`isFreeModel`),
+ * on every row of the list that shows one. The row's accessible name carries
+ * the same word (`withFreeName`).
+ */
+function FreeModelBadge({ modelId, t }: { modelId: string | null | undefined; t: Translate }) {
+  if (!isFreeModel(modelId)) return null;
+  return <span className="kr-agent-switch-free-badge" data-testid="agent-switch-free-badge">{t('agentPicker.freeBadge')}</span>;
+}
+
+/** A row's accessible name, « … · Gratuit » when its model is free. */
+const withFreeName = (name: string, modelId: string | null | undefined, t: Translate) =>
+  isFreeModel(modelId) ? `${name} · ${t('agentPicker.freeBadge')}` : name;
+
+/** What the search finds a free model by: the badge's word, and `free` in every language. */
+const freeSearchTerms = (modelId: string | null | undefined, t: Translate): string[] =>
+  isFreeModel(modelId) ? [t('agentPicker.freeBadge'), 'free'] : [];
 
 /**
  * KT-1994 — the most other models an unfolded agent mounts at once (577 for
@@ -705,6 +724,17 @@ const modelName = (entry: CatalogModelEntry | undefined, id: string) => {
   return name && comparableName(name) !== comparableName(id) ? name : '';
 };
 
+/**
+ * KT-2010 — the height of the band of the agent a row belongs to (0 outside
+ * an agent, and for the band itself): what the band covers at the top of the
+ * list while that agent's rows scroll under it.
+ */
+function stickyHeaderHeight(row: HTMLElement): number {
+  const header = row.closest('.kr-agent-switch-group-block')
+    ?.querySelector<HTMLElement>(':scope > .kr-agent-switch-group-header');
+  return header && !header.contains(row) ? header.getBoundingClientRect().height : 0;
+}
+
 interface AgentModelListProps {
   ariaLabel: string;
   targets: readonly AgentSwitchTarget[];
@@ -768,8 +798,19 @@ function AgentModelList({
     const control = Array.from(list?.querySelectorAll<HTMLElement>('.kr-agent-switch-more-toggle') ?? [])
       .find(node => node.dataset.fold === key);
     if (!list || !control) return;
-    list.scrollTop += control.getBoundingClientRect().top - list.getBoundingClientRect().top;
+    // KT-2010 — right under its agent's band, which stays at the top.
+    list.scrollTop += control.getBoundingClientRect().top - list.getBoundingClientRect().top - stickyHeaderHeight(control);
   });
+  // KT-2010 — a row that takes the focus is never left under its agent's
+  // band: the band sticks to the top of the list, so the row is scrolled to
+  // just below it (the arrows, Home and End move the focus up the list).
+  const keepFocusClearOfHeader = (event: ReactFocusEvent<HTMLElement>) => {
+    const list = resultsRef.current;
+    const row = event.target;
+    if (!list || !(row instanceof HTMLElement)) return;
+    const covered = list.getBoundingClientRect().top + stickyHeaderHeight(row) - row.getBoundingClientRect().top;
+    if (covered > 0) list.scrollTop -= covered;
+  };
   const typed = query.trim();
   const searching = typed.length > 0;
   const hits = (terms: readonly (string | null | undefined)[]) => matchesCatalogSearch(typed, [...terms]);
@@ -809,16 +850,17 @@ function AgentModelList({
     const agentTerms = [label, ...catalogTargetSearchTerms(target, [])];
     const shownModes = searching
       ? modes.filter(mode => hits([
-        ...agentTerms, mode.modelId, mode.entry?.display_name, mode.entry?.display_alias,
+        ...agentTerms, mode.modelId, mode.entry?.display_name, mode.entry?.display_alias, ...freeSearchTerms(mode.modelId, t),
         ...(mode.tier === null ? [defaultLabel, t('agentPicker.defaultTier')] : [mode.tier, tierLabel(mode.tier)]),
       ]))
       : modes;
     const customEntry = custom ? listed.find(model => model.model_id === custom) : undefined;
     const customShown = Boolean(custom) && (!searching || hits([
       ...agentTerms, custom, customEntry?.display_name, customEntry?.display_alias, t('agentPicker.custom'),
+      ...freeSearchTerms(custom, t),
     ]));
     const matchedOthers = models && searching
-      ? others.filter(model => hits([model.model_id, model.display_name, model.display_alias]))
+      ? others.filter(model => hits([model.model_id, model.display_name, model.display_alias, ...freeSearchTerms(model.model_id, t)]))
       : [];
     const known = listed.some(model => model.model_id === typed) || modeIds.has(typed) || custom === typed;
     return {
@@ -863,7 +905,7 @@ function AgentModelList({
           className="kr-agent-switch-option-dot"
           style={{ background: AGENT_COLORS[group.target.agent] ?? 'var(--kr-text-faint)' }}
         />
-        <span className="kr-agent-switch-tier-name">{group.label}</span>
+        <span className="kr-agent-switch-tier-name kr-agent-switch-group-name">{group.label}</span>
       </span>
       <span className="kr-agent-switch-kind" data-transport={agentTransport(group.target.agent, group.target.connectionId)}>
         {t(`agentPicker.kind.${TRANSPORT_KIND[agentTransport(group.target.agent, group.target.connectionId)]}`)}
@@ -934,7 +976,7 @@ function AgentModelList({
               data-tier={tier ?? 'agent-default'}
               data-current={selected}
               data-main={onMain || undefined}
-              aria-label={`${group.label} · ${label}`}
+              aria-label={withFreeName(`${group.label} · ${label}`, modelId, t)}
               aria-describedby={descriptionId}
               title={onMain ? t('wf.shadow.rows.mainModel') : details.title}
               disabled={busy || blocked || details.blocked || onMain || (disableSelected && selected)}
@@ -949,6 +991,7 @@ function AgentModelList({
                 {modelId
                   ? <code className="kr-agent-switch-mode-model">{modelId}</code>
                   : <span className="kr-agent-switch-mode-default">{t('wf.shadow.rows.defaultModel')}</span>}
+                <FreeModelBadge modelId={modelId} t={t} />
                 {name && <span className="kr-agent-switch-mode-name">{name}</span>}
                 {ownState && <AgentAvailabilityBadge availability={ownState} placement="tier" />}
               </span>
@@ -965,13 +1008,14 @@ function AgentModelList({
               className="kr-agent-switch-mode"
               data-kind="custom"
               data-current="true"
-              aria-label={`${group.label} · ${t('agentPicker.custom')} · ${group.custom}`}
+              aria-label={withFreeName(`${group.label} · ${t('agentPicker.custom')} · ${group.custom}`, group.custom, t)}
               disabled={busy || blocked || disableSelected}
               onClick={() => group.custom && onChoose({ kind: 'model', target: group.target, model: group.custom, row: 'custom' })}
             >
               <span className="kr-agent-switch-mode-label"><span>{t('agentPicker.custom')}</span></span>
               <span className="kr-agent-switch-mode-value">
                 <code className="kr-agent-switch-mode-model">{group.custom}</code>
+                <FreeModelBadge modelId={group.custom} t={t} />
                 {modelName(group.listed.find(model => model.model_id === group.custom), group.custom) && (
                   <span className="kr-agent-switch-mode-name">
                     {modelName(group.listed.find(model => model.model_id === group.custom), group.custom)}
@@ -1019,7 +1063,7 @@ function AgentModelList({
                 data-kind="model"
                 data-current="false"
                 data-main={onMain || undefined}
-                aria-label={`${group.label} · ${model.model_id}`}
+                aria-label={withFreeName(`${group.label} · ${model.model_id}`, model.model_id, t)}
                 title={onMain
                   ? t('wf.shadow.rows.mainModel')
                   : [name, unavailable ? t('modelCatalog.unavailable') : ''].filter(Boolean).join(' — ') || undefined}
@@ -1029,6 +1073,7 @@ function AgentModelList({
                 <span className="kr-agent-switch-mode-label" />
                 <span className="kr-agent-switch-mode-value">
                   <code className="kr-agent-switch-mode-model">{model.model_id}</code>
+                  <FreeModelBadge modelId={model.model_id} t={t} />
                   {name && <span className="kr-agent-switch-mode-name">{name}</span>}
                   {unavailable && (
                     <AgentAvailabilityBadge
@@ -1078,7 +1123,7 @@ function AgentModelList({
         className="kr-agent-switch-mode kr-agent-switch-recent"
         data-kind="recent"
         data-current={selected}
-        aria-label={`${t('agentPicker.recent')}: ${label} · ${choice} · ${shown}`}
+        aria-label={withFreeName(`${t('agentPicker.recent')}: ${label} · ${choice} · ${shown}`, modelId, t)}
         disabled={busy || blocked || (disableSelected && selected)}
         onClick={() => onChoose(entry.model
           ? { kind: 'model', target, model: entry.model, row: 'recent' }
@@ -1099,6 +1144,7 @@ function AgentModelList({
           {modelId
             ? <code className="kr-agent-switch-mode-model">{modelId}</code>
             : <span className="kr-agent-switch-mode-default">{shown}</span>}
+          <FreeModelBadge modelId={modelId} t={t} />
         </span>
         <span className="kr-agent-switch-mode-check">{selected && <Check size={10} aria-hidden="true" />}</span>
       </button>
@@ -1108,7 +1154,14 @@ function AgentModelList({
   return (
     <>
       {!visible.length && <span role="status" className="kr-agent-switch-status">{t('agentPicker.noMatch')}</span>}
-      <span ref={resultsRef} role="menu" aria-label={ariaLabel} className="kr-agent-switch-results" data-testid={testId}>
+      <span
+        ref={resultsRef}
+        role="menu"
+        aria-label={ariaLabel}
+        className="kr-agent-switch-results"
+        data-testid={testId}
+        onFocus={keepFocusClearOfHeader}
+      >
         {recentRows.length > 0 && (
           <span className="kr-agent-switch-recents" role="group" aria-label={t('agentPicker.recent')}>
             <span className="kr-agent-switch-group" role="presentation">{t('agentPicker.recent')}</span>
