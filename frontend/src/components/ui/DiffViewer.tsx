@@ -1,5 +1,5 @@
 import {
-  Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
+  Fragment, useId, useLayoutEffect, useMemo, useRef, useState,
   type MouseEvent, type ReactNode, type RefObject,
 } from 'react';
 import { WrapText } from 'lucide-react';
@@ -264,10 +264,12 @@ function DiffFile({ file, layout, highlight, highlightLimit, copyable, selectabl
     );
   });
 
-  let offset = 0;
+  // Each hunk's first line index is the count of the lines before it.
+  const starts = file.hunks.reduce<number[]>(
+    (acc, hunk, h) => [...acc, h === 0 ? 0 : acc[h - 1] + file.hunks[h - 1].lines.length], [],
+  );
   const hunks = file.hunks.map((hunk, h) => {
-    const items = hunk.lines.map((line, j) => ({ line, index: offset + j }));
-    offset += hunk.lines.length;
+    const items = hunk.lines.map((line, j) => ({ line, index: starts[h] + j }));
     return (
       <Fragment key={h}>
         {hunk.header && <div className="ui-diff-hunk"><span className="ui-diff-hunk-header">{hunk.header}</span></div>}
@@ -329,8 +331,18 @@ export function DiffViewer({
   const [wrap, setWrap] = useState(initialWrap);
   const anchor = useRef<{ path: string; index: number } | null>(null);
 
-  useEffect(() => { setLayout(initialLayout); }, [initialLayout]);
-  useEffect(() => { setWrap(initialWrap); }, [initialWrap]);
+  // A new `layout` or `wrap` prop resets the reader's choice, during render
+  // (react.dev, "Adjusting some state when a prop changes"), not in an effect.
+  const [prevLayout, setPrevLayout] = useState(initialLayout);
+  if (prevLayout !== initialLayout) {
+    setPrevLayout(initialLayout);
+    setLayout(initialLayout);
+  }
+  const [prevWrap, setPrevWrap] = useState(initialWrap);
+  if (prevWrap !== initialWrap) {
+    setPrevWrap(initialWrap);
+    setWrap(initialWrap);
+  }
 
   const shown: DiffLayout = narrow ? 'unified' : layout;
   const pick = (next: DiffLayout) => {

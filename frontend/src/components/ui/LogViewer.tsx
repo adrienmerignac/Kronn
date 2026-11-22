@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ArrowDownToLine, Eraser, RefreshCw, WrapText } from 'lucide-react';
 import { useT } from '../../lib/I18nContext';
 import { Button } from './Button';
@@ -73,8 +73,18 @@ export function LogViewer({
   const [wrap, setWrap] = useState(initialWrap);
   const [following, setFollowing] = useState(follow);
 
-  useEffect(() => { setFollowing(follow); }, [follow]);
-  useEffect(() => { setWrap(initialWrap); }, [initialWrap]);
+  // A new `follow` or `wrap` prop resets the state during render (react.dev,
+  // "Adjusting some state when a prop changes"), not in an effect.
+  const [prevFollow, setPrevFollow] = useState(follow);
+  if (prevFollow !== follow) {
+    setPrevFollow(follow);
+    setFollowing(follow);
+  }
+  const [prevWrap, setPrevWrap] = useState(initialWrap);
+  if (prevWrap !== initialWrap) {
+    setPrevWrap(initialWrap);
+    setWrap(initialWrap);
+  }
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
