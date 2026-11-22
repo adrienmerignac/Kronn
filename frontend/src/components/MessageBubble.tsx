@@ -38,7 +38,7 @@ import { MermaidDiagram } from './MermaidDiagram';
 import remarkGfm from 'remark-gfm';
 import remarkEmoji from 'remark-emoji';
 import '../pages/DiscussionsPage.css';
-import type { DiscussionMessage, SessionContinuity, AgentType, QuickPrompt, ContextFile, SourceCheck, MessageTarget, DiscussionAction, WorkflowStepIdentity } from '../types/generated';
+import type { DiscussionMessage, SessionContinuity, AgentType, QuickPrompt, ContextFile, SourceCheck, MessageTarget, DiscussionAction, WorkflowStepIdentity, ModelTier } from '../types/generated';
 import { MessageAttachments } from './MessageAttachments';
 import { AGENT_LABELS, AGENT_MENTIONS, MODEL_TIER_ICONS, USER_MENTION_TRIGGER, agentColor, agentTextColor } from '../lib/constants';
 import { AgentIdentity } from './ui/AgentIdentity';
@@ -451,6 +451,9 @@ export const MessageBubble = memo(function MessageBubble(props: MessageBubblePro
     : null;
   // KT-1936 — the role, its own chip next to the model: a workflow step, a
   // joined CLI session, the main agent or a one-off agent.
+  const messageTier: ModelTier | null = msg.model_tier && msg.model_tier in MODEL_TIER_ICONS
+    ? msg.model_tier as ModelTier
+    : null;
   const agentIdentityRole: AgentIdentityRole = workflowStep
     ? 'workflowStep'
     : msg.source_msg_id
@@ -856,8 +859,8 @@ export const MessageBubble = memo(function MessageBubble(props: MessageBubblePro
                     model={agentModel(msg.model, 'notRecorded')}
                     role={agentIdentityRole}
                     roleLabel={isTourDemo ? t('disc.tourDemoKind') : undefined}
-                    tier={msg.model_tier ?? null}
-                    tierLabel={msg.model_tier ? t(`disc.tier.${msg.model_tier}`) : undefined}
+                    tier={messageTier}
+                    tierLabel={messageTier ? t(`disc.tier.${messageTier}`) : undefined}
                   />
                   {/* KT-247 — stable per-provider CLI ordinal, so two joined
                    *  Claude Code (or two Codex) are distinguishable in the

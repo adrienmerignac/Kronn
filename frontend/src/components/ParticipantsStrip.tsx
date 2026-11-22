@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { measureStripOverflow } from '../lib/stripOverflow';
 import './ParticipantsStrip.css';
 
 export interface ParticipantsStripEntry {
@@ -20,14 +21,6 @@ export interface ParticipantsStripProps {
   empty?: ReactNode;
 }
 
-/** How many chips end past the visible right edge of `list`, and whether it
- *  scrolls further right (the fade). */
-export function measureStripOverflow(list: HTMLElement): { hidden: number; fadeEnd: boolean } {
-  const edge = list.scrollLeft + list.clientWidth;
-  const chips = Array.from(list.children) as HTMLElement[];
-  const hidden = chips.filter(chip => chip.offsetLeft + chip.offsetWidth > edge + 1).length;
-  return { hidden, fadeEnd: list.scrollWidth - edge > 1 };
-}
 
 /**
  * KT-1936 — the participants on ONE line that scrolls sideways (owner

@@ -7,7 +7,7 @@ import type {
   AgentType,
   ModelTiersConfig,
 } from '../types/generated';
-import { AGENT_LABELS, AGENT_MENTIONS, isUsable, isValidationDisc, isBriefingDisc, isBootstrapDisc } from '../lib/constants';
+import { AGENT_MENTIONS, isUsable, isValidationDisc, isBriefingDisc, isBootstrapDisc } from '../lib/constants';
 import type { ToastFn } from '../hooks/useToast';
 import {
   Pencil, ShieldCheck, Zap, Rocket,

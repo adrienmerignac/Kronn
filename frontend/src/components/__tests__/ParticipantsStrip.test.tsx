@@ -5,7 +5,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
-import { ParticipantsStrip, measureStripOverflow } from '../ParticipantsStrip';
+import { ParticipantsStrip } from '../ParticipantsStrip';
+import { measureStripOverflow } from '../../lib/stripOverflow';
 
 const CHIP = 80;
 const STRIP = 200;

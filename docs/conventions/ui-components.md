@@ -44,6 +44,7 @@ fails if a component lacks one of the three.
 | `KeyValueList` | A `dl`; `items` (`label`, `value`, `mono`, `copyable`, `copyText`, `truncate`), `layout` grid / inline. | the copy buttons |
 | `StatTile`, `StatGrid` | `label`, `value` (null: "—" and `unknownReason`), `unit`, `icon`, `hint`, `delta` (`text`, `direction`, `tone`), `loading`, `onClick` (a button) with `selected` (`aria-pressed`), `size` md / lg. `StatGrid` (`label` names the group) wraps its tiles by its own width. | native, when a button |
 | `ProgressBar` | Required `label` (`hideLabel`); `value`, `max`, `valueText`; no value is indeterminate; `tone` accent / success / warning / danger / info; `size` sm / md. Stacked: `segments` (`id`, `label`, `value`, `tone`), `max`, `legend`. | — |
+| `AgentIdentity` | An agent named the same way everywhere (KT-1936): `name` in its `color` (`agentTextColor`), `model` (a concrete id or an unknown state, always written), `role` as a neutral `StatusBadge`, optional `tier` icon, `size` full / inline / compact, `truncateModel` (17 characters). See below. | none: inline markup, it sits inside the caller's button |
 | `ListHeader`, `DetailHeader`, `TabHeader`, `SectionHeader`, `DrawerHeader`, `CardHeader` | One header per kind, one heading each at a fixed level (h1; h2 for detail, drawer, card; h3 for tab, section), slots `leading` / `title` / `meta` / `status` / `description` / `actions`, `compact`; `DrawerHeader` adds `onClose` + `closeLabel` (the last control), `titleId` names a drawer or a card. Which goes where: [header-kinds.md](header-kinds.md). | native |
 
 `Menu` and `Tooltip` render into `document.body` at a fixed position
@@ -393,6 +394,60 @@ missing. A shared component built on those controls (the agent picker,
 KT-1885) goes in `SHARED_GALLERY_COMPONENTS`, shown after them.
 `[src: file: frontend/src/components/settings/designSystemGallery.ts:19#UI_GALLERY_COMPONENTS]`
 `[src: file: frontend/src/components/settings/designSystemGallery.ts:56-58#SHARED_GALLERY_COMPONENTS]`
+
+## AgentIdentity: an agent, its model and its role (KT-1936)
+
+Wherever an agent is named, its model is written next to it; the role (who
+the agent is in the discussion) is a separate chip and never replaces the
+model. One component does it, on every surface: the discussion header (the
+picker's trigger, its static form too), the message header, the activity
+bubbles (pending, streaming, failed), the workflow-step bubble and message,
+the participant chips and their details, and the discussion list rows.
+`[src: file: frontend/src/components/ui/AgentIdentity.tsx:46#AgentIdentity]`
+
+- **Order:** icon, name, model, tier icon, role chip. Its text is « name ·
+  model · role », so the button around it reads the same.
+- **The model** is the secondary text role, the code face, never under the
+  12 px floor. With no concrete id it writes one of three states, never a
+  blank or a tier name: « model not declared » (a joined CLI session that
+  declared none), « model not recorded » (a legacy message), « default model
+  of <agent> » (the provider's default before the first reply; the workflow
+  step, which reports none). `agentModel(id, fallback)` picks.
+  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:39#agentModel]`
+- **The roles:** main agent, one-off agent, CLI session, workflow step
+  (`ui.agentIdentity.role.*`); `roleLabel` writes another word in the chip
+  (the picker's caller, the guided-tour demo).
+- **Sizes:** full (the participant details), inline (everything else),
+  compact (the discussion list row: the model and the role leave the screen
+  and stay in the accessible name, the row's title has them too).
+- **Cut model:** `truncateModel` (the picker trigger, the participant chip)
+  cuts the id past 17 characters with an ellipsis; the full id stays in the
+  DOM, so in the accessible name, and the caller writes it in its tooltip with
+  `agentIdentityText()`.
+  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:36#AGENT_IDENTITY_MODEL_MAX_CHARS]`
+  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:75#agentIdentityText]`
+- **Colour:** the name takes `agentTextColor()`, a text-safe token per agent
+  (`--kr-agent-<agent>-text`) that holds 4.5:1 on every surface of every
+  theme; the brand colour (`agentColor()`) stays on dots, borders and icons;
+  a colour the user configured is written as it is. See
+  [design-tokens.md](design-tokens.md), Contrast.
+- **Lint:** `ui-guards/no-adhoc-agent-identity` refuses an element written
+  in an agent's colour that also writes a model or a role
+  ([ui-lint-guards.md](ui-lint-guards.md)).
+
+**The participants strip** (`ParticipantsStrip`, owner decisions
+2026-11-20): each chip is a button that opens the participant's details,
+with its presence state, its icon and `AgentIdentity` (the model cut past 17
+characters); the main agent first. One line that scrolls sideways, never
+wrapped: while chips are past its right edge the edge fades and a « +N »
+counter (the chips not in view) opens the full list, whose rows open a
+participant's details. The same on a wide screen when the chips do not fit.
+The role comes from the participant: a workflow step, the main agent (a
+native participant of the discussion's own agent), a one-off agent (another
+native one) or a joined CLI session.
+`[src: file: frontend/src/components/ParticipantsStrip.tsx:32#ParticipantsStrip]`
+`[src: file: frontend/src/lib/stripOverflow.ts:5#measureStripOverflow]`
+`[src: file: frontend/src/components/DiscParticipantsHeader.tsx:108#participantRole]`
 
 ## The one agent picker
 

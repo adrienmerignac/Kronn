@@ -61,7 +61,6 @@
   ],
   "offScale": {
     "components/AgentSwitchPicker.css": {
-      "font-size": 2,
       "breakpoint": 1
     },
     "components/AiDocViewer.css": {
