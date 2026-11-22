@@ -7,7 +7,9 @@ import {
   Link2, Download, AlertOctagon, AlertTriangle, Check, MoreHorizontal, Copy, Archive, Trash2,
 } from 'lucide-react';
 import type { Discussion } from '../types/generated';
-import { isValidationDisc, isBriefingDisc, isBootstrapDisc } from '../lib/constants';
+import { AGENT_LABELS, isValidationDisc, isBriefingDisc, isBootstrapDisc } from '../lib/constants';
+import { AgentIdentity } from './ui/AgentIdentity';
+import { agentIdentityText, agentModel } from './ui/agentIdentityKinds';
 import { formatRelativeTime } from '../lib/relativeTime';
 import { sourceAgentShortLabel, unseenBasis } from '../lib/discussionUiUtils';
 import { gravatarUrl } from '../lib/gravatar';
@@ -95,9 +97,17 @@ export const SwipeableDiscItem = memo(function SwipeableDiscItem({
   // Read the active UI locale so the relative time is rendered in the
   // right language. memo() guards against needless re-renders when the
   // locale is unchanged.
-  const { locale } = useT();
+  const { locale, t: tUi } = useT();
   const relativeWhen = formatRelativeTime(disc.updated_at, locale);
   const visibleAgent = agentLabel ?? disc.agent;
+  // KT-1936 — the row is read to find a discussion: the agent only on screen,
+  // its model in the tooltip and the accessible name (the header shows it once
+  // the discussion opens).
+  const rowModel = agentModel(disc.model, 'providerDefault');
+  const agentText = agentIdentityText(
+    { name: visibleAgent, agentLabel: AGENT_LABELS[disc.agent] ?? visibleAgent, model: rowModel },
+    tUi,
+  );
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (selectionMode) return;
@@ -212,7 +222,7 @@ export const SwipeableDiscItem = memo(function SwipeableDiscItem({
           role={selectionMode ? 'checkbox' : undefined}
           aria-current={!selectionMode && isActive ? 'true' : undefined}
           aria-checked={selectionMode ? isSelected : undefined}
-          aria-label={`${disc.title} — ${msgCount} messages, ${visibleAgent}`}
+          aria-label={`${disc.title} — ${msgCount} messages, ${agentText}`}
           {...newTabClickProps(selectionMode ? null : discussionPath(disc.id))}
           onClick={handleOpenClick}
           onPointerDown={handlePointerDown}
@@ -325,7 +335,7 @@ export const SwipeableDiscItem = memo(function SwipeableDiscItem({
                   {' · '}
                 </>
               )}
-              {msgCount} msg · {visibleAgent}
+              {msgCount} msg · <span className="disc-item-agent" title={agentText}><AgentIdentity size="compact" name={visibleAgent} agentLabel={AGENT_LABELS[disc.agent] ?? visibleAgent} model={rowModel} /></span>
               {relativeWhen && (
                 <>
                   {' · '}

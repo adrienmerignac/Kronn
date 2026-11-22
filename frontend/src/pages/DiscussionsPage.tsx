@@ -65,6 +65,8 @@ import { triggerDownload } from '../lib/downloadBlob';
 import { buildBatchTriageRows, buildContinuationDraft, type BatchTriageRow } from '../lib/batchTriage';
 import { useT } from '../lib/I18nContext';
 import { useSustainedFlag } from '../hooks/useSustainedFlag';
+import { AgentIdentity } from '../components/ui/AgentIdentity';
+import { agentModel, type AgentIdentityRole } from '../components/ui/agentIdentityKinds';
 import { AGENT_LABELS, agentColor, agentTextColor, isAgentRestricted as isAgentRestrictedUtil, hasAgentFullAccess, getProjectGroup, isUsable, isRoomAgentDisabled, isBriefingDisc, isBootstrapDisc, isValidationDisc } from '../lib/constants';
 import type { ToastFn } from '../hooks/useToast';
 import {
@@ -136,6 +138,28 @@ function newClientMessageId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** KT-1936 — the agent of an activity bubble: its name, its model (the
+ *  discussion's own for the main agent, else the explicit « default model of
+ *  <agent> » until the reply names one) and its role. */
+function ActivityAgentIdentity({ agent, label, role = 'main', model }: {
+  agent: AgentType;
+  label?: string;
+  role?: AgentIdentityRole;
+  model?: string | null;
+}) {
+  const name = label ?? AGENT_LABELS[agent] ?? agent;
+  return (
+    <AgentIdentity
+      icon={<Cpu size={12} />}
+      name={name}
+      agentLabel={AGENT_LABELS[agent] ?? agent}
+      color={agentTextColor(agent)}
+      model={agentModel(model, 'providerDefault')}
+      role={role}
+    />
+  );
+}
+
 function PendingAgentReplyBubble({
   replyId,
   discussionId,
@@ -146,7 +170,11 @@ function PendingAgentReplyBubble({
   lastError,
   stopping,
   onStop,
+  role,
+  model,
 }: {
+  role?: AgentIdentityRole;
+  model?: string | null;
   replyId: string;
   discussionId: string;
   replyIds: ReplyIds;
@@ -172,8 +200,8 @@ function PendingAgentReplyBubble({
         data-testid={`failed-agent-${agent}`}
       >
         <div className="disc-msg-bubble" data-role="agent">
-          <div className="disc-msg-agent-label" style={{ color: agentTextColor(agent) }}>
-            <Cpu size={10} /> {AGENT_LABELS[agent] ?? agent}
+          <div className="disc-msg-agent-label" data-testid="activity-agent-identity">
+            <ActivityAgentIdentity agent={agent} role={role} model={model} />
           </div>
           <div className="disc-failed-agent">
             <AlertTriangle size={11} />
@@ -196,9 +224,9 @@ function PendingAgentReplyBubble({
       aria-live={run ? undefined : 'polite'}
     >
       <div className="disc-msg-bubble" data-role="agent">
-        <div className="disc-msg-agent-label" style={{ color: agentTextColor(agent) }}>
-          <Cpu size={10} /> {AGENT_LABELS[agent] ?? agent}
-          <Loader2 size={10} style={{ animation: 'spin 1s linear infinite', marginLeft: 4 }} />
+        <div className="disc-msg-agent-label" data-testid="activity-agent-identity">
+          <ActivityAgentIdentity agent={agent} role={role} model={model} />
+          <Loader2 size={12} aria-hidden="true" style={{ animation: 'spin 1s linear infinite', marginLeft: 4 }} />
         </div>
         <div className="disc-pending-agent-status">
           <div className="disc-streaming-waiting">
@@ -242,7 +270,11 @@ function StreamingAgentReplyBubble({
   recoveryLabel,
   agentLabel,
   waitingUpstream,
+  role,
+  model,
 }: {
+  role?: AgentIdentityRole;
+  model?: string | null;
   replyId: string;
   discussionId: string;
   replyIds: ReplyIds;
@@ -273,9 +305,9 @@ function StreamingAgentReplyBubble({
       aria-live={run ? undefined : 'polite'}
     >
       <div className="disc-msg-bubble" data-role="agent">
-        <div className="disc-msg-agent-label" style={{ color: agentTextColor(agent), justifyContent: 'space-between' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Cpu size={10} /> {displayAgent}
+        <div className="disc-msg-agent-label" data-testid="activity-agent-identity" style={{ justifyContent: 'space-between' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+            <ActivityAgentIdentity agent={agent} label={displayAgent} role={role} model={model} />
             {recovering
               ? <AlertTriangle size={10} style={{ marginLeft: 4 }} />
               : <Loader2 size={10} style={{ animation: 'spin 1s linear infinite', marginLeft: 4 }} />}
@@ -3977,6 +4009,8 @@ export function DiscussionsPage({
                           : null
                     }
                     agentLabel={recoveryAgentLabel}
+                    role={reply.agent === activeDiscussion.agent ? 'main' : 'oneOff'}
+                    model={reply.agent === activeDiscussion.agent ? activeDiscussion.model : null}
                     />
                 )
               : (
@@ -3991,6 +4025,8 @@ export function DiscussionsPage({
                     lastError={reply.lastError}
                     stopping={stoppingDispatchIds.has(reply.id)}
                     onStop={() => { void handleStopDispatch(reply.id); }}
+                    role={reply.agent === activeDiscussion.agent ? 'main' : 'oneOff'}
+                    model={reply.agent === activeDiscussion.agent ? activeDiscussion.model : null}
                   />
                 )
           ));

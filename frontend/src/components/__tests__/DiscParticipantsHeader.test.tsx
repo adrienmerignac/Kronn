@@ -77,8 +77,8 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
     });
     const chips = document.querySelectorAll('.disc-participant-chip');
     expect(chips.length).toBe(2);
-    expect(chips[0].querySelector('.disc-participant-name')?.textContent).toBe('@claude');
-    expect(chips[1].querySelector('.disc-participant-name')?.textContent).toBe('@codex');
+    expect(chips[0].querySelector('.ui-agent-identity-name')?.textContent).toBe('@claude');
+    expect(chips[1].querySelector('.ui-agent-identity-name')?.textContent).toBe('@codex');
     expect(document.querySelector('[data-testid="disc-participant-details"]')).toBeNull();
     await openParticipant();
     expect(document.querySelector('[data-testid="disc-participant-details"]')).not.toBeNull();
@@ -115,7 +115,9 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
       .toHaveTextContent('Implementation › Orchestrate');
     await openParticipant();
     const details = document.querySelector('.disc-participant-details');
-    expect(details).toHaveTextContent('disc.targetDiscussionAgent');
+    // KT-1936 — its role chip reads « workflow step », never « discussion agent ».
+    expect(details).toHaveTextContent('ui.agentIdentity.role.workflowStep');
+    expect(details).not.toHaveTextContent('disc.targetDiscussionAgent');
     expect(details).toHaveTextContent('disc.workflowStepAgent');
     expect(details).toHaveTextContent('Implementation');
     expect(details).toHaveTextContent('Orchestrate');
@@ -123,7 +125,7 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
     expect(details?.querySelector('.disc-participant-resume')).toBeNull();
   });
 
-  it('shows only an explicitly declared JOIN model and labels it as join metadata', async () => {
+  it('writes the declared JOIN model in clear on the chip, « model not declared » otherwise (KT-1936)', async () => {
     (discussionsApi.participants as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
         id: 1, agent_type: 'ClaudeCode', model: 'claude-sonnet-4-5',
@@ -140,12 +142,44 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
       await Promise.resolve();
     });
 
-    expect(document.querySelectorAll('.disc-participant-model')).toHaveLength(0);
+    const chips = document.querySelectorAll('.disc-participant-chip');
+    // State, icon, name, model, role: the model in clear, cut past 17 characters.
+    const chipModel = (i: number) => chips[i].querySelector('[data-testid="agent-identity-model"]');
+    expect(chips[0].querySelector('.ui-agent-identity')).not.toBeNull();
+    expect(chipModel(0)).toHaveTextContent(/^claude-sonnet-4-5$/);
+    expect(chipModel(0)).toHaveAttribute('data-truncate', 'true');
+    expect(chipModel(1)).toHaveAttribute('data-state', 'notDeclared');
+    expect(chipModel(1)).toHaveTextContent('ui.agentIdentity.model.notDeclared');
+    expect(chips[1].querySelector('.ui-agent-identity-role')).toHaveTextContent('ui.agentIdentity.role.cli');
+    // The full id is in the accessible name.
+    expect(chips[0].getAttribute('aria-label'))
+      .toBe('disc.participantDetails(@claude · claude-sonnet-4-5 · ui.agentIdentity.role.cli)');
     await openParticipant();
     const models = document.querySelectorAll('.disc-participant-model');
     expect(models).toHaveLength(1);
     expect(models[0].textContent).toContain('claude-sonnet-4-5');
+    await openParticipant(1);
+    expect(document.querySelector('.disc-participant-model')).toHaveTextContent('ui.agentIdentity.model.notDeclared');
     expect(document.body.textContent).not.toContain('undefined');
+  });
+
+  it('puts the main agent first, labelled main agent, and a native one-off agent apart (KT-1936)', async () => {
+    (discussionsApi.participants as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: 1, agent_type: 'Codex', session_id: 'sess-B', role: 'peer', status: 'active' },
+      { id: -2, agent_type: 'Vibe', session_id: null, role: 'native_resume', status: 'active', wake_mode: 'native_dispatch' },
+      { id: -1, agent_type: 'ClaudeCode', session_id: null, role: 'native_resume', status: 'active', wake_mode: 'native_dispatch' },
+    ]);
+    await act(async () => {
+      render(<DiscParticipantsHeader discId="d-main" t={t} mainAgent="ClaudeCode" />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const chips = Array.from(document.querySelectorAll('.disc-participant-chip'));
+    expect(chips.map(c => c.querySelector('.ui-agent-identity-name')?.textContent)).toEqual(['@claude', '@codex', '@vibe']);
+    expect(chips.map(c => c.querySelector('.ui-agent-identity-role')?.textContent)).toEqual([
+      'ui.agentIdentity.role.main', 'ui.agentIdentity.role.cli', 'ui.agentIdentity.role.oneOff',
+    ]);
+    expect(chips[0].querySelector('[data-testid="agent-identity-model"]')).toHaveAttribute('data-state', 'providerDefault');
   });
 
   it('copies the exact native resume command only when the CLI exposes an id', async () => {

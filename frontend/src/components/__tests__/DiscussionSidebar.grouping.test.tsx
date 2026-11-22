@@ -126,11 +126,25 @@ describe('DiscussionSidebar — grouping', () => {
       />,
     );
 
-    expect(screen.getByText(/0 msg · OpenRouter/)).toBeInTheDocument();
-    expect(screen.queryByText(/0 msg · Custom/)).not.toBeInTheDocument();
+    const summary = document.querySelector('.disc-item-meta-summary')!;
+    expect(summary.querySelector('.ui-agent-identity-name')).toHaveTextContent(/^OpenRouter$/);
+    expect(summary).not.toHaveTextContent('Custom');
     expect(screen.getByRole('button', {
-      name: 'Discussion openrouter-disc — 0 messages, OpenRouter',
+      name: 'Discussion openrouter-disc — 0 messages, OpenRouter · ui.agentIdentity.model.providerDefault',
     })).toBeInTheDocument();
+  });
+
+  // KT-1936 — the list row is the one surface where the model stays off screen:
+  // in the tooltip and the accessible name only.
+  it('keeps the model of a row in its tooltip and accessible name, not on screen', () => {
+    const discussion = { ...mkDisc({ id: 'model-disc', agent: 'Codex' }), model: 'gpt-5.5-codex' };
+    render(<DiscussionSidebar {...baseProps} discussions={[discussion]} />);
+    const agent = document.querySelector('.disc-item-agent')!;
+    expect(agent.querySelector('.ui-agent-identity')).toHaveAttribute('data-size', 'compact');
+    expect(agent.querySelector('[data-testid="agent-identity-model"]')).toBeNull();
+    expect(agent.querySelector('.ui-visually-hidden')).toHaveTextContent('gpt-5.5-codex');
+    expect(agent).toHaveAttribute('title', 'Codex · gpt-5.5-codex');
+    expect(screen.getByRole('button', { name: 'Discussion model-disc — 0 messages, Codex · gpt-5.5-codex' })).toBeInTheDocument();
   });
 
   it('keeps the shared-shell and discussion sizing classes on the sidebar', () => {

@@ -390,6 +390,7 @@ export function ChatHeader({
           discId={discussion.id}
           t={t}
           refreshKey={participantsRefresh}
+          mainAgent={discussion.agent}
         />
         {/* KT-1270 — never folded away: what the room reaches beyond its project. */}
         <DiscussionScopeChip
