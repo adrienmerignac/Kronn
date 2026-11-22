@@ -317,7 +317,7 @@ Escape closes one layer, the innermost first
   first screen moves to it. `loading` shows a `LoadingState` with the viewer
   `aria-busy`; no file shows "No change" or `empty`. A bounded `maxHeight`
   makes the files a focusable region named by `label`.
-  `[src: file: frontend/src/components/ui/DiffViewer.tsx:320#DiffViewer]`
+  `[src: file: frontend/src/components/ui/DiffViewer.tsx:317-322#DiffViewer]`
   `[src: file: frontend/src/components/ui/DiffViewer.tsx:185]`
   `[src: file: frontend/src/lib/diffModel.ts:82#parseUnifiedDiff]`
   `[src: file: frontend/src/lib/diffModel.ts:193#diffFileFromRows]`
