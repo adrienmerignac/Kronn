@@ -44,7 +44,7 @@ Views that take the whole window, outside the dashboard shell:
 
 A mosaic's members and layout are its query string; changing the layout
 rewrites the address in place. An invalid mosaic (fewer than two members)
-redirects to `/projects`. `[src: file: frontend/src/lib/routes.ts:327-338#STANDALONE_ROOT]`
+redirects to `/projects`. `[src: file: frontend/src/lib/routes.ts:538-549#STANDALONE_ROOT]`
 `[src: file: frontend/src/lib/discussion-mosaic-navigation.ts:7-17#discussionMosaicRoute]`
 `[src: file: frontend/src/routes/StandaloneDiscussionsMosaicRoute.tsx:7-19]`
 
@@ -77,11 +77,11 @@ like any other.
   `[src: file: frontend/src/routes/appRoutes.tsx:14-31]`
   `[src: file: frontend/src/routes/dashboardRoutes.tsx:19-41#dashboardRoutes]`
   `[src: file: frontend/src/App.tsx:209-210#Outlet]`
-  `[src: file: frontend/src/pages/Dashboard.tsx:1223-1226#Outlet]`
+  `[src: file: frontend/src/pages/Dashboard.tsx:1228-1231#Outlet]`
 - **Paths** — spelled out once, in `lib/routes.ts`. Components navigate with
   `useKronnNavigate()`, never with a literal path.
   `[src: file: frontend/src/lib/routes.ts:1-8]`
-  `[src: file: frontend/src/hooks/useKronnNavigate.ts:52-62#useKronnNavigate]`
+  `[src: file: frontend/src/hooks/useKronnNavigate.ts:55-65#useKronnNavigate]`
 - **Route components** — one per page under `routes/`, each its own lazy chunk.
   It reads the shell's outlet context and maps it to the page's props; the
   pages themselves do not know the router.

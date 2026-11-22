@@ -383,8 +383,8 @@ the current theme. An entry's address is its tab plus the heading in the hash
 (`/config/design-system/components#ds-c-menu`). The old `/config#design-system`
 and the old `/config#ds-…` entry anchors still land on the right tab and entry:
 the table is `DESIGN_SYSTEM_ANCHOR_TABS`.
-`[src: file: frontend/src/lib/routes.ts:167#DESIGN_SYSTEM_ANCHOR_TABS]`
-`[src: file: frontend/src/lib/routes.ts:184#legacyDesignSystemLocation]`
+`[src: file: frontend/src/lib/routes.ts:370-375#DESIGN_SYSTEM_ANCHOR_TABS]`
+`[src: file: frontend/src/lib/routes.ts:386-392#legacyDesignSystemLocation]`
 The route is its own chunk, never preloaded, so Settings does not load the
 gallery.
 `[src: file: frontend/src/routes/lazyRoutes.ts:17#DesignSystemRoute]` Adding a component: add it to `UI_GALLERY_COMPONENTS`, a

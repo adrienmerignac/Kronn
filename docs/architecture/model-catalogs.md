@@ -276,9 +276,9 @@ explained disabled option, and clears an incompatible effort in the same save
 that changes the model. Even without available modes, the control remains
 usable to clear an invalid saved effort. The selector sits beside each mode's
 model picker; the cards of other runtimes carry none (KT-1807).
-[src: file: frontend/src/components/settings/AgentsSection.tsx:233-278#saveTierPreference]
-[src: file: frontend/src/components/settings/AgentsSection.tsx:965-991#renderEffortSelect]
-[src: file: frontend/src/components/settings/AgentsSection.tsx:955-961#renderTierEfforts]
+[src: file: frontend/src/components/settings/AgentsSection.tsx:252-297#saveTierPreference]
+[src: file: frontend/src/components/settings/AgentsSection.tsx:983-1009#renderEffortSelect]
+[src: file: frontend/src/components/settings/AgentsSection.tsx:973-979#renderTierEfforts]
 
 ## Migration and test invariants
 
