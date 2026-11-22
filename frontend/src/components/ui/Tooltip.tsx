@@ -23,7 +23,7 @@ export interface TooltipProps {
 
 /** KT-1880 — replaces the native `title=`: it opens on hover AND on keyboard
  *  focus, stays while the pointer is over it, and Escape closes it without
- *  moving focus (WCAG 1.4.13). */
+ *  moving focus (WCAG 1.4.13), and without closing the layer it sits in. */
 export function Tooltip({ content, children, placement = 'top', describe = true }: TooltipProps) {
   const id = useId();
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -45,12 +45,21 @@ export function Tooltip({ content, children, placement = 'top', describe = true 
     closeTimer.current = window.setTimeout(() => { closeTimer.current = null; setOpen(false); }, TOOLTIP_CLOSE_DELAY_MS);
   }, [cancelClose]);
 
-  // Escape closes it wherever focus is: a tooltip opened by hover too.
+  // Escape closes it wherever focus is: a tooltip opened by hover too. KT-2014
+  // — an open tooltip is the top layer: it takes Escape first (window, capture,
+  // before a Dialog, a Drawer or an anchored layer around it) and stops it
+  // there, so that layer stays open until the next Escape.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') hide(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    const onKey = (e: KeyboardEvent) => {
+      // An IME composition uses Escape to cancel itself.
+      if (e.key !== 'Escape' || e.isComposing || e.keyCode === 229 || e.defaultPrevented) return;
+      e.preventDefault();
+      e.stopPropagation();
+      hide();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [open, hide]);
 
   useEffect(() => cancelClose, [cancelClose]);

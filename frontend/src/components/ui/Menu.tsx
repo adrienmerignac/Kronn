@@ -4,6 +4,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
+import { registerLayer } from '../../hooks/useDialogFocus';
 import { useAnchoredStyle } from './anchor';
 import { Button, type ButtonSize, type ButtonVariant } from './Button';
 import { IconButton, type NonEmptyLabel } from './IconButton';
@@ -42,7 +43,8 @@ export interface MenuProps<L extends string = string> {
  *  Down opens it on the first item, Arrow Up on the last; the arrows, Home and
  *  End move between items, a letter jumps to the next item starting with it;
  *  Enter or Space chooses; Escape and Tab close it and give focus back to the
- *  trigger. A click outside closes it. */
+ *  trigger, Escape on the trigger too (a menu with no enabled item keeps the
+ *  focus there). A click outside closes it. */
 export function Menu<L extends string>({
   label, items, destructiveItem, icon, showLabel = false, align = 'end', size = 'md', variant = 'ghost', triggerTestId,
 }: MenuProps<L>) {
@@ -79,6 +81,14 @@ export function Menu<L extends string>({
     item?.scrollIntoView?.({ block: 'nearest' });
   }, [open, placed, focus]);
 
+  // KT-2014 — on the stack of open layers: a press in this menu, opened from
+  // an anchored layer, is not a press outside that layer.
+  useEffect(() => {
+    const node = menuRef.current;
+    if (!open || !node) return;
+    return registerLayer(node);
+  }, [open]);
+
   // A press outside the trigger and the menu closes it, focus stays where it lands.
   useEffect(() => {
     if (!open) return;
@@ -94,6 +104,13 @@ export function Menu<L extends string>({
   const onTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); openAt('first'); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); openAt('last'); }
+    // KT-2014 — a menu with no enabled item leaves focus on its trigger:
+    // Escape there closes it, and only it (a dialog around stays open).
+    else if (e.key === 'Escape' && open && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      e.stopPropagation();
+      close(true);
+    }
   };
 
   const onMenuKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

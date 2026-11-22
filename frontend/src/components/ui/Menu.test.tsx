@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Menu, type MenuItem } from './Menu';
+import { Dialog } from './Dialog';
 
 const setup = (over: Partial<Record<'rename' | 'duplicate' | 'archive' | 'remove', () => void>> = {}, disabledDuplicate = false) => {
   const items: MenuItem[] = [
@@ -216,5 +217,39 @@ describe('Menu', () => {
     await userEvent.click(trigger);
     expect(names()).toEqual(['Delete']);
     expect(screen.queryByRole('separator')).toBeNull();
+  });
+
+  // KT-2014 — with no enabled item the focus stays on the trigger, which
+  // must close the menu on Escape, and only the menu.
+  it('closes a menu with no enabled item on Escape from its trigger, a dialog around it staying open', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Task">
+        <Menu label="Row actions" showLabel items={[{ id: 'a', label: 'Open', onSelect: vi.fn(), disabled: true }]} />
+      </Dialog>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    expect(trigger).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(menu()).not.toBeNull();
+    expect(trigger).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(menu()).toBeNull();
+    expect(trigger).toHaveFocus();
+    expect(onClose).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves Escape on a closed trigger to the page', () => {
+    const onKeyDown = vi.fn();
+    render(
+      <div onKeyDown={e => onKeyDown(e.key)}>
+        <Menu label="Row actions" items={[{ id: 'a', label: 'Open', onSelect: vi.fn() }]} />
+      </div>,
+    );
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Row actions' }), { key: 'Escape' });
+    expect(onKeyDown).toHaveBeenCalledWith('Escape');
   });
 });

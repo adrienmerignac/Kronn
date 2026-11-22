@@ -8,9 +8,10 @@
 // - Tab and Shift+Tab move between its controls and stay inside it;
 // - Escape closes it and gives focus back to the anchor that opened it;
 // - a press outside the anchor and the layer closes it, and focus stays where
-//   the press lands.
+//   the press lands; a press inside a layer opened from it (a Menu, a picker,
+//   a confirmation, each a portal in document.body) is not outside (KT-2014).
 import { useCallback, useEffect, useRef, type RefCallback, type RefObject } from 'react';
-import { useDialogFocus } from '../../hooks/useDialogFocus';
+import { insideLayerAbove, useDialogFocus } from '../../hooks/useDialogFocus';
 import { useAnchoredStyle, type Align, type Anchored, type Placement } from './anchor';
 
 export interface AnchoredLayerOptions {
@@ -62,7 +63,9 @@ export function useAnchoredLayer<T extends HTMLElement>({
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
-      if (layerRef.current?.contains(target) || anchorRef.current?.contains(target)) return;
+      const layer = layerRef.current;
+      if (layer?.contains(target) || anchorRef.current?.contains(target)) return;
+      if (layer && insideLayerAbove(layer, target)) return;
       latestClose.current();
     };
     document.addEventListener('pointerdown', onPointerDown);

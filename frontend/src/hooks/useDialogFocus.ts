@@ -24,8 +24,30 @@ export function focusableIn(root: HTMLElement): HTMLElement[] {
     .filter(el => !el.closest('[hidden], [inert], [aria-hidden="true"]'));
 }
 
-// Open dialogs, innermost last: the top one handles Tab and a modal's Escape.
+// Open dialogs, innermost last: the top one handles Tab and the Escape of a lost focus.
 const openDialogs: HTMLElement[] = [];
+
+// KT-2014 — every open floating layer (the dialogs above, and the layers that
+// manage their own focus, such as a Menu), in opening order. A layer opened
+// while another one is open was opened from it: a press inside the later one
+// is not a press outside the earlier one.
+const openLayers: HTMLElement[] = [];
+
+/** Put `node` on the stack of open layers; the returned function takes it off. */
+export function registerLayer(node: HTMLElement): () => void {
+  openLayers.push(node);
+  return () => {
+    const index = openLayers.lastIndexOf(node);
+    if (index >= 0) openLayers.splice(index, 1);
+  };
+}
+
+/** `target` sits in a layer opened after `node` (a Menu, a picker or a
+ *  confirmation opened from it), even when that layer is a portal elsewhere. */
+export function insideLayerAbove(node: HTMLElement, target: Node): boolean {
+  const index = openLayers.lastIndexOf(node);
+  return index >= 0 && openLayers.some((layer, i) => i > index && layer.contains(target));
+}
 
 const isModal = (node: HTMLElement) => node.getAttribute('aria-modal') === 'true';
 
@@ -40,6 +62,7 @@ function ownsEscape(node: HTMLElement, target: Node): boolean {
  * Initial focus, Tab trap, Escape and focus return for a dialog or drawer.
  * Attach the returned ref to the element carrying role="dialog".
  * With onEscape, Escape stops at body: a popover inside listening on document or window never sees it.
+ * An open Tooltip takes Escape before it (window, capture): one layer per Escape, the tooltip first.
  */
 export function useDialogFocus<T extends HTMLElement = HTMLDivElement>(options: DialogFocusOptions = {}): RefObject<T | null> {
   const { active = true, trap = true } = options;
@@ -56,6 +79,7 @@ export function useDialogFocus<T extends HTMLElement = HTMLDivElement>(options: 
     const trigger = focused instanceof HTMLElement && focused !== document.body ? focused : null;
     const fallback = latest.current.returnFocus;
     openDialogs.push(node);
+    const unregister = registerLayer(node);
 
     if (!node.contains(document.activeElement)) {
       const target = latest.current.initialFocus?.current ?? focusableIn(node)[0] ?? node;
@@ -74,8 +98,14 @@ export function useDialogFocus<T extends HTMLElement = HTMLDivElement>(options: 
       const target = event.target instanceof Node ? event.target : null;
       const inside = target !== null && node.contains(target);
       const lost = target === null || target === document || target === document.body;
-      // A modal answers from the top of the stack; a non-modal only owns Escape pressed inside it.
-      if (modal ? !isTop() || !(inside || lost) : !inside || !ownsEscape(node, target)) return;
+      const active = document.activeElement;
+      const focusLost = active === null || active === document.body;
+      // A modal answers from the top of the stack; a non-modal owns Escape pressed inside it, and,
+      // on top of the stack, the Escape of a lost focus (its focused control was removed) (KT-2014).
+      const owns = modal
+        ? isTop() && (inside || lost)
+        : (inside && ownsEscape(node, target as Node)) || (lost && focusLost && isTop());
+      if (!owns) return;
       event.preventDefault();
       // One layer per Escape: document and window listeners never see it.
       event.stopPropagation();
@@ -124,6 +154,7 @@ export function useDialogFocus<T extends HTMLElement = HTMLDivElement>(options: 
       window.removeEventListener('keydown', onWindowKeyDown);
       const index = openDialogs.lastIndexOf(node);
       if (index >= 0) openDialogs.splice(index, 1);
+      unregister();
       // Another layer that now holds focus keeps it.
       const current = document.activeElement;
       if (current !== null && current !== document.body && !node.contains(current)) return;

@@ -24,11 +24,11 @@ fails if a component lacks one of the three.
 |---|---|---|
 | `Button` | `variant` primary / neutral / ghost / danger, `size` sm / md / lg, optional `icon`. `type="button"` by default. | native |
 | `IconButton` | An icon only; `label` is required and is its name and its tooltip. | native; tooltip on focus |
-| `Menu` | Menu button. `items`, plus at most one `destructiveItem`, always rendered last after a separator. | Enter / Space / ↓ open on the first item, ↑ on the last; arrows, Home, End, type-ahead; Escape and Tab close and give focus back |
+| `Menu` | Menu button. `items`, plus at most one `destructiveItem`, always rendered last after a separator. | Enter / Space / ↓ open on the first item, ↑ on the last; arrows, Home, End, type-ahead; Escape and Tab close and give focus back; Escape on the trigger closes an open menu (one with no enabled item keeps the focus there) |
 | `StatusBadge` | `tone` success / warning / danger / info / neutral (the `--kr-status-*` colours on the dot, border and tint; the label stays `--kr-text-primary` for 4.5:1), the status always written. | — |
 | `Tabs` | `tablist` / `tab` / `tabpanel` roles, `label` names the list; with no `panel` the tabs only report the choice. | ← → move and select, Home / End, a disabled tab is skipped |
 | `SearchField` | `type="search"` with a required `label` (hidden unless `showLabel`) and a clear button. | Escape clears a non-empty field and stops there |
-| `Tooltip` | Wraps one focusable element; `describe` wires it as `aria-describedby`. | opens on hover and keyboard focus, Escape closes, hoverable (WCAG 1.4.13) |
+| `Tooltip` | Wraps one focusable element; `describe` wires it as `aria-describedby`. | opens on hover and keyboard focus, Escape closes it first (a Dialog, a Drawer or an anchored layer around it stays open until the next Escape), hoverable (WCAG 1.4.13) |
 | `Dialog` | Modal layer, centred. `title` (its name, an `h2`), optional `description`, `footer` for the actions, `size` sm / md / lg (480 / 640 / 960 px), `role` dialog / alertdialog. | focus on the first control of the body (or `initialFocus`), Tab kept inside, Escape / the cross / the scrim close it, focus back to the opener |
 | `Drawer` | The same props and keyboard as `Dialog`, as a side panel the full height of the window at its end edge. | as `Dialog` |
 | `ConfirmDialog` | In place of `window.confirm`: an alertdialog, `title` is the question, `message` what happens, `confirmLabel` the verb and the object ("Delete 3 projects", never "OK"), `tone` danger (default) or primary. `useConfirm()` gives it as a promise. | focus on Cancel (Enter at once answers no); Escape, the cross and the scrim cancel |
@@ -52,7 +52,12 @@ fails if a component lacks one of the three.
 A floating layer never leaves the window: it is measured once rendered,
 flips to the side with more room, is clamped `--kr-space-2` from the edges,
 and a menu taller than the room scrolls inside a max-height
-`[src: file: frontend/src/components/ui/anchor.ts:30#anchoredStyle]`.
+`[src: file: frontend/src/components/ui/anchor.ts:32#anchoredStyle]`.
+The place is redone while the layer is open on a scroll outside it (its own
+list scrolling does not count), a resize of the window, and a size change of
+the layer or its anchor (`ResizeObserver`); a place that did not move keeps
+the same style object, so nothing re-renders (KT-2014)
+`[src: file: frontend/src/components/ui/anchor.ts:78#useAnchoredStyle]`.
 
 ## Dialog, Drawer and ConfirmDialog (KT-1881)
 
@@ -63,8 +68,10 @@ its heading, `aria-describedby` on its description, and one cross (an
 every dialog and drawer
 `[src: file: frontend/src/components/ui/overlay.tsx:47#OverlayFrame]`.
 Focus, Tab trap, Escape and focus return come from `useDialogFocus`: one
-Escape closes one layer, the innermost first
-`[src: file: frontend/src/hooks/useDialogFocus.ts:44#useDialogFocus]`.
+Escape closes one layer, the innermost first, an open `Tooltip` before the
+dialog around it; when the focus is lost to `body` (its control was removed)
+the top layer of the stack answers, modal or not
+`[src: file: frontend/src/hooks/useDialogFocus.ts:67#useDialogFocus]`.
 
 - **Layers.** A `Drawer` sits on `--kr-z-drawer`, a `Dialog` on
   `--kr-z-modal`, a `ConfirmDialog` on `--kr-z-modal-nested`, so a
@@ -580,14 +587,18 @@ native one) or a joined CLI session.
   moves to the layer's first control once it is placed, Tab and Shift+Tab stay
   between its controls, Escape closes it and gives focus back to the control
   that opened it (the counter, the chip), a press outside that control and the
-  layer closes it. A new anchored layer of this kind uses the same hook.
+  layer closes it. A press inside a layer opened from it (a `Menu`, a picker,
+  a confirmation: portals in `body`, on the stack of open layers that
+  `useDialogFocus` keeps) is not outside (KT-2014)
+  `[src: file: frontend/src/hooks/useDialogFocus.ts:47#insideLayerAbove]`.
+  A new anchored layer of this kind uses the same hook.
 - **The details header** is a flex row: the full-size identity shrinks
   (`min-width: 0`) and wraps rather than overflows, the model is the part cut
   with an ellipsis (its full id stays in the header's tooltip, the layer's
   accessible name and the « declared model » row), and the close button never
   shrinks, so it stays inside the 320px layer at every width
   (`styles/components.css`, held by `components/ui/stylesheets.test.ts`).
-`[src: file: frontend/src/components/ui/useAnchoredLayer.ts:31#useAnchoredLayer]`
+`[src: file: frontend/src/components/ui/useAnchoredLayer.ts:32#useAnchoredLayer]`
 `[src: file: frontend/src/components/ParticipantsStrip.tsx:48#ParticipantsStrip]`
 `[src: file: frontend/src/components/HeaderScrollLine.tsx:27#HeaderScrollLine]`
 `[src: file: frontend/src/lib/stripOverflow.ts:5#measureStripOverflow]`

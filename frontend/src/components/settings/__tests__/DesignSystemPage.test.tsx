@@ -296,6 +296,14 @@ describe('DesignSystemPage — index and components (KT-1880)', () => {
       const layer = screen.getByRole(role);
       expect(layer).toHaveAttribute('data-size', size);
       expect(layer).toHaveAccessibleName();
+      // jsdom matches :focus-visible on the control focused at open: when it
+      // is the cross, its tooltip shows and takes the first Escape, the layer
+      // staying open (KT-2014, one layer per Escape).
+      if (document.querySelector('[role="tooltip"]')) {
+        await user.keyboard('{Escape}');
+        expect(document.querySelector('[role="tooltip"]')).toBeNull();
+        expect(screen.getByRole(role)).toBe(layer);
+      }
       await user.keyboard('{Escape}');
       expect(screen.queryByRole(role)).toBeNull();
       expect(opener).toHaveFocus();

@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Tooltip, TOOLTIP_CLOSE_DELAY_MS } from './Tooltip';
+import { Dialog } from './Dialog';
+import { Drawer } from './Drawer';
 
 const tip = () => document.querySelector('[role="tooltip"]');
 
@@ -113,5 +115,46 @@ describe('Tooltip', () => {
     expect(container.contains(tip())).toBe(false);
     expect(tip()!.parentElement).toBe(document.body);
     expect((tip() as HTMLElement).style.position).toBe('fixed');
+  });
+
+  // KT-2014 — the dialog listens on body and stops Escape there: an open
+  // tooltip inside it takes Escape first, one layer per Escape (WCAG 1.4.13).
+  for (const [name, Overlay] of [['Dialog', Dialog], ['Drawer', Drawer]] as const) {
+    it(`inside a ${name}, the first Escape hides the tooltip and leaves the ${name} open, the second closes it`, async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      render(
+        <Overlay open onClose={onClose} title="Schedule">
+          <Tooltip content="Runs every hour"><button type="button">Help</button></Tooltip>
+        </Overlay>,
+      );
+      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Help' }).parentElement!);
+      expect(tip()).not.toBeNull();
+      await user.keyboard('{Escape}');
+      expect(tip()).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  it('leaves Escape to the page once it is hidden, and ignores it during an IME composition', () => {
+    const page = vi.fn();
+    document.addEventListener('keydown', page);
+    try {
+      render(<Tooltip content="Runs every hour"><button type="button">Schedule</button></Tooltip>);
+      fireEvent.mouseEnter(screen.getByRole('button').parentElement!);
+      fireEvent.keyDown(document, { key: 'Escape', isComposing: true });
+      expect(tip()).not.toBeNull();
+      page.mockClear();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(tip()).toBeNull();
+      expect(page).not.toHaveBeenCalled();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(page).toHaveBeenCalledTimes(1);
+    } finally {
+      document.removeEventListener('keydown', page);
+    }
   });
 });
