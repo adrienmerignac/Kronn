@@ -252,7 +252,7 @@ the window and never covers its trigger; opened above, its bottom is anchored
 to the trigger. Never place it from an estimated size. The grouped list is
 440 px wide whatever is unfolded (so it never jumps when a long model id
 appears), the plain agent lists 480 px at most, the @ menu 520 px (from a
-768 px window, up to 720 px when its anchor is that wide); never wider than
+768 px window, up to 760 px when its anchor is that wide); never wider than
 the window.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:591#place]`
 Availability always goes through
@@ -341,8 +341,12 @@ and name on one line with the model id it runs written under it
 cell's title and accessible name keep it whole. A mode with no declared model
 writes the short `agentPicker.defaultShort` (« par défaut »), the full
 sentence in its title. The palette measures its own width (a container
-query): from 640 px the tiers sit on fixed 184 px tracks beside the agent (a
-25-character id fits on one line, every row lines up); narrower, they go
+query): from a 748 px content box the tiers sit on fixed 192 px tracks
+beside the agent. A track leaves a 182 px text box once the cell's border and
+padding are taken, so a 25-character id fits on one line (12 px mono, 7.22 px
+a character) and every row lines up. The 748 px are the three tracks and
+their gaps (584 px), the row's gap and padding (24 px) and an agent column of
+at least 140 px; at 760 px that column gets 142 px. Narrower, the tiers go
 under the agent in three equal columns. The @ menu offers no other model and
 no exact model: nothing exists server-side for a one-off call.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:196#AgentPickerTierChoices]`

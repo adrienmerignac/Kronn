@@ -232,22 +232,45 @@ describe('AgentSwitchPicker.css — the rules this lot adds stay on the tokens (
     expect(declaration(part, 'text-overflow')).toBe('ellipsis');
   });
 
-  it('from 640px of palette the tiers sit in fixed tracks a 25-character id fits in; narrower, three equal columns', () => {
+  // KT-1994 review round 3: measured in the browser, the 12px mono face is
+  // 7.22px a character, so a 25-character id needs a 180.5px text box.
+  it('from a 748px palette content box the tiers sit in 192px tracks (182px text box, a 25-character id on one line); narrower, three equal columns', () => {
     expect(declaration(rule(PICKER, '.kr-agent-switch-palette'), 'container-type')).toBe('inline-size');
     expect(declaration(rule(PICKER, ".kr-agent-switch-tier-choices[data-models='true']"), 'grid-template-columns'))
       .toBe('repeat(var(--agent-switch-tier-count, 3), minmax(0, 1fr))');
-    const wide = PICKER.match(/@container \(min-width: 640px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    const wide = PICKER.match(/@container \(min-width: 748px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
     const tracks = rule(wide, ".kr-agent-switch-tier-choices[data-models='true']");
-    expect(declaration(tracks, '--agent-switch-tier-track')).toBe('184px');
+    expect(declaration(tracks, '--agent-switch-tier-track')).toBe('192px');
     expect(declaration(tracks, 'grid-template-columns'))
       .toBe('repeat(var(--agent-switch-tier-count, 3), var(--agent-switch-tier-track))');
+    // The cell takes 2 x (4px padding + 1px border) from its track: 192 - 10 = 182px.
+    const cell = rule(PICKER, '.kr-agent-switch-tier-option');
+    expect(declaration(cell, 'padding')).toBe('0 var(--kr-space-1)');
+    expect(declaration(cell, 'border')).toBe('1px solid var(--kr-border-ghost)');
+    const textBox = 192 - 2 * (4 + 1);
+    expect(textBox).toBeGreaterThanOrEqual(182);
+    expect(25 * 7.22).toBeLessThanOrEqual(textBox);
+    // Threshold: 3 tracks + 2 gaps of 4px, the row's 8px gap and 16px padding,
+    // and an agent column of at least 140px.
+    expect(declaration(rule(PICKER, '.kr-agent-switch-tier-choices'), 'gap')).toBe('var(--kr-space-1)');
+    expect(3 * 192 + 2 * 4 + 8 + 16 + 140).toBe(748);
   });
 
-  it('from a 768px window the @ menu takes up to 720px when its anchor allows', () => {
+  it('from a 768px window the @ menu takes up to 760px when its anchor allows, so the agent column keeps 142px', () => {
     const page = read('pages/DiscussionsPage.css');
     const wide = page.match(/@media \(min-width: 768px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
     expect(declaration(rule(wide, '.disc-mention-popover.kr-agent-switch-palette'), 'width'))
-      .toBe('min(720px, max(100%, 520px), calc(100vw - 2 * var(--kr-space-4)))');
+      .toBe('min(760px, max(100%, 520px), calc(100vw - 2 * var(--kr-space-4)))');
+    // 760 - 2 x (1px border + 4px padding) = 750px content box, at least the 748px threshold.
+    // The palette's box rule is its second block (the first holds only the
+    // container query's type).
+    const first = PICKER.indexOf('\n.kr-agent-switch-palette {');
+    const palette = rule(PICKER.slice(first + 1).replace(/^\.kr-agent-switch-palette \{[^}]*\}/, ''), '.kr-agent-switch-palette');
+    expect(declaration(palette, 'padding')).toBe('var(--kr-space-1)');
+    expect(declaration(palette, 'border')).toBe('1px solid var(--kr-border)');
+    const contentBox = 760 - 2 * (1 + 4);
+    expect(contentBox).toBeGreaterThanOrEqual(748);
+    expect(contentBox - 16 - 8 - (3 * 192 + 2 * 4)).toBe(142);
   });
 
   // KT-1994 review, point 6.

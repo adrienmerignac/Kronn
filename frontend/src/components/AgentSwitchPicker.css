@@ -657,10 +657,15 @@
 }
 
 /* KT-1994 — the @ menu writes each tier's model under its name. The palette
-   measures its own width: from 640px (it takes up to 720px from a 768px
-   window, its anchor allowing) the agent and its tiers share one line, in
-   fixed tracks where a 25-character id fits on one line and every row's
-   tiers line up; narrower, the tiers go under the agent in three equal
+   measures its own width (it takes up to 760px from a 768px window, its
+   anchor allowing). A track is 192px: 1px border and a 4px padding on each
+   side of the cell leave a 182px text box, where 25 characters of the 12px
+   mono face (7.22px each, 180.5px) fit on one line. The wide layout applies
+   from a 748px content box: 3 tracks and 2 gaps of 4px (584px), the row's
+   8px column gap and 16px of padding, and an agent column of at least 140px
+   (its name and badge on one line). At 760px the content box is 750px, so
+   the agent column gets 142px; a classic scrollbar narrows the box and the
+   layout falls back. Narrower, the tiers go under the agent in three equal
    columns. */
 .kr-agent-switch-palette {
   container-type: inline-size;
@@ -674,13 +679,13 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-@container (min-width: 640px) {
+@container (min-width: 748px) {
   .kr-agent-switch-palette-row:has(.kr-agent-switch-tier-choices[data-models='true']) {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .kr-agent-switch-tier-choices[data-models='true'] {
-    --agent-switch-tier-track: 184px;
+    --agent-switch-tier-track: 192px;
     grid-template-columns: repeat(var(--agent-switch-tier-count, 3), var(--agent-switch-tier-track));
   }
 }

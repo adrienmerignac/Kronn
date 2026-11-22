@@ -5476,12 +5476,13 @@ button.disc-contact-open {
   background: var(--kr-bg-elevated);
 }
 
-/* KT-1994 — from 768px the menu may take up to 720px when its anchor (the
+/* KT-1994 — from 768px the menu may take up to 760px when its anchor (the
    composer, the prompt field) is that wide, so each tier's model id fits on
-   one line beside its agent. */
+   one line beside its agent (the tracks are measured in
+   AgentSwitchPicker.css). */
 @media (min-width: 768px) {
   .disc-mention-popover.kr-agent-switch-palette {
-    width: min(720px, max(100%, 520px), calc(100vw - 2 * var(--kr-space-4)));
+    width: min(760px, max(100%, 520px), calc(100vw - 2 * var(--kr-space-4)));
   }
 }
 
