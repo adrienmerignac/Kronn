@@ -147,7 +147,7 @@
 .kr-agent-switch-status {
   padding: 4px 8px;
   color: var(--kr-text-tertiary);
-  font-size: var(--kr-fs-xs);
+  font-size: var(--kr-type-sm);
 }
 
 .kr-agent-switch-option {
@@ -512,12 +512,32 @@
 }
 
 /* The model id, written whole: it wraps rather than being cut. */
-.kr-agent-switch-mode-model,
-.kr-agent-switch-tier-model {
+.kr-agent-switch-mode-model {
   min-width: 0;
   font-family: var(--kr-font-mono);
   font-size: var(--kr-type-sm);
   overflow-wrap: anywhere;
+}
+
+/* An agent that cannot be chosen: why, in one muted line under its header. */
+.kr-agent-switch-reason {
+  padding: 0 var(--kr-space-2) var(--kr-space-1) calc(var(--kr-space-2) + 7px + var(--kr-space-2));
+  color: var(--kr-text-tertiary);
+  font-size: var(--kr-type-sm);
+  line-height: 1.25;
+}
+
+/* The typed id « as is »: one line at the end of the list. */
+.kr-agent-switch-free-block {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--kr-space-1);
+  padding-top: var(--kr-space-1);
+  border-top: 1px solid var(--kr-border-subtle);
+}
+
+.kr-agent-switch-mode[data-kind='free'] {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .kr-agent-switch-mode-name,
@@ -597,6 +617,31 @@
   align-items: center;
   gap: var(--kr-space-1);
   font-weight: 650;
+  white-space: nowrap;
+}
+
+/* The agent's name stays on one line; the model column takes the rest and
+   ellipsizes (its full text is in the row's accessible name). */
+.kr-agent-switch-recent {
+  grid-template-columns: max-content minmax(0, 1fr) var(--kr-space-3);
+}
+
+.kr-agent-switch-recent .kr-agent-switch-tier-name {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.kr-agent-switch-recent .kr-agent-switch-mode-value {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.kr-agent-switch-recent .kr-agent-switch-mode-model,
+.kr-agent-switch-recent .kr-agent-switch-mode-default {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 /* The trigger's « Personnalisé », in place of the mode chip. */
@@ -611,17 +656,67 @@
   white-space: nowrap;
 }
 
-/* The @ menu writes each tier's model under its name: wider tracks. */
-.kr-agent-switch-tier-choices[data-models='true'] {
-  --agent-switch-tier-track: 120px;
+/* KT-1994 — the @ menu writes each tier's model under its name. The palette
+   measures its own width: from 640px (it takes up to 720px from a 768px
+   window, its anchor allowing) the agent and its tiers share one line, in
+   fixed tracks where a 25-character id fits on one line and every row's
+   tiers line up; narrower, the tiers go under the agent in three equal
+   columns. */
+.kr-agent-switch-palette {
+  container-type: inline-size;
 }
 
+.kr-agent-switch-tier-choices[data-models='true'] {
+  grid-template-columns: repeat(var(--agent-switch-tier-count, 3), minmax(0, 1fr));
+}
+
+.kr-agent-switch-palette-row:has(.kr-agent-switch-tier-choices[data-models='true']) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 640px) {
+  .kr-agent-switch-palette-row:has(.kr-agent-switch-tier-choices[data-models='true']) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .kr-agent-switch-tier-choices[data-models='true'] {
+    --agent-switch-tier-track: 184px;
+    grid-template-columns: repeat(var(--agent-switch-tier-count, 3), var(--agent-switch-tier-track));
+  }
+}
+
+/* The id breaks only after `/` and `:` (a <wbr> between its parts, each part
+   unbroken), on two lines at most, then an ellipsis; the cell's title and
+   accessible name keep it whole. */
 .kr-agent-switch-tier-model {
-  max-width: calc(var(--agent-switch-tier-track) - 2 * var(--kr-space-1) - 2px);
+  display: -webkit-box;
+  max-width: 100%;
   padding-bottom: var(--kr-space-1);
+  overflow: hidden;
   color: var(--kr-text-tertiary);
+  font-size: var(--kr-type-sm);
   font-weight: 500;
   text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+code.kr-agent-switch-tier-model {
+  font-family: var(--kr-font-mono);
+}
+
+.kr-agent-switch-id-part {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.kr-agent-switch-tier-model[data-default='true'] {
+  white-space: nowrap;
 }
 
 .kr-agent-switch-model {

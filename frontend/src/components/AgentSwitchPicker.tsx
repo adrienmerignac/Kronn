@@ -62,6 +62,21 @@ function modeModelId(resolution: ResolvedCatalogTier | null | undefined, tier: M
   return verdict?.effective_model || verdict?.requested_model || '';
 }
 
+/**
+ * KT-1994 — a model id that breaks only after `/` and `:` (a <wbr> there),
+ * never inside a token: each part is one unbroken piece (a hyphen is no
+ * break either).
+ */
+function breakableId(id: string): ReactNode {
+  const parts = id.split(/(?<=[/:])/);
+  return parts.map((part, index) => (
+    <Fragment key={index}>
+      <span className="kr-agent-switch-id-part">{part}</span>
+      {index < parts.length - 1 && <wbr />}
+    </Fragment>
+  ));
+}
+
 /** What a tier choice says of itself: its tooltip, its description and its states. */
 function tierDetails(
   tier: ModelTier | null,
@@ -202,6 +217,10 @@ export function AgentPickerTierChoices({
         // Written once on the row when the tiers share it; here only when this tier differs.
         const ownState = state && !sameAvailability(state, shared) ? state : null;
         const writtenModel = showModel && tier !== null ? modeModelId(resolution, tier) : '';
+        // KT-1994 — the cell writes the id on two lines at most; its title and
+        // accessible name keep it whole (the full sentence for a mode without one).
+        const fullModel = showModel && tier !== null ? writtenModel || t('wf.shadow.rows.defaultModel') : '';
+        const accessibleName = `${targetLabel} · ${titleFor && tier !== null ? name : label}`;
         const descriptionId = `${id}-${tier ?? 'agent-default'}`;
         const choose = () => { if (!blocked) onSelect(tier); };
         return (
@@ -213,9 +232,9 @@ export function AgentPickerTierChoices({
             data-tier={tier ?? 'agent-default'}
             data-current={selected}
             data-keyboard-selected={keyboardTier !== undefined && keyboardTier === tier ? 'true' : undefined}
-            aria-label={`${targetLabel} · ${titleFor && tier !== null ? name : label}`}
+            aria-label={fullModel && !accessibleName.includes(fullModel) ? `${accessibleName} · ${fullModel}` : accessibleName}
             aria-describedby={descriptionId}
-            title={title}
+            title={fullModel && !title.includes(fullModel) ? `${title} · ${fullModel}` : title}
             disabled={disabled || (disableCurrent && selected) || blocked}
             // The text field driving the list keeps the keyboard: no Tab stop here.
             tabIndex={keepFocus ? -1 : undefined}
@@ -235,8 +254,8 @@ export function AgentPickerTierChoices({
               <span>{visibleLabel}</span>
             </span>
             {showModel && tier !== null && (writtenModel
-              ? <code className="kr-agent-switch-tier-model">{writtenModel}</code>
-              : <span className="kr-agent-switch-tier-model">{t('wf.shadow.rows.defaultModel')}</span>)}
+              ? <code className="kr-agent-switch-tier-model">{breakableId(writtenModel)}</code>
+              : <span className="kr-agent-switch-tier-model" data-default="true">{t('agentPicker.defaultShort')}</span>)}
             <span id={descriptionId} hidden>{description}</span>
             {ownState && <AgentAvailabilityBadge availability={ownState} placement="tier" />}
             {selected && <Check size={8} aria-hidden="true" />}
@@ -678,9 +697,16 @@ const catalogModels = (catalog: ModelCatalogSnapshot | null, target: AgentSwitch
   return view?.models.filter(model => model.runtime_target_id === view.runtime_target_id) ?? [];
 };
 
+/** Lowercased, letters and digits only: « GPT-6-Luna » and « gpt-6-luna » say the same. */
+const comparableName = (value: string) => value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+
+/**
+ * KT-1994 — the display name written next to an id, only when it says
+ * something the id does not (« Fable », « Google: Gemini 4 Neon »).
+ */
 const modelName = (entry: CatalogModelEntry | undefined, id: string) => {
   const name = entry ? entry.display_alias ?? entry.display_name : '';
-  return name && name !== id ? name : '';
+  return name && comparableName(name) !== comparableName(id) ? name : '';
 };
 
 interface AgentModelListProps {
@@ -695,9 +721,14 @@ interface AgentModelListProps {
   defaultLabel: string;
   /** A mode's tooltip name, `Tier · model`. */
   modeTitle: (target: AgentSwitchTarget, tier: ModelTier) => string;
-  /** Extra words a target is found by (the tier names). */
-  searchTerms: readonly (string | null | undefined)[];
   selection: ListSelection | null;
+  /**
+   * The agent a typed id is offered for, « as is » (the picker's current
+   * agent): one entry at the end of the list, never one per agent.
+   */
+  freeTarget?: AgentSwitchTarget | null;
+  /** Places the popover again before an unfolded agent is scrolled into view. */
+  place?: () => void;
   /** The current choice cannot be chosen again (the discussion's picker). */
   disableSelected: boolean;
   /** The exact-model mode greys the principal's own model. */
@@ -718,9 +749,9 @@ interface AgentModelListProps {
 }
 
 function AgentModelList({
-  ariaLabel, targets, query, catalog, tierOptions, resolve, tierLabel, defaultLabel, modeTitle, searchTerms,
-  selection, disableSelected, isMain, availability, models, recents, busy, error, onChoose, leading, testId, t,
-  tp: givenPlural,
+  ariaLabel, targets, query, catalog, tierOptions, resolve, tierLabel, defaultLabel, modeTitle,
+  selection, freeTarget, place, disableSelected, isMain, availability, models, recents, busy, error, onChoose, leading,
+  testId, t, tp: givenPlural,
 }: AgentModelListProps) {
   const id = useId();
   // A translator without plural forms (a page's own) still names the count.
@@ -728,8 +759,24 @@ function AgentModelList({
     ?? ((key, count, ...args) => t(`${key}.${count === 1 ? 'one' : 'other'}`, count, ...args));
   // Folded for every agent; unfolding one leaves the others folded.
   const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set());
+  const resultsRef = useRef<HTMLSpanElement>(null);
+  // The agent just unfolded: its control goes to the top of the list's
+  // viewport, so the rows it reveals are seen (the focus stays on it).
+  const revealRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const key = revealRef.current;
+    if (!key) return;
+    revealRef.current = null;
+    place?.();
+    const list = resultsRef.current;
+    const control = Array.from(list?.querySelectorAll<HTMLElement>('.kr-agent-switch-more-toggle') ?? [])
+      .find(node => node.dataset.fold === key);
+    if (!list || !control) return;
+    list.scrollTop += control.getBoundingClientRect().top - list.getBoundingClientRect().top;
+  });
   const typed = query.trim();
   const searching = typed.length > 0;
+  const hits = (terms: readonly (string | null | undefined)[]) => matchesCatalogSearch(typed, [...terms]);
 
   const groups = targets.map(target => {
     const key = targetKey(target);
@@ -738,7 +785,8 @@ function AgentModelList({
     const modes = tierOptions.map(tier => {
       const resolution = tier === null ? null : resolve(target, tier);
       const modelId = modeModelId(resolution, tier);
-      return { tier, resolution, modelId, name: modelName(listed.find(model => model.model_id === modelId), modelId) };
+      const entry = listed.find(model => model.model_id === modelId);
+      return { tier, resolution, modelId, entry, name: modelName(entry, modelId) };
     });
     const modeIds = new Set(modes.map(mode => mode.modelId).filter(Boolean));
     const others = listed.filter(model => !modeIds.has(model.model_id));
@@ -759,33 +807,60 @@ function AgentModelList({
       }
     }
 
-    const hit = !searching || matchesCatalogSearch(typed, [
-      label,
-      ...catalogTargetSearchTerms(target, modes.flatMap(mode => mode.resolution ? [mode.resolution] : [])),
-      ...modes.map(mode => mode.modelId),
-      ...searchTerms,
-    ]);
+    // KT-1994 — with a search text, a mode row is shown when the text hits the
+    // agent's name, that row's model (id or display name) or the mode's name;
+    // other models by id or display name; an agent with no row is not listed.
+    const agentTerms = [label, ...catalogTargetSearchTerms(target, [])];
+    const shownModes = searching
+      ? modes.filter(mode => hits([
+        ...agentTerms, mode.modelId, mode.entry?.display_name, mode.entry?.display_alias,
+        ...(mode.tier === null ? [defaultLabel, t('agentPicker.defaultTier')] : [mode.tier, tierLabel(mode.tier)]),
+      ]))
+      : modes;
+    const customEntry = custom ? listed.find(model => model.model_id === custom) : undefined;
+    const customShown = Boolean(custom) && (!searching || hits([
+      ...agentTerms, custom, customEntry?.display_name, customEntry?.display_alias, t('agentPicker.custom'),
+    ]));
     const matchedOthers = models && searching
-      ? others.filter(model => matchesCatalogSearch(typed, [model.model_id, model.display_name, model.display_alias]))
+      ? others.filter(model => hits([model.model_id, model.display_name, model.display_alias]))
       : [];
-    const customHit = Boolean(custom && searching && matchesCatalogSearch(typed, [custom]));
     const known = listed.some(model => model.model_id === typed) || modeIds.has(typed) || custom === typed;
-    const free = models && searching && !known ? typed : null;
     return {
-      target, key, label, listed, modes, others, matchedOthers, selectedTier, custom, free,
-      visible: hit || matchedOthers.length > 0 || customHit,
+      target, key, label, listed, allModes: modes, modes: shownModes, others, matchedOthers, selectedTier, custom, customShown, known,
+      visible: !searching || shownModes.length > 0 || customShown || matchedOthers.length > 0,
     };
   });
   type Group = typeof groups[number];
   const visible = groups.filter(group => group.visible);
-  // The search hides the agents it does not match, but a typed id stays usable on each of them.
-  const elsewhere = searching ? groups.filter(group => !group.visible && group.free) : [];
+  // One typed id « as is », for the picker's current agent only, unless that agent already lists it.
+  const freeGroup = models && searching && freeTarget
+    ? groups.find(group => group.key === targetKey(freeTarget) && !group.known)
+    : undefined;
 
-  const errorAfter = (group: Group, row: string) => error && error.key === group.key && error.row === row
+  const errorAfter = (key: string, row: string) => error && error.key === key && error.row === row
     ? <span role="alert" className="kr-agent-switch-error">{error.message}</span>
     : null;
 
-  const header = (group: Group, badge: AgentAvailability | null) => (
+  /**
+   * Why an agent cannot be chosen, written under its header (its badge alone
+   * says « Indisponible »): the caller's detail, else the launch verdict's,
+   * else what the catalogue says of its models.
+   */
+  const blockedReason = (group: Group, badge: AgentAvailability | null) => {
+    if (!availabilityBlocks(badge)) return '';
+    if (badge?.title) return badge.title;
+    for (const mode of group.allModes) {
+      const entry = mode.resolution?.entry;
+      const reason = mode.resolution?.refusal || entry?.unavailable_detail
+        || (entry?.unavailable_reason === 'not_found' || entry?.unavailable_reason === 'access_denied'
+          ? t(`modelCatalog.reason.${entry.unavailable_reason}`) : '');
+      if (reason) return reason;
+    }
+    return catalog?.targets.find(view =>
+      view.runtime_target_id === modelRuntimeTargetId(group.target.agent, group.target.connectionId))?.last_error_detail ?? '';
+  };
+
+  const header = (group: Group, badge: AgentAvailability | null) => (<>
     <span className="kr-agent-switch-group kr-agent-switch-group-header">
       <span className="kr-agent-switch-tier-id">
         <span
@@ -804,32 +879,38 @@ function AgentModelList({
         </span>
       )}
     </span>
-  );
+    {blockedReason(group, badge) && (
+      <span className="kr-agent-switch-reason" data-testid="agent-switch-reason">{blockedReason(group, badge)}</span>
+    )}
+  </>);
 
-  const freeRow = (group: Group, blocked: boolean) => group.free && (
-    <Fragment key="free">
-      <button
-        type="button"
-        role="menuitem"
-        className="kr-agent-switch-mode"
-        data-kind="free"
-        data-free="true"
-        disabled={busy || blocked || Boolean(isMain?.(group.target, group.free))}
-        aria-label={`${group.label} · ${group.free} — ${t('agentPicker.freeModel', group.free)}`}
-        onClick={() => group.free && onChoose({ kind: 'model', target: group.target, model: group.free, row: 'free' })}
-      >
-        <span className="kr-agent-switch-mode-label" />
-        <span className="kr-agent-switch-mode-value">{t('agentPicker.freeModel', group.free)}</span>
-        <span className="kr-agent-switch-mode-check" />
-      </button>
-      {errorAfter(group, 'free')}
-    </Fragment>
-  );
+  /** « Identifiant absent du catalogue ? Utiliser « q » avec <agent> », at the end of the list. */
+  const freeRow = (group: Group) => {
+    const blocked = availabilityBlocks(availability(group.target));
+    const text = t('agentPicker.freeModel', typed, group.label);
+    return (
+      <span className="kr-agent-switch-free-block">
+        <button
+          type="button"
+          role="menuitem"
+          className="kr-agent-switch-mode"
+          data-kind="free"
+          data-free="true"
+          disabled={busy || blocked || Boolean(isMain?.(group.target, typed))}
+          aria-label={text}
+          onClick={() => onChoose({ kind: 'model', target: group.target, model: typed, row: 'free' })}
+        >
+          <span className="kr-agent-switch-mode-value">{text}</span>
+        </button>
+        {errorAfter(group.key, 'free')}
+      </span>
+    );
+  };
 
   const renderGroup = (group: Group) => {
     const own = availability(group.target);
     const blocked = availabilityBlocks(own);
-    const realTiers = group.modes.flatMap(mode => mode.tier === null ? [] : [mode.tier]);
+    const realTiers = group.allModes.flatMap(mode => mode.tier === null ? [] : [mode.tier]);
     const shared = sharedTierState(realTiers.map(tier => tierChoiceState(resolve(group.target, tier), t)));
     const isOpen = unfolded.has(group.key);
     const shownOthers = (searching ? group.matchedOthers : isOpen ? group.others : [])
@@ -880,7 +961,7 @@ function AgentModelList({
             </button>
           );
         })}
-        {group.custom && (
+        {group.custom && group.customShown && (
           <Fragment key="custom">
             <button
               type="button"
@@ -903,22 +984,26 @@ function AgentModelList({
               </span>
               <span className="kr-agent-switch-mode-check"><Check size={10} aria-hidden="true" /></span>
             </button>
-            {errorAfter(group, 'custom')}
+            {errorAfter(group.key, 'custom')}
           </Fragment>
         )}
-        {models && group.others.length > 0 && (
+        {models && !searching && group.others.length > 0 && (
           <button
             type="button"
             role="menuitem"
             className="kr-agent-switch-more-toggle"
+            data-fold={group.key}
             aria-expanded={isOpen}
             aria-label={`${group.label} · ${t('agentPicker.otherModels')}`}
             disabled={blocked}
-            onClick={() => setUnfolded(previous => {
-              const next = new Set(previous);
-              if (next.has(group.key)) next.delete(group.key); else next.add(group.key);
-              return next;
-            })}
+            onClick={() => {
+              if (!isOpen) revealRef.current = group.key;
+              setUnfolded(previous => {
+                const next = new Set(previous);
+                if (next.has(group.key)) next.delete(group.key); else next.add(group.key);
+                return next;
+              });
+            }}
           >
             {isOpen ? <ChevronDown size={10} aria-hidden="true" /> : <ChevronRight size={10} aria-hidden="true" />}
             <span>{t('agentPicker.otherModels')}</span>
@@ -958,14 +1043,13 @@ function AgentModelList({
                 </span>
                 <span className="kr-agent-switch-mode-check" />
               </button>
-              {errorAfter(group, `model:${model.model_id}`)}
+              {errorAfter(group.key, `model:${model.model_id}`)}
             </Fragment>
           );
         })}
         {rest > 0 && (
           <span className="kr-agent-switch-more" data-count={rest}>{t('agentPicker.moreModels', rest)}</span>
         )}
-        {freeRow(group, blocked)}
       </span>
     );
   };
@@ -1025,11 +1109,10 @@ function AgentModelList({
     );
   };
 
-  const nothing = !visible.length && !elsewhere.length;
   return (
     <>
-      {nothing && <span role="status" className="kr-agent-switch-status">{t('agentPicker.noMatch')}</span>}
-      <span role="menu" aria-label={ariaLabel} className="kr-agent-switch-results" data-testid={testId}>
+      {!visible.length && <span role="status" className="kr-agent-switch-status">{t('agentPicker.noMatch')}</span>}
+      <span ref={resultsRef} role="menu" aria-label={ariaLabel} className="kr-agent-switch-results" data-testid={testId}>
         {recentRows.length > 0 && (
           <span className="kr-agent-switch-recents" role="group" aria-label={t('agentPicker.recent')}>
             <span className="kr-agent-switch-group" role="presentation">{t('agentPicker.recent')}</span>
@@ -1038,20 +1121,7 @@ function AgentModelList({
         )}
         {leading}
         {visible.map(renderGroup)}
-        {elsewhere.length > 0 && (
-          <>
-            <span className="kr-agent-switch-group" role="presentation">{t('agentPicker.otherTargets')}</span>
-            {elsewhere.map(group => {
-              const own = availability(group.target);
-              return (
-                <span key={group.key} className="kr-agent-switch-group-block" role="group" aria-label={group.label}>
-                  {header(group, own)}
-                  {freeRow(group, availabilityBlocks(own))}
-                </span>
-              );
-            })}
-          </>
-        )}
+        {freeGroup && freeRow(freeGroup)}
       </span>
     </>
   );
@@ -1164,8 +1234,16 @@ function TierPicker({
   const custom = heldModel && heldModel !== (currentTier ? modeModelId(resolvedTier(currentTarget, currentTier), currentTier) : '')
     ? heldModel : '';
   const showsCurrentModel = Boolean(currentTier) && (tierPicker || role !== undefined);
+  // KT-1994 — the trigger writes the model id the configuration names, whether
+  // or not the catalogue is loaded (it is read at opening): its text never
+  // changes when the list opens. The display name goes to the title.
+  const configuredId = currentTier
+    ? modeModelId(resolveCatalogTier(null, currentTarget, currentTier, modelTiers, currentModel), currentTier)
+    : '';
   const effectiveSuffix = suffix
-    ?? (custom || (showsCurrentModel && currentTier ? targetModel(currentTarget, currentTier) : undefined));
+    ?? (custom || (showsCurrentModel && currentTier
+      ? configuredId || currentModelFallback?.trim() || defaultModelLabel
+      : undefined));
   const roleLabel = role && (
     <span className="kr-agent-switch-role" data-testid="agent-switch-role">{role}</span>
   );
@@ -1336,8 +1414,9 @@ function TierPicker({
               tierLabel={tierLabel}
               defaultLabel={defaultModelLabel}
               modeTitle={tierTitle}
-              searchTerms={tierOptions.flatMap(tier => tier === null ? [defaultModelLabel] : [tier, tierLabels?.[tier]])}
               selection={{ target: currentTarget, tier: currentTier ?? null, model: custom || null }}
+              freeTarget={currentTarget}
+              place={place}
               disableSelected
               availability={targetAvailability}
               models={Boolean(customModel)}
@@ -1544,8 +1623,12 @@ function ExactModelPicker({
             tierLabel={tierLabel}
             defaultLabel={defaultLabel}
             modeTitle={(target, tier) => `${tierLabel(tier)} · ${modeModelId(resolve(target, tier), tier) || defaultLabel}`}
-            searchTerms={[]}
             selection={value && valueTarget ? { target: valueTarget, model: value.model ?? null } : null}
+            // The chosen agent, else the step's own (« = principal »).
+            freeTarget={valueTarget
+              ?? targets.find(target => targetKey(target) === targetKey(main))
+              ?? { agent: main.agent, connectionId: main.connectionId }}
+            place={place}
             disableSelected={false}
             isMain={isMain}
             availability={target => availability?.(target)

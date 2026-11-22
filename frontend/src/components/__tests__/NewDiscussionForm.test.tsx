@@ -452,11 +452,16 @@ describe('NewDiscussionForm — creation flow layout', () => {
     );
 
     const picker = await screen.findByTestId('new-disc-agent-picker');
+    // The typed id is offered for the current agent: Codex first.
+    fireEvent.click(screen.getByRole('button', { name: 'disc.agentAndMode' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Codex · disc.tier.economy' }));
+    });
     fireEvent.click(screen.getByRole('button', { name: 'disc.agentAndMode' }));
     fireEvent.change(screen.getByRole('searchbox', { name: 'agentPicker.search' }), { target: { value: 'gpt-5.5-codex-max' } });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('menuitem', { name: /^Codex · gpt-5\.5-codex-max — agentPicker\.freeModel/ }));
-    });
+    const free = document.querySelectorAll<HTMLElement>('[data-kind="free"]');
+    expect(free).toHaveLength(1);
+    await act(async () => { fireEvent.click(free[0]); });
     expect(picker.querySelector('.kr-agent-switch-custom')).toHaveTextContent('agentPicker.custom');
     expect(picker).toHaveTextContent('gpt-5.5-codex-max');
 

@@ -211,11 +211,52 @@ describe('AgentSwitchPicker.css — the rules this lot adds stay on the tokens (
   });
 
   it('the model id is written in the code face, whole, at the 12 px floor', () => {
-    const body = rule(PICKER, '.kr-agent-switch-mode-model,\n.kr-agent-switch-tier-model');
+    const body = rule(PICKER, '.kr-agent-switch-mode-model');
     expect(declaration(body, 'font-family')).toBe('var(--kr-font-mono)');
     expect(declaration(body, 'font-size')).toBe('var(--kr-type-sm)');
     expect(declaration(body, 'overflow-wrap')).toBe('anywhere');
     expect(body).not.toMatch(/text-overflow|white-space\s*:\s*nowrap/);
+  });
+
+  // KT-1994 review, point 5 — the @ menu's cell never breaks inside a token:
+  // only between the id's parts (a <wbr> after `/` and `:`), two lines at most.
+  it('the @ menu cell breaks an id only between its parts, on two lines at most', () => {
+    const cell = rule(PICKER, '.kr-agent-switch-tier-model');
+    expect(cell).not.toMatch(/overflow-wrap|word-break/);
+    expect(declaration(cell, 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(cell, '-webkit-line-clamp')).toBe('2');
+    expect(declaration(cell, 'overflow')).toBe('hidden');
+    expect(declaration(rule(PICKER, 'code.kr-agent-switch-tier-model'), 'font-family')).toBe('var(--kr-font-mono)');
+    const part = rule(PICKER, '.kr-agent-switch-id-part');
+    expect(declaration(part, 'white-space')).toBe('nowrap');
+    expect(declaration(part, 'text-overflow')).toBe('ellipsis');
+  });
+
+  it('from 640px of palette the tiers sit in fixed tracks a 25-character id fits in; narrower, three equal columns', () => {
+    expect(declaration(rule(PICKER, '.kr-agent-switch-palette'), 'container-type')).toBe('inline-size');
+    expect(declaration(rule(PICKER, ".kr-agent-switch-tier-choices[data-models='true']"), 'grid-template-columns'))
+      .toBe('repeat(var(--agent-switch-tier-count, 3), minmax(0, 1fr))');
+    const wide = PICKER.match(/@container \(min-width: 640px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    const tracks = rule(wide, ".kr-agent-switch-tier-choices[data-models='true']");
+    expect(declaration(tracks, '--agent-switch-tier-track')).toBe('184px');
+    expect(declaration(tracks, 'grid-template-columns'))
+      .toBe('repeat(var(--agent-switch-tier-count, 3), var(--agent-switch-tier-track))');
+  });
+
+  it('from a 768px window the @ menu takes up to 720px when its anchor allows', () => {
+    const page = read('pages/DiscussionsPage.css');
+    const wide = page.match(/@media \(min-width: 768px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    expect(declaration(rule(wide, '.disc-mention-popover.kr-agent-switch-palette'), 'width'))
+      .toBe('min(720px, max(100%, 520px), calc(100vw - 2 * var(--kr-space-4)))');
+  });
+
+  // KT-1994 review, point 6.
+  it('the status line, the blocked reason and a recent agent read at the 12 px floor; a recent agent stays on one line', () => {
+    expect(declaration(rule(PICKER, '.kr-agent-switch-status'), 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(rule(PICKER, '.kr-agent-switch-reason'), 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(rule(PICKER, '.kr-agent-switch-recent .kr-agent-switch-tier-name'), 'white-space')).toBe('nowrap');
+    expect(declaration(rule(PICKER, '.kr-agent-switch-recent'), 'grid-template-columns'))
+      .toBe('max-content minmax(0, 1fr) var(--kr-space-3)');
   });
 
   it('the availability badge reads at the 12 px floor', () => {

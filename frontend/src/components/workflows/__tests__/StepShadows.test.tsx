@@ -256,12 +256,15 @@ describe('StepShadowsEditor (KT-1459)', () => {
       expect(within(within(menu).getByRole('group', { name: 'LiteLLM proxy' })).getAllByRole('menuitem')[0]).toBeEnabled();
     });
 
+    // KT-1994 review — the typed id is offered once, for the agent and connection chosen.
     it('keeps a free model id, typed in the search, on the agent and connection chosen', async () => {
-      const onChange = renderEditor(step({ agent: 'ClaudeCode', shadows: [shadow('alt', { agent: { agent: 'Custom' } })] }),
+      const onChange = renderEditor(step({ agent: 'ClaudeCode', shadows: [shadow('alt', { agent: { agent: 'Custom', connection_id: 'litellm' } })] }),
         vi.fn(), { agentChoices: choices });
       await open('wf-shadow-alt');
       fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'gpt-x' } });
-      fireEvent.click(screen.getByRole('menuitem', { name: /^LiteLLM proxy · .*gpt-x/ }));
+      const free = document.querySelectorAll<HTMLElement>('[data-kind="free"]');
+      expect(free).toHaveLength(1);
+      fireEvent.click(free[0]);
       expect(onChange).toHaveBeenLastCalledWith([shadow('alt', { agent: { agent: 'Custom', model: 'gpt-x', connection_id: 'litellm' } })]);
     });
 

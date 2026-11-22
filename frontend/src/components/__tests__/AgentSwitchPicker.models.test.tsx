@@ -19,6 +19,8 @@ import {
 import { AGENT_PICKER_RECENTS_KEY, readAgentPickerRecents } from '../../lib/agentPickerRecents';
 import { SYNCED_KEYS, isSyncedKey } from '../../lib/uiPreferences';
 import { setStorageWriteListener } from '../../lib/safeStorage';
+import { I18nProvider } from '../../lib/I18nContext';
+import { loadLocale, setUILocale } from '../../lib/i18n';
 import type { ResolvedCatalogTier } from '../../lib/modelCatalogSelection';
 
 function model(runtime: string, id: string, extra: Partial<CatalogModelEntry> = {}): CatalogModelEntry {
@@ -51,6 +53,10 @@ const CATALOG = {
       model('agent:codex', 'gpt-5.5-mini', { agent_type: 'Codex' }),
       model('agent:codex', 'gpt-5.5', { agent_type: 'Codex' }),
       model('agent:codex', 'gpt-5.5-codex-max', { agent_type: 'Codex' }),
+      // The display name only differs by case and punctuation: not written.
+      model('agent:codex', 'gpt-6-luna', { agent_type: 'Codex', display_name: 'GPT-6-Luna' }),
+      model('agent:codex', 'opencode-go/mimo-v2.6-pro', { agent_type: 'Codex', display_name: 'opencode-go/MiMo-V2.6-Pro' }),
+      model('agent:codex', 'gpt-6-sol-preview', { agent_type: 'Codex', display_name: 'Sol Preview' }),
     ], {
       tier_verdicts: [
         { tier: 'economy', requested_model: 'gpt-5.5-mini', effective_model: 'gpt-5.5-mini', launchable: true },
@@ -112,6 +118,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   setStorageWriteListener(null);
+  setUILocale('fr');
 });
 
 describe('mode rows write their model (KT-1994)', () => {
@@ -216,14 +223,101 @@ describe('other models: folded, one agent at a time, bounded (KT-1994)', () => {
     const claude = group('Claude Code');
     expect(within(claude).getByRole('menuitem', { name: 'Claude Code · claude-fable-b' })).toBeInTheDocument();
     expect(within(claude).queryByRole('menuitem', { name: 'Claude Code · claude-fable-a' })).toBeNull();
-    expect(within(claude).getByRole('menuitem', { name: 'Claude Code · agentPicker.otherModels' }))
-      .toHaveAttribute('aria-expanded', 'false');
-    // The three modes of a shown agent stay one click away.
-    expect(within(claude).getByRole('menuitem', { name: 'Claude Code · Avancé' })).toBeInTheDocument();
-    // An agent the search does not match keeps only the typed id, « as is ».
-    expect(within(group('Codex')).getAllByRole('menuitem').map(item => item.dataset.kind)).toEqual(['free']);
+    // KT-1994 review — no fold control while searching, and no mode the text does not hit.
+    expect(within(claude).queryByRole('menuitem', { name: 'Claude Code · agentPicker.otherModels' })).toBeNull();
+    expect(within(claude).queryByRole('menuitem', { name: 'Claude Code · Avancé' })).toBeNull();
+    // An agent the search does not match is not listed.
+    expect(screen.queryByRole('group', { name: 'Codex' })).toBeNull();
     fireEvent.change(search, { target: { value: 'vendor/model' } });
     expect(group('OpenRouter').querySelectorAll('[data-kind="model"]')).toHaveLength(OTHER_MODELS_RENDER_LIMIT);
+  });
+
+  // KT-1994 review, point 2 — unfolding at the bottom of the list showed nothing but the chevron.
+  it('unfolding scrolls the list so the control is at the top of its viewport; the focus stays on it', async () => {
+    render(<FullList />);
+    await open();
+    const list = screen.getByRole('menu');
+    let scrollTop = 40;
+    Object.defineProperty(list, 'scrollTop', { configurable: true, get: () => scrollTop, set: value => { scrollTop = value; } });
+    list.getBoundingClientRect = () => ({ top: 100, bottom: 400, left: 0, right: 440, width: 440, height: 300 }) as DOMRect;
+    const toggle = within(group('OpenRouter')).getByRole('menuitem', { name: 'OpenRouter · agentPicker.otherModels' });
+    toggle.getBoundingClientRect = () => ({ top: 380, bottom: 404, left: 0, right: 440, width: 440, height: 24 }) as DOMRect;
+    toggle.focus();
+    // A keyboard activation is a click with no pointer detail.
+    fireEvent.click(toggle, { detail: 0 });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(scrollTop).toBe(40 + (380 - 100));
+    expect(document.activeElement).toBe(toggle);
+    // Folding back leaves the scroll where it is.
+    scrollTop = 7;
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(scrollTop).toBe(7);
+  });
+
+  // KT-1994 review, point 3.
+  it('writes a display name only when it says more than the id once case and punctuation are set aside', async () => {
+    render(<FullList />);
+    await open();
+    fireEvent.click(within(group('Codex')).getByRole('menuitem', { name: 'Codex · agentPicker.otherModels' }));
+    const codex = group('Codex');
+    for (const id of ['gpt-6-luna', 'opencode-go/mimo-v2.6-pro']) {
+      expect(within(codex).getByRole('menuitem', { name: `Codex · ${id}` }).querySelector('.kr-agent-switch-mode-name')).toBeNull();
+    }
+    expect(within(codex).getByRole('menuitem', { name: 'Codex · gpt-6-sol-preview' }).querySelector('.kr-agent-switch-mode-name'))
+      .toHaveTextContent('Sol Preview');
+    // « Fable » is no id: it stays, on a mode row as on another model.
+    expect(within(group('Claude Code')).getByRole('menuitem', { name: 'Claude Code · Éco' }).querySelector('.kr-agent-switch-mode-name'))
+      .toHaveTextContent('Haiku');
+  });
+});
+
+describe('search: only the rows the text hits (KT-1994 review, point 1b)', () => {
+  const blocks = () => screen.queryAllByRole('group')
+    .filter(node => node.classList.contains('kr-agent-switch-group-block'))
+    .map(node => node.getAttribute('aria-label'));
+
+  it('a text that hits one model lists that model alone: no mode row of its agent, no other agent', async () => {
+    render(<FullList />);
+    await open();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'model-077' } });
+    expect(blocks()).toEqual(['OpenRouter']);
+    expect(within(group('OpenRouter')).getAllByRole('menuitem').map(item => item.dataset.kind)).toEqual(['model']);
+  });
+
+  it('a mode name lists that mode on every agent; an agent name lists its modes', async () => {
+    render(<FullList />);
+    await open();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'avance' } });
+    expect(blocks()).toEqual(['Claude Code', 'Codex', 'Gemini CLI', 'OpenRouter']);
+    for (const name of blocks()) {
+      expect(within(group(name!)).getAllByRole('menuitem').map(item => item.dataset.tier)).toEqual(['reasoning']);
+    }
+    fireEvent.change(search, { target: { value: 'codex' } });
+    expect(blocks()).toEqual(['Codex']);
+    expect(within(group('Codex')).getAllByRole('menuitem').map(item => item.dataset.tier))
+      .toEqual(['economy', 'default', 'reasoning']);
+  });
+
+  it('a display name finds its model; a mode is found by its model', async () => {
+    render(<FullList />);
+    await open();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'Sol Preview' } });
+    expect(blocks()).toEqual(['Codex']);
+    expect(within(group('Codex')).getByRole('menuitem', { name: 'Codex · gpt-6-sol-preview' })).toBeInTheDocument();
+    fireEvent.change(search, { target: { value: 'haiku' } });
+    expect(blocks()).toEqual(['Claude Code']);
+    expect(within(group('Claude Code')).getAllByRole('menuitem').map(item => item.dataset.tier)).toEqual(['economy']);
+  });
+
+  it('when nothing matches, one line says so', async () => {
+    render(<FullList />);
+    await open();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'zzz-nothing' } });
+    expect(blocks()).toEqual([]);
+    expect(screen.getByRole('status')).toHaveTextContent('agentPicker.noMatch');
   });
 });
 
@@ -277,10 +371,10 @@ describe('a custom model: chosen, saved, labelled (KT-1994)', () => {
     render(<FullList onModel={onModel} />);
     await open();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '  -rogue  ' } });
-    const free = within(group('Claude Code')).getByRole('menuitem', { name: /^Claude Code · -rogue — agentPicker\.freeModel/ });
+    const free = screen.getByRole('menuitem', { name: 'agentPicker.freeModel' });
     await act(async () => { fireEvent.click(free); });
     expect(onModel).toHaveBeenCalledWith({ agent: 'ClaudeCode' }, '-rogue');
-    const alert = within(group('Claude Code')).getByRole('alert');
+    const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent('The model id must not start with "-"');
     expect(free.nextElementSibling).toBe(alert);
     // Still open, the previous choice untouched.
@@ -288,12 +382,36 @@ describe('a custom model: chosen, saved, labelled (KT-1994)', () => {
     expect(screen.getByRole('button', { name: 'Agent' }).querySelector('.kr-agent-switch-custom')).toBeNull();
   });
 
-  it('a typed id equal to a listed model is that model, not a free one', async () => {
+  it('a typed id equal to a model the current agent lists is that model, not a free one', async () => {
     render(<FullList />);
     await open();
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'claude-fable-a' } });
-    expect(within(group('Claude Code')).queryByRole('menuitem', { name: /freeModel/ })).toBeNull();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'claude-fable-a' } });
+    expect(screen.queryByRole('menuitem', { name: /freeModel/ })).toBeNull();
     expect(within(group('Claude Code')).getByRole('menuitem', { name: 'Claude Code · claude-fable-a' })).toBeInTheDocument();
+    // A mode's own model counts as listed too.
+    fireEvent.change(search, { target: { value: 'claude-sonnet-4-5' } });
+    expect(screen.queryByRole('menuitem', { name: /freeModel/ })).toBeNull();
+  });
+
+  // KT-1994 review, point 1a — one line at the end, for the current agent only, naming it.
+  it('the typed id is one entry at the end of the list, for the current agent, named in it', async () => {
+    await loadLocale('fr');
+    setUILocale('fr');
+    render(<I18nProvider><FullList currentAgent="Codex" /></I18nProvider>);
+    await open();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'neon' } });
+    const free = document.querySelectorAll<HTMLElement>('[data-kind="free"]');
+    expect(free).toHaveLength(1);
+    expect(free[0]).toHaveTextContent('Identifiant absent du catalogue ? Utiliser « neon » avec Codex');
+    expect(free[0]).toHaveAccessibleName('Identifiant absent du catalogue ? Utiliser « neon » avec Codex');
+    const items = screen.getAllByRole('menuitem');
+    expect(items[items.length - 1]).toBe(free[0]);
+    expect(screen.queryByText('Autres agents')).toBeNull();
+    // A model another agent lists is still free for the current one.
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'vendor/model-010' } });
+    expect(document.querySelectorAll('[data-kind="free"]')).toHaveLength(1);
+    expect(group('OpenRouter').querySelectorAll('[data-kind="model"]')).toHaveLength(1);
   });
 });
 
@@ -426,7 +544,8 @@ describe('the composer’s @ menu (KT-1994)', () => {
     expect(option.querySelector('[data-kind="model"], [data-free]')).toBeNull();
   });
 
-  it('a mode without a declared model says « agent default model »', () => {
+  // KT-1994 review, point 5c — a short form in the cell, the full sentence in its title and name.
+  it('a mode without a declared model writes « par défaut » in its cell, the full sentence in its title', () => {
     render(<AgentPickerPalette ariaLabel="Mention" t={key => key} rows={[{
       key: 'gemini', agent: 'GeminiCli', label: '@gemini', onSelect: vi.fn(),
       tiers: {
@@ -434,8 +553,101 @@ describe('the composer’s @ menu (KT-1994)', () => {
         tierLabel: tier => TIER_LABELS[tier], modelLabel: () => 'default', defaultLabel: 'default', onSelect: vi.fn(),
       },
     }]} />);
-    for (const tier of screen.getByRole('option').querySelectorAll('.kr-agent-switch-tier-option')) {
-      expect(tier.querySelector('.kr-agent-switch-tier-model')).toHaveTextContent('wf.shadow.rows.defaultModel');
+    for (const tier of screen.getByRole('option').querySelectorAll<HTMLElement>('.kr-agent-switch-tier-option')) {
+      expect(tier.querySelector('.kr-agent-switch-tier-model')).toHaveTextContent(/^agentPicker\.defaultShort$/);
+      expect(tier.title).toContain('wf.shadow.rows.defaultModel');
+      expect(tier.getAttribute('aria-label')).toContain('wf.shadow.rows.defaultModel');
     }
+  });
+
+  // KT-1994 review, point 5a — no break inside a token: only after `/` and `:`.
+  it('an id breaks only after « / » and « : », its parts unbroken; title and name keep it whole', () => {
+    const long: Record<ModelTier, string> = {
+      economy: 'opencode-go/mimo-v2.6-pro', default: 'vertex_ai/gemini-3.8-flash', reasoning: 'ollama:qwen3:32b',
+    };
+    render(<AgentPickerPalette ariaLabel="Mention" t={key => key} rows={[{
+      key: 'oc', agent: 'OpenCode', label: '@opencode', onSelect: vi.fn(),
+      tiers: {
+        targetLabel: '@opencode', resolve: tier => resolution(long[tier], `Name ${tier}`), tierLabel: tier => TIER_LABELS[tier],
+        modelLabel: tier => `Name ${tier}`, defaultLabel: 'default', onSelect: vi.fn(),
+      },
+    }]} />);
+    const cells = Array.from(screen.getByRole('option').querySelectorAll<HTMLElement>('.kr-agent-switch-tier-option'));
+    const parts = (cell: HTMLElement) => Array.from(cell.querySelectorAll('.kr-agent-switch-id-part')).map(part => part.textContent);
+    expect(parts(cells[0])).toEqual(['opencode-go/', 'mimo-v2.6-pro']);
+    expect(parts(cells[1])).toEqual(['vertex_ai/', 'gemini-3.8-flash']);
+    expect(parts(cells[2])).toEqual(['ollama:', 'qwen3:', '32b']);
+    expect(cells[2].querySelectorAll('wbr')).toHaveLength(2);
+    cells.forEach((cell, index) => {
+      const id = Object.values(long)[index];
+      expect(cell.querySelector('.kr-agent-switch-tier-model')?.textContent).toBe(id);
+      expect(cell.title).toContain(id);
+      expect(cell.getAttribute('aria-label')).toContain(id);
+    });
+  });
+});
+
+describe('the trigger writes the model id, catalogue loaded or not (KT-1994 review, point 4)', () => {
+  it('a configured mode: the id before and after the list opens; the display name in the title', async () => {
+    list.mockResolvedValue({ targets: [view('http:openrouter', 'Custom', [
+      model('http:openrouter', 'vendor/model-002', { agent_type: 'Custom', display_name: 'Vendor Two' }),
+    ])] });
+    render(<FullList currentAgent="Custom" currentConnectionId="openrouter" />);
+    const trigger = screen.getByRole('button', { name: 'Agent' });
+    const suffix = () => trigger.querySelector('.kr-agent-switch-suffix');
+    expect(list).not.toHaveBeenCalled();
+    expect(suffix()).toHaveTextContent(/^· vendor\/model-002$/);
+    await open();
+    expect(suffix()).toHaveTextContent(/^· vendor\/model-002$/);
+    expect(trigger).toHaveAttribute('title', 'Agent · Standard · Vendor Two');
+  });
+
+  it('a mode the configuration leaves to the agent keeps its fallback once the catalogue names a model (compact too)', async () => {
+    render(
+      <AgentSwitchPicker currentAgent="ClaudeCode" currentTier="default" availableAgents={[]} availableTargets={TARGETS}
+        tierLabels={TIER_LABELS} onTargetSelectionChange={vi.fn()} currentModelFallback="Default model of Claude Code"
+        compact title="Agent" ariaLabel="Agent" />,
+    );
+    const trigger = screen.getByRole('button', { name: 'Agent' });
+    const suffix = () => trigger.querySelector('.kr-agent-switch-suffix');
+    expect(suffix()).toHaveTextContent(/^· Default model of Claude Code$/);
+    await open();
+    // The catalogue names Sonnet for the Standard mode: the list says so, the trigger does not move.
+    expect(modelText(within(group('Claude Code')).getByRole('menuitem', { name: 'Claude Code · Standard' }))).toBe('claude-sonnet-4-5');
+    expect(suffix()).toHaveTextContent(/^· Default model of Claude Code$/);
+  });
+});
+
+describe('an unavailable agent (KT-1994 review, point 6c)', () => {
+  const refused = (detail: string) => (['economy', 'default', 'reasoning'] as const).map(tier => ({
+    tier, requested_model: null, effective_model: null, launchable: false, detail,
+  }));
+
+  it('stays listed, not selectable, with its reason in one muted line under its header', async () => {
+    list.mockResolvedValue({ targets: [
+      ...CATALOG.targets,
+      view('agent:gemini-cli', 'GeminiCli', [], { tier_verdicts: refused('Gemini CLI is not signed in') } as Partial<ModelCatalogView>),
+    ] });
+    render(<FullList />);
+    await open();
+    const gemini = group('Gemini CLI');
+    expect(within(gemini).getByTestId('agent-unavailable')).toBeInTheDocument();
+    const reason = within(gemini).getByTestId('agent-switch-reason');
+    expect(reason).toHaveTextContent(/^Gemini CLI is not signed in$/);
+    expect(reason).toHaveClass('kr-agent-switch-reason');
+    expect(reason.previousElementSibling).toHaveClass('kr-agent-switch-group-header');
+    for (const row of within(gemini).getAllByRole('menuitem')) expect(row).toBeDisabled();
+    expect(within(group('Claude Code')).queryByTestId('agent-switch-reason')).toBeNull();
+  });
+
+  it('writes the caller’s reason the same way', async () => {
+    render(
+      <AgentSwitchPicker currentAgent="ClaudeCode" currentTier="default" availableAgents={[]} availableTargets={TARGETS}
+        tierLabels={TIER_LABELS} onTargetSelectionChange={vi.fn()} title="Agent" ariaLabel="Agent"
+        availability={target => target.agent === 'Codex'
+          ? { state: 'unavailable', label: 'Unavailable', title: 'Codex is not installed' } : null} />,
+    );
+    await open();
+    expect(within(group('Codex')).getByTestId('agent-switch-reason')).toHaveTextContent('Codex is not installed');
   });
 });

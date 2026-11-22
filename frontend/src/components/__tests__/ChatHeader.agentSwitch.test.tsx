@@ -410,21 +410,21 @@ describe('ChatHeader — shared agent switcher', () => {
   describe('a custom model (KT-1994)', () => {
     beforeEach(() => localStorage.clear());
 
+    // KT-1994 review — the typed id is offered once, for the discussion's agent.
     it('a typed model id is saved as the discussion’s exact model, with its agent and connection', async () => {
       const { onAgentSwitch } = renderHeader();
       const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
       await waitFor(() => expect(trigger).toBeEnabled());
       fireEvent.click(trigger);
-      fireEvent.change(screen.getByRole('searchbox', { name: 'agentPicker.search' }), { target: { value: 'gpt-5.5-codex-max' } });
-      const codex = screen.getByRole('group', { name: 'Codex' });
-      await act(async () => {
-        fireEvent.click(within(codex).getByRole('menuitem', { name: /^Codex · gpt-5\.5-codex-max — agentPicker\.freeModel/ }));
-      });
+      fireEvent.change(screen.getByRole('searchbox', { name: 'agentPicker.search' }), { target: { value: 'claude-next-preview' } });
+      const free = document.querySelectorAll<HTMLElement>('[data-kind="free"]');
+      expect(free).toHaveLength(1);
+      await act(async () => { fireEvent.click(free[0]); });
       expect(discussionsApi.update).toHaveBeenCalledWith(
         'disc-agent-switch',
-        { agent: 'Codex', connection_id: null, model: 'gpt-5.5-codex-max' },
+        { agent: 'ClaudeCode', connection_id: null, model: 'claude-next-preview' },
       );
-      expect(onAgentSwitch).toHaveBeenCalledWith('Codex');
+      expect(onAgentSwitch).toHaveBeenCalledWith('ClaudeCode');
       expect(screen.queryByRole('menu')).toBeNull();
     });
 
@@ -435,11 +435,15 @@ describe('ChatHeader — shared agent switcher', () => {
       await waitFor(() => expect(trigger).toBeEnabled());
       fireEvent.click(trigger);
       fireEvent.change(screen.getByRole('searchbox', { name: 'agentPicker.search' }), { target: { value: '-c' } });
-      const claude = screen.getByRole('group', { name: 'Claude Code' });
-      await act(async () => {
-        fireEvent.click(within(claude).getByRole('menuitem', { name: /^Claude Code · -c — agentPicker\.freeModel/ }));
-      });
-      expect(within(claude).getByRole('alert')).toHaveTextContent('model id must not start with "-"');
+      const free = document.querySelector<HTMLElement>('[data-kind="free"]')!;
+      await act(async () => { fireEvent.click(free); });
+      expect(discussionsApi.update).toHaveBeenCalledWith(
+        'disc-agent-switch',
+        { agent: 'ClaudeCode', connection_id: null, model: '-c' },
+      );
+      const alert = screen.getByRole('alert');
+      expect(alert).toHaveTextContent('model id must not start with "-"');
+      expect(free.nextElementSibling).toBe(alert);
       expect(onAgentSwitch).not.toHaveBeenCalled();
       expect(toast).not.toHaveBeenCalled();
       expect(screen.getByRole('menu')).toBeInTheDocument();

@@ -241,25 +241,26 @@ modes are props, not copies: the trigger `variant` (`chip`, `compact`,
 (an agent and a model id, the catalogue's or one typed in the search, or
 « = principal », with the principal's own model greyed) and `customModel`
 (KT-1994: the full list of a discussion, see below).
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:464#variant]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:487#multiple]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:498#exactModel]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:506#customModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:483#variant]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:506#multiple]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:517#exactModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:525#customModel]`
 Its popover is in `<body>` on the popover layer, above every dialog, and opens
 on its search field. It is placed from its rendered size, measured on open,
 when the search or the catalogue changes it, and on resize: it stays inside
 the window and never covers its trigger; opened above, its bottom is anchored
 to the trigger. Never place it from an estimated size. The grouped list is
 440 px wide whatever is unfolded (so it never jumps when a long model id
-appears), the plain agent lists 480 px at most, the @ menu 520 px; never wider
-than the window.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:572#place]`
+appears), the plain agent lists 480 px at most, the @ menu 520 px (from a
+768 px window, up to 720 px when its anchor is that wide); never wider than
+the window.
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:591#place]`
 Availability always goes through
 `AgentAvailabilityBadge` (`unavailable` and `disabled` block the choice,
 `needs-full-access` and `not-listed` only warn, `catalog` is the neutral
 « Détecté », « Cache à revérifier », « Configuration migrée »).
 `[src: file: frontend/src/lib/agentAvailability.ts:14#AgentAvailabilityState]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:114#AgentAvailabilityBadge]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:129#AgentAvailabilityBadge]`
 
 **The grouped list (disposition A, KT-1994)** is the popover of every picker
 that chooses a mode (the discussion header, the new-discussion form, workflow
@@ -270,8 +271,9 @@ and the name in one box (`kr-agent-switch-tier-id`, they never split), its kind
 and the state more than half of its modes share) and its model count. Then its
 three modes, one row each: icon and name in an aligned left column, the model
 id that mode runs written in the code face, the display name as a secondary
-text only when it differs from the id (three Claude Code models share
-« Fable »), the check on the selected row. A mode's model is what the catalogue
+text only when it says more than the id once both are lowercased and kept to
+letters and digits (« Fable », shared by three Claude Code models, stays;
+« GPT-6-Luna » next to `gpt-6-luna` does not), the check on the selected row. A mode's model is what the catalogue
 resolves for it, else the backend's launch verdict for that tier
 (`effective_model`, else `requested_model`); an HTTP connection's modes are its
 economy / default / reasoning models. A mode that declares none says « agent
@@ -281,29 +283,44 @@ its tooltip and accessible description. The assistants' « agent default » is a
 fourth row with the short label `agentPicker.defaultTier` (« Défaut »), its
 full name in its tooltip and accessible name; the exact-model mode always has
 it (no model = the agent's own default). The current agent comes first, then
-the configured order; an unavailable agent stays listed with its reason and
-cannot be chosen. Nothing is cut with an ellipsis: text wraps.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:720#AgentModelList]`
+the configured order; an unavailable agent stays listed and cannot be chosen,
+its reason written in one muted line under its header (the caller's detail,
+else the launch verdict's, else what the catalogue says of its models). Nothing
+is cut with an ellipsis: text wraps (a Recents row only keeps its agent's name
+on one line and ellipsizes its model).
+
+With a search text, a mode row is shown only when the text hits the agent's
+name, that row's model (id or display name) or the mode's name; other models
+are filtered by id or display name; an agent with no visible row is not
+listed, and when nothing matches one line says so. The fold controls are
+hidden while searching. The trigger writes the model id the configuration
+names (or the custom model), whether or not the catalogue is loaded: its text
+never changes when the list opens; the display name goes to its title.
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:751#AgentModelList]`
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:57#modeModelId]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:790]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:864]`
 
 With `customModel` (the discussion header and the new-discussion form) and in
 the exact-model mode, each agent's other models (the catalogue's models no
 mode points to) follow its modes, folded behind one « Autres modèles » control
-per agent: unfolding one agent leaves the others folded. The search finds them
-without unfolding. An unfolded agent mounts at most
+per agent: unfolding one agent leaves the others folded, and scrolls the list
+so that control sits at the top of its viewport (the rows it reveals are seen;
+the focus stays on it). The search finds them without unfolding. An unfolded
+agent mounts at most
 `OTHER_MODELS_RENDER_LIMIT` (50) of them and counts the rest; the search
 reaches every one (577 OpenRouter models are never mounted at once). A model
 outside the modes is « Personnalisé » / "Custom", on the trigger in place of
 the mode chip and in the list, where it stays visible under its agent while
-folded. A typed text that matches no model of an agent offers « use it as is »
-under that agent, and under the agents the search hides. The discussion saves
+folded. A typed text is offered « as is » in ONE line at the end of the list,
+for the picker's current agent only (the shadow editor: the chosen agent, else
+the step's own), naming it (« Identifiant absent du catalogue ? Utiliser « q »
+avec Codex »), and not when that agent already lists that id. The discussion saves
 a custom choice as `model` and a mode as `tier` alone, which clears the model
 server-side (KT-1993, [discussion-agent-routing](../architecture/discussion-agent-routing.md));
 a refusal is shown next to the entry and the previous choice stays: the picker
 trims, it never re-validates.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:50#OTHER_MODELS_RENDER_LIMIT]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1223#selectModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1301#selectModel]`
 `[src: file: frontend/src/components/ChatHeader.tsx:334]`
 `[src: file: frontend/src/pages/DiscussionsPage.tsx:2469]`
 
@@ -319,12 +336,18 @@ the collection favourites.
 line per agent at desktop widths: the agent and ONE state badge on the left,
 its tiers on the right on equal tracks shared by every row, each tier its icon
 and name on one line with the model id it runs written under it
-(`showModel`). The @ menu offers no other model and no exact model: nothing
-exists server-side for a one-off call. Under 420 px of viewport the tiers go on
-their own line under the agent, in equal parts.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:181#AgentPickerTierChoices]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:164#showModel]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:173#tierRowState]`
+(`showModel`). That id never breaks inside a token: only after `/` and `:` (a
+`<wbr>` between unbroken parts), on two lines at most, then an ellipsis; the
+cell's title and accessible name keep it whole. A mode with no declared model
+writes the short `agentPicker.defaultShort` (« par défaut »), the full
+sentence in its title. The palette measures its own width (a container
+query): from 640 px the tiers sit on fixed 184 px tracks beside the agent (a
+25-character id fits on one line, every row lines up); narrower, they go
+under the agent in three equal columns. The @ menu offers no other model and
+no exact model: nothing exists server-side for a one-off call.
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:196#AgentPickerTierChoices]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:179#showModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:188#tierRowState]`
 `[src: file: frontend/src/lib/agentAvailability.ts:62#sharedTierState]`
 `[src: file: frontend/src/lib/agentAvailability.ts:82#rowAvailability]`
 
@@ -337,8 +360,8 @@ height is then measured from its anchored edge to that area's far edge, minus
 `--kr-space-2`, and it scrolls inside. The composer's boundary is the message
 list (`composerMentionBoundary`), so the menu never slides under the
 discussion header or a banner.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:276#AgentPickerPalette]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:295#boundary]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:295#AgentPickerPalette]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:314#boundary]`
 `[src: file: frontend/src/lib/agentPickerPalette.ts:21#agentPaletteFieldAria]`
 `[src: file: frontend/src/lib/agentPickerPalette.ts:11#composerMentionBoundary]`
 The API assistants go through `AssistantAgentPicker` (installed agents,
