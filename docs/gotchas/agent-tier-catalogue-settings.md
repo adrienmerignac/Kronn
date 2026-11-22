@@ -129,7 +129,7 @@ model (KT-1994).
 [src: file: frontend/src/lib/modelCatalogSelection.ts:123-186#catalogModelOptions]
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:32-93#useModelCatalogSnapshot]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:103-106#catalogModelProvenance]
-[src: file: frontend/src/components/ChatHeader.tsx:355#customModel]
+[src: file: frontend/src/components/ChatHeader.tsx:361#customModel]
 [src: file: frontend/src/pages/WorkflowsPage.tsx:1717-1748#changeQuickPromptAgent]
 [src: file: frontend/src/pages/WorkflowsPage.tsx:3375-3376#currentModel]
 
