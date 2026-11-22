@@ -266,6 +266,55 @@ describe('Guided Tour', () => {
     expect(TOUR_STEPS.filter(step => step.page === 'settings').every(step => step.settingsSection)).toBe(true);
   });
 
+  // KT-1923 — the agents step opens a sub-page drawn on its first visit, which
+  // is still moving when its header appears. Shown at that moment, the step
+  // measured a passing position and the spotlight stood 184 to 195 px from its
+  // target (guided-tour-viewport.spec.ts). After a page switch the step now
+  // waits for its target to hold still, then the spotlight sits on it.
+  it('after a page switch, shows the step once its target holds still, with the spotlight on it', async () => {
+    vi.useFakeTimers();
+    const at = TOUR_STEPS.findIndex(step => step.id === 'agents-config');
+    const from = at - 1;
+    expect(TOUR_STEPS[from].page).not.toBe('settings');
+    localStorage.setItem(TOUR_PROGRESS_KEYS.current, JSON.stringify({
+      schemaVersion: 1,
+      completedStepIds: TOUR_STEPS.slice(0, from).map(step => step.id),
+      currentStepId: TOUR_STEPS[from].id,
+      hasStarted: true,
+      skippedStepIds: [],
+    }));
+    renderTour();
+    fireEvent.click(screen.getByTestId('resume'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(screen.getByTestId('step').textContent).toBe(String(from));
+
+    // The header keeps sliding up while the sub-page is drawn and scrolled.
+    const target = document.querySelector<HTMLElement>('[data-tour-id="settings-agents"]')!;
+    const settledTop = 120;
+    let moving = true;
+    let top = 600;
+    vi.spyOn(target, 'getBoundingClientRect').mockImplementation(() => {
+      if (moving) top = Math.max(settledTop + 1, top - 7); else top = settledTop;
+      return { top, left: 40, width: 600, height: 48, bottom: top + 48, right: 640, x: 40, y: top, toJSON: () => ({}) } as DOMRect;
+    });
+    fireEvent.click(screen.getByTestId('next'));
+
+    // Still moving: the previous step stays on screen.
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(setPage).toHaveBeenLastCalledWith('settings', 'settings-agent-config');
+    expect(screen.getByTestId('step').textContent).toBe(String(from));
+
+    // Held still: the step shows, and its spotlight sits on the target.
+    moving = false;
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(screen.getByTestId('step').textContent).toBe(String(at));
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+    const spotlight = document.querySelector<HTMLElement>('.tour-spotlight');
+    expect(spotlight?.style.top).toBe(`${settledTop - 8}px`);
+    expect(spotlight?.style.left).toBe('32px');
+    vi.useRealTimers();
+  });
+
   it('tour steps include pages beyond projects', () => {
     // Structural check: the step definitions span multiple pages
     const pages = new Set(TOUR_STEPS.map(s => s.page));

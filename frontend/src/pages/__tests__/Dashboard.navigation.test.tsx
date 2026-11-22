@@ -25,11 +25,17 @@ vi.mock('../DiscussionsPage', () => ({
 vi.mock('../McpPage', () => ({ McpPage: () => <div data-testid="mcp-page" /> }));
 vi.mock('../WorkflowsPage', () => ({ WorkflowsPage: () => <div data-testid="workflow-page" /> }));
 vi.mock('../PlanningPage', () => ({ PlanningPage: () => <div data-testid="planning-page" /> }));
-vi.mock('../SettingsPage', () => ({
-  SettingsPage: ({ embedOriginPrefill }: { embedOriginPrefill?: { origin: string } | null }) => (
-    <div data-testid="settings-page" data-prefill={embedOriginPrefill?.origin ?? ''} />
-  ),
-}));
+vi.mock('../SettingsPage', async () => {
+  // The real card that resumes the tour, as Settings draws it.
+  const { TourProgressCta } = await import('../../components/tour/TourProgressCta');
+  return {
+    SettingsPage: ({ embedOriginPrefill }: { embedOriginPrefill?: { origin: string } | null }) => (
+      <div data-testid="settings-page" data-prefill={embedOriginPrefill?.origin ?? ''}>
+        <TourProgressCta />
+      </div>
+    ),
+  };
+});
 vi.mock('../PagesPage', () => ({ PagesPage: () => <div data-testid="pages-page" /> }));
 
 vi.mock('../../lib/api', async () => {
@@ -495,5 +501,30 @@ describe('Dashboard page addresses', () => {
 
     expect(await screen.findByTestId('pages-page')).toBeInTheDocument();
     expect(window.location.pathname).toBe('/pages');
+  });
+});
+
+// KT-1923 — the tour step on the agents opens their sub-page WITHOUT the
+// section's anchor: the anchor starts Settings' own arrival scroll (and takes
+// the focus), which moved the target after the tour had measured it, so the
+// spotlight stood 184 to 195 px away from it (guided-tour-viewport.spec.ts).
+describe('Dashboard — the guided tour opens a Settings sub-page (KT-1923)', () => {
+  afterEach(() => { localStorage.removeItem('kronn:tour-progress:v1'); });
+
+  it('resuming at the agents step lands on /config/agents, with no anchor for Settings to scroll to', async () => {
+    const { TOUR_STEPS } = await import('../../components/tour/tourSteps');
+    const at = TOUR_STEPS.findIndex(step => step.id === 'agents-config');
+    localStorage.setItem('kronn:tour-progress:v1', JSON.stringify({
+      schemaVersion: 1,
+      completedStepIds: TOUR_STEPS.slice(0, at).map(step => step.id),
+      currentStepId: 'agents-config',
+      hasStarted: true,
+      skippedStepIds: [],
+    }));
+    await renderDashboard('/config/you');
+    const resume = await screen.findByTestId('settings-tour-progress');
+    await act(async () => { fireEvent.click(resume); });
+    await waitFor(() => expect(window.location.pathname).toBe('/config/agents'));
+    expect(window.location.hash).toBe('');
   });
 });

@@ -5,7 +5,7 @@ import {
   type Page,
   type TourStep,
 } from './tourSteps';
-import { waitForElement } from './useTourPositioning';
+import { waitForElement, waitForStablePosition } from './useTourPositioning';
 import { loadTourProgress, saveTourProgress } from './tourProgress';
 
 const AUTO_START_DELAY = 800;
@@ -173,7 +173,8 @@ export function TourProvider({ setPage, children }: TourProviderProps) {
     }
 
     // Page navigation
-    if (toStep.page !== fromStep?.page || toStep.settingsSection !== fromStep?.settingsSection) {
+    const openedPage = toStep.page !== fromStep?.page || toStep.settingsSection !== fromStep?.settingsSection;
+    if (openedPage) {
       setPage(toStep.page, toStep.settingsSection);
       await new Promise(r => setTimeout(r, 300));
     }
@@ -186,7 +187,7 @@ export function TourProvider({ setPage, children }: TourProviderProps) {
 
     // Wait for selector
     if (toStep.selector) {
-      const el = await waitForElement(
+      let el = await waitForElement(
         toStep.selector,
         toStep.optionalWhenMissing
           ? OPTIONAL_TARGET_TIMEOUT_MS
@@ -231,6 +232,11 @@ export function TourProvider({ setPage, children }: TourProviderProps) {
         return;
       }
       skippedStepIds = skippedStepIds.filter(id => id !== toStep.id);
+
+      // A page just opened is still being drawn and scrolled: show the step
+      // once its target holds still, so the spotlight is measured where the
+      // target ends up, not where it passed (KT-1923).
+      if (openedPage) el = await waitForStablePosition(toStep.selector) ?? el;
 
       // Setup waitForClick listener
       if (toStep.waitForClick && el) {

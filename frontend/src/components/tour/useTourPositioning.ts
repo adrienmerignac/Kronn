@@ -284,6 +284,40 @@ export function useTourPositioning(
 }
 
 /**
+ * Wait until the element a selector names stops moving: its rectangle holds
+ * still for `stableMs`, or `timeout` runs out. A page the tour has just opened
+ * is still being drawn and scrolled (data arriving above the target, a sub-page
+ * drawn on its first visit); a step shown before that settles measured where
+ * the target was, and the spotlight then sat beside it (KT-1923, Settings
+ * agents sub-page: 184 to 195 px off). Resolves with the element found last,
+ * or null when none is left.
+ */
+export function waitForStablePosition(
+  selector: string,
+  { stableMs = 150, timeout = 1500, interval = 50 }: { stableMs?: number; timeout?: number; interval?: number } = {},
+): Promise<HTMLElement | null> {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    let lastGeometry: string | null = null;
+    let stableSince = started;
+    const check = () => {
+      const element = document.querySelector<HTMLElement>(selector);
+      const now = Date.now();
+      if (!element) { resolve(null); return; }
+      const rect = element.getBoundingClientRect();
+      const geometry = `${Math.round(rect.top)}:${Math.round(rect.left)}:${Math.round(rect.width)}:${Math.round(rect.height)}`;
+      if (geometry !== lastGeometry) {
+        lastGeometry = geometry;
+        stableSince = now;
+      }
+      if (now - stableSince >= stableMs || now - started >= timeout) { resolve(element); return; }
+      setTimeout(check, interval);
+    };
+    check();
+  });
+}
+
+/**
  * Wait for a CSS selector to appear in the DOM (max 2s).
  * Uses MutationObserver for efficiency.
  */
