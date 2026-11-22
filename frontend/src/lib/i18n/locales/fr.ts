@@ -4263,6 +4263,7 @@ const fr: TranslationDict = {
   'ui.diff.layout.split': 'Côte à côte',
   'ui.diff.wrap': 'Renvoyer les lignes longues',
   'ui.diff.selectLine': 'Sélectionner la ligne {0}',
+  'ui.diff.selectRemovedLine': 'Sélectionner la ligne supprimée {0}',
   'designSystem.caption.copyButton': 'Copie un texte et le dit : l’icône devient une coche un instant et « Copié » est annoncé ; quand le presse-papiers refuse, le bouton passe au rouge et « Échec de la copie » est annoncé. Une forme icône et une forme texte, toujours nommées.',
   'designSystem.caption.table': 'Un tableau de données nommé par sa légende. Les nombres s’alignent à droite en chiffres tabulaires ; une colonne se trie depuis un bouton dans son en-tête ; une valeur longue est coupée, son texte complet dans une infobulle. Sélection, colonne d’actions, lignes qui s’ouvrent au clavier, lignes vide et chargement, pied de tableau. Dans un conteneur étroit, il défile de côté ou fait de chaque ligne une carte, selon sa propre largeur, pas celle de la fenêtre.',
   'designSystem.caption.keyValueList': 'Des libellés et leurs valeurs, en grille ou une ligne par élément. Une valeur absente affiche « — » ; identifiants et chemins en police mono se coupent n’importe où ; une valeur peut porter un bouton de copie nommé d’après son libellé. Dans un conteneur étroit, le libellé passe au-dessus de sa valeur.',

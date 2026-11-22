@@ -170,14 +170,19 @@ function DiffFile({ file, layout, highlight, highlightLimit, copyable, selectabl
   const toggle = (item: Indexed | undefined, side?: 'old' | 'new') => {
     if (!selectable) return null;
     if (!item) return <span className="ui-diff-cell ui-diff-select" data-side={side} />;
-    const n = item.line.newNumber ?? item.line.oldNumber ?? item.index + 1;
+    // A removed line is named by its old number and says so: in a modified
+    // hunk the removed and the added line often share a number.
+    const removedLine = item.line.kind === 'removed';
+    const n = removedLine
+      ? item.line.oldNumber ?? item.index + 1
+      : item.line.newNumber ?? item.line.oldNumber ?? item.index + 1;
     const on = inSelection(item.index);
     return (
       <span className="ui-diff-cell ui-diff-select" data-side={side} data-selected={on ? 'true' : undefined}>
         <button
           type="button"
           className="ui-diff-select-button"
-          aria-label={t('ui.diff.selectLine', String(n))}
+          aria-label={t(removedLine ? 'ui.diff.selectRemovedLine' : 'ui.diff.selectLine', String(n))}
           aria-pressed={on}
           onClick={(e: MouseEvent) => onToggle(file.path, item.index, e.shiftKey)}
         />

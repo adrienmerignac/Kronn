@@ -1051,6 +1051,11 @@ const DEMO_LOG: readonly LogLine[] = [
   { text: 'Re-running the failed test…', level: 'info', time: '2026-11-22T09:14:23Z' },
 ];
 
+/** The demo log is the tail of a longer output: its lines are numbered
+ *  where the tail starts, and its note counts the lines shown. */
+const DEMO_LOG_TOTAL = 1248;
+const DEMO_LOG_START = DEMO_LOG_TOTAL - DEMO_LOG.length + 1;
+
 const LONG_LOG_LINE = 'error[E0308]: mismatched types --> backend/src/workflows/runner.rs:412:27 | expected `Result<RunOutcome, RunError>`, found `Option<RunOutcome>`';
 
 function LogViewerDemo({ t }: { t: T }) {
@@ -1064,13 +1069,13 @@ function LogViewerDemo({ t }: { t: T }) {
     copyable: true,
     onRefresh: () => setLines(DEMO_LOG),
     onClear: () => setLines([]),
-    note: t('designSystem.demo.log.note', number(200)),
+    note: t('designSystem.demo.log.note', number(DEMO_LOG.length)),
   };
   return (
     <>
       <WideAndNarrow
         t={t}
-        wide={<LogViewer {...common} lineNumbers />}
+        wide={<LogViewer {...common} lineNumbers startNumber={DEMO_LOG_START} />}
         narrow={<LogViewer {...common} maxHeight="sm" />}
       />
       <Row label={t('designSystem.demo.log.sideways')}>

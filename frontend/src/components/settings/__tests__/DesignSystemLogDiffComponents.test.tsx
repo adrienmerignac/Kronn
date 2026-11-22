@@ -48,7 +48,7 @@ describe('DesignSystemPage — log and diff viewers (KT-2004)', () => {
       'ui.diff.label', 'ui.diff.empty', 'ui.diff.binary', 'ui.diff.truncated', 'ui.diff.counts', 'ui.diff.previousPath',
       'ui.diff.status.added', 'ui.diff.status.deleted', 'ui.diff.status.modified', 'ui.diff.status.renamed',
       'ui.diff.status.copied', 'ui.diff.copyFile', 'ui.diff.layout', 'ui.diff.layout.unified', 'ui.diff.layout.split',
-      'ui.diff.wrap', 'ui.diff.selectLine',
+      'ui.diff.wrap', 'ui.diff.selectLine', 'ui.diff.selectRemovedLine',
       'designSystem.use.diff-changed-bg', 'designSystem.use.diff-changed-border', 'designSystem.use.diff-changed-text',
     ];
     for (const [locale, dict] of Object.entries(dictionaries)) {
@@ -65,7 +65,10 @@ describe('DesignSystemPage — log and diff viewers (KT-2004)', () => {
     const [wide] = logs;
     expect(wide.querySelectorAll('.ui-log-line[data-stream="stderr"]').length).toBeGreaterThanOrEqual(2);
     expect(wide.querySelector('.ui-log-cursor')).toBeTruthy();
-    expect(wide.querySelector('.ui-log-number')).toBeTruthy();
+    // A tail: numbered where it starts in the longer output, ending at its total.
+    const numbers = [...wide.querySelectorAll('.ui-log-number')].map(n => n.textContent);
+    expect(numbers[0]).not.toBe('1');
+    expect(numbers.at(-1)).toBe('1248');
     expect(wide.querySelectorAll('time.ui-log-time').length).toBeGreaterThan(0);
     expect(wide.textContent).not.toContain('\u001b');
     expect(within(entry).getAllByText('designSystem.demo.log.note')).toHaveLength(2);
@@ -92,7 +95,7 @@ describe('DesignSystemPage — log and diff viewers (KT-2004)', () => {
     expect(files[0].querySelectorAll('.hljs-string, .hljs-keyword').length).toBeGreaterThan(0);
     expect(within(files[1]).getByText('ui.diff.binary')).toBeInTheDocument();
     // A selection from the start, with the caller's toolbar under it.
-    const toggles = within(files[0]).getAllByRole('button', { name: 'ui.diff.selectLine' });
+    const toggles = within(files[0]).getAllByRole('button', { name: /^ui\.diff\.select(Removed)?Line$/ });
     expect(toggles.filter(b => b.getAttribute('aria-pressed') === 'true').length).toBe(3);
     expect(within(files[0]).getByRole('button', { name: 'designSystem.demo.diff.comment' })).toBeInTheDocument();
     expect(screen.getByTestId('ds-diff-selection')).toHaveTextContent('designSystem.demo.diff.selected');
@@ -100,7 +103,9 @@ describe('DesignSystemPage — log and diff viewers (KT-2004)', () => {
     expect(toggles[0]).toHaveAttribute('aria-pressed', 'true');
     // The narrow one, bounded, is a named region.
     expect(within(entry).getByRole('region', { name: 'designSystem.demo.diff.label' })).toHaveAttribute('data-max-height', 'sm');
-    expect(within(entry).getByRole('status')).toHaveTextContent('designSystem.demo.diff.loadingDiff');
+    // Each CopyButton has a polite status of its own: the loading one is found by its text.
+    const loading = within(entry).getAllByRole('status').filter(s => s.textContent?.includes('designSystem.demo.diff.loadingDiff'));
+    expect(loading).toHaveLength(1);
     expect(within(entry).getByText('ui.diff.empty')).toBeInTheDocument();
   });
 

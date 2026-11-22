@@ -8,6 +8,7 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
 - **Values:** `frontend/src/styles/tokens.css`, `:root` block "Design scales"
   and "Semantic colours". Light themes (`light`, `sakura`, `euronews`) override
   the code and diff text colours in one shared block.
+  `[src: file: frontend/src/styles/tokens.css:111-171]`
   `[src: file: frontend/src/styles/tokens.css:293-335]`
 - **Typed table:** `frontend/src/styles/designTokens.ts` lists every token of
   a scale with the i18n key of its use line (`designSystem.use.<name>`).
@@ -37,6 +38,13 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
 | Text roles | `--kr-text-primary`, `-secondary`, `-muted` | existing tokens, distinct in every theme |
 | Semantic colours | `--kr-status-*`, `--kr-diff-{added,removed,changed}-{bg,border,text}`, `--kr-code-*` | no component names a theme |
 
+`--kr-diff-changed-bg`, `-border` and `-text` (KT-2004) colour a `changed`
+diff line, another text at the same position, in the warning hue; they are
+declared in every block that declares the other diff tokens, and their text
+holds the same 4.5:1 as the added and removed text.
+`[src: file: frontend/src/styles/tokens.css:320-322]`
+`[src: file: frontend/src/styles/__tests__/diffChangedTokens.test.ts:23]`
+
 ## Rules
 
 - **Adding a token to a scale:** add it to `tokens.css`, to the table in
@@ -60,9 +68,9 @@ lots (KT-1880 to KT-1886); this lot only defines and shows them.
 - **Focus ring:** one global `*:focus-visible` rule, in `tokens.css`
   (`--kr-accent-ink` + halo). `reset.css` no longer has one; a test counts them.
   `[src: file: frontend/src/styles/__tests__/designTokens.test.ts:182]`
-- **Contrast:** code and diff text colours (`--kr-diff-{added,removed,changed}-text`)
-  hold 4.5:1 on `--kr-code-surface`
+- **Contrast:** code and diff text colours hold 4.5:1 on `--kr-code-surface`
   and `--kr-bg-elevated` in every theme (diff text measured on its tinted row).
+  The same 4.5:1 floor holds for the status colours used as text: a label on
   a `--kr-status-*` tint is measured on that tint over each opaque surface, in
   the seven themes. Several themes print `--kr-status-*` under 4.5:1 there, so
   `StatusBadge` writes its label in `--kr-text-primary` and leaves the status

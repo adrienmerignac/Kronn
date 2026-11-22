@@ -4253,6 +4253,7 @@ const es: TranslationDict = {
   'ui.diff.layout.split': 'Lado a lado',
   'ui.diff.wrap': 'Ajustar las líneas largas',
   'ui.diff.selectLine': 'Seleccionar la línea {0}',
+  'ui.diff.selectRemovedLine': 'Seleccionar la línea eliminada {0}',
   'designSystem.caption.copyButton': 'Copia un texto y lo dice: el icono se convierte en una marca un momento y se anuncia «Copiado»; cuando el portapapeles se niega, el botón se vuelve rojo y se anuncia «No se pudo copiar». Una forma de icono y una de texto, siempre con nombre.',
   'designSystem.caption.table': 'Una tabla de datos nombrada por su leyenda. Los números se alinean a la derecha en cifras tabulares; una columna se ordena desde un botón en su encabezado; un valor largo se corta, con su texto completo en un título. Selección, columna de acciones, filas que se abren con el teclado, filas vacía y de carga, un pie. En un contenedor estrecho se desplaza de lado o convierte cada fila en una tarjeta, según su propio ancho, no el de la ventana.',
   'designSystem.caption.keyValueList': 'Etiquetas y sus valores, en cuadrícula o una fila por elemento. Un valor ausente muestra «—»; identificadores y rutas en fuente mono se cortan en cualquier punto; un valor puede llevar un botón de copia nombrado según su etiqueta. En un contenedor estrecho la etiqueta pasa encima de su valor.',

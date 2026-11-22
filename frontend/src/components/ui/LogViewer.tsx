@@ -27,6 +27,9 @@ export interface LogViewerProps {
   streaming?: boolean;
   /** A number before each line (hidden from assistive technology). */
   lineNumbers?: boolean;
+  /** The number of the first line shown (default 1): a tail of a longer
+   *  output starts where the tail starts. */
+  startNumber?: number;
   /** A CopyButton in the toolbar: copies the whole text. */
   copyable?: boolean;
   /** A refresh button in the toolbar. */
@@ -63,7 +66,7 @@ function timeParts(time: LogLineObject['time'], format: Intl.DateTimeFormat): { 
  *  text. ANSI escape sequences are removed, never rendered. */
 export function LogViewer({
   label, lines, maxHeight = 'md', wrap: initialWrap = true, follow = true, streaming = false, lineNumbers = false,
-  copyable = false, onRefresh, onClear, note, empty, className,
+  startNumber = 1, copyable = false, onRefresh, onClear, note, empty, className,
 }: LogViewerProps) {
   const { t, locale } = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -98,7 +101,8 @@ export function LogViewer({
   const format = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const items = lines.map(toLogLine);
   const withTimes = items.some(l => l.time !== undefined && l.time !== '');
-  const digits = String(items.length).length;
+  // The number column is as wide as the last number shown.
+  const digits = String(startNumber + Math.max(items.length, 1) - 1).length;
   const marker = (line: LogLineObject) => {
     if (line.level === 'error' || line.level === 'warn') return t(`ui.log.level.${line.level}`);
     if (line.stream === 'stderr') return t('ui.log.stderr');
@@ -155,7 +159,7 @@ export function LogViewer({
                 data-level={line.level}
                 data-tone={logTone(line)}
               >
-                {lineNumbers && <span className="ui-log-number" aria-hidden="true">{i + 1}</span>}
+                {lineNumbers && <span className="ui-log-number" aria-hidden="true">{startNumber + i}</span>}
                 {withTimes && (time
                   ? <time className="ui-log-time" dateTime={time.dateTime}>{time.text}</time>
                   : <span className="ui-log-time" aria-hidden="true" />)}

@@ -4253,6 +4253,7 @@ const en: TranslationDict = {
   'ui.diff.layout.split': 'Side by side',
   'ui.diff.wrap': 'Wrap long lines',
   'ui.diff.selectLine': 'Select line {0}',
+  'ui.diff.selectRemovedLine': 'Select removed line {0}',
   'designSystem.caption.copyButton': 'Copies a text and says so: the icon turns into a check for a moment and “Copied” is announced; when the clipboard refuses, the button turns red and “Copy failed” is announced. An icon form and a text form, always named.',
   'designSystem.caption.table': 'A data table named by its caption. Numbers align on the right in tabular figures; a column sorts from a button in its header; a long value is cut with its full text in a title. Selection, an actions column, rows that open from the keyboard, empty and loading rows, a footer. In a narrow container it scrolls sideways or turns each row into a card, decided by its own width, not the window’s.',
   'designSystem.caption.keyValueList': 'Labels and their values, in a grid or one row per item. A missing value shows “—”; ids and paths in the mono font wrap anywhere; a value can carry a copy button named after its label. In a narrow container the label goes above its value.',

@@ -4221,6 +4221,7 @@ const zh: TranslationDict = {
   'ui.diff.layout.split': '并排视图',
   'ui.diff.wrap': '长行自动换行',
   'ui.diff.selectLine': '选择第 {0} 行',
+  'ui.diff.selectRemovedLine': '选择已删除的第 {0} 行',
   'designSystem.caption.copyButton': '复制文本并告知结果：图标会短暂变为对勾，并播报“已复制”；剪贴板拒绝时，按钮变红并播报“复制失败”。有图标和文字两种形式，始终带名称。',
   'designSystem.caption.table': '以标题命名的数据表。数字右对齐并使用等宽数字；列可通过表头中的按钮排序；过长的值被截断，完整文本在提示中。支持选择、操作列、可用键盘打开的行、空行和加载行、表尾。在窄容器中，它横向滚动或把每一行变成卡片，取决于自身宽度而非窗口宽度。',
   'designSystem.caption.keyValueList': '标签及其值，以网格或每项一行显示。缺失的值显示“—”；等宽字体的 ID 和路径可在任意处换行；值可以带一个以标签命名的复制按钮。在窄容器中，标签移到值的上方。',

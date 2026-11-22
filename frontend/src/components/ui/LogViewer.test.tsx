@@ -104,6 +104,16 @@ describe('LogViewer', () => {
     expect(numbers[0]).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it('numbers a tail from its startNumber, the column as wide as the last number', () => {
+    const { container, rerender } = render(<LogViewer label="Run output" lines={LINES} lineNumbers />);
+    const root = () => container.querySelector('.ui-log') as HTMLElement;
+    expect(root().style.getPropertyValue('--ui-log-digits')).toBe('1');
+    rerender(<LogViewer label="Run output" lines={LINES} lineNumbers startNumber={97} />);
+    const numbers = [...log().querySelectorAll('.ui-log-number')];
+    expect(numbers.map(n => n.textContent)).toEqual(['97', '98', '99', '100']);
+    expect(root().style.getPropertyValue('--ui-log-digits')).toBe('3');
+  });
+
   it('draws a cursor on the last line while streaming', () => {
     const { rerender } = render(<LogViewer label="Run output" lines={LINES} streaming />);
     const cursor = log().querySelector('.ui-log-cursor')!;

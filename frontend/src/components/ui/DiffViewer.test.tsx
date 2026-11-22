@@ -16,6 +16,8 @@ import { fileURLToPath } from 'node:url';
 import { DiffViewer } from './DiffViewer';
 import { diffFileFromRows, parseUnifiedDiff, type DiffFileModel, type DiffSelection } from '../../lib/diffModel';
 import { diffLines } from '../../lib/qp-history-diff';
+import { I18nProvider } from '../../lib/I18nContext';
+import { getUILocale, t as translate } from '../../lib/i18n';
 import { cssText } from '../../test/cssBlocks';
 import { describeViolations, runAxe } from '../../test/axe';
 
@@ -265,7 +267,8 @@ describe('DiffViewer', () => {
         />
       );
     }
-    const toggles = () => within(file('src/app.ts')).getAllByRole('button', { name: 'ui.diff.selectLine' });
+    const SELECT = /^ui\.diff\.select(Removed)?Line$/;
+    const toggles = () => within(file('src/app.ts')).getAllByRole('button', { name: SELECT });
     const pressed = () => toggles().map(b => b.getAttribute('aria-pressed'));
 
     it('gives every line but the meta one a named toggle button', () => {
@@ -306,9 +309,31 @@ describe('DiffViewer', () => {
       expect(onChange).toHaveBeenLastCalledWith({ path: 'src/app.ts', start: 0, end: 1 });
     });
 
+    it('names every toggle of a file uniquely, a removed line saying so, in both layouts', () => {
+      // Line 11 is removed (old) and added (new): the two toggles must differ.
+      expect(APP.hunks[0].lines.filter(l => l.oldNumber === 11 && l.kind === 'removed')).toHaveLength(1);
+      expect(APP.hunks[0].lines.filter(l => l.newNumber === 11 && l.kind === 'added')).toHaveLength(1);
+      for (const layout of ['unified', 'split'] as const) {
+        const { unmount } = render(
+          <I18nProvider>
+            <DiffViewer files={[APP]} layout={layout} selectable selection={null} onSelectionChange={() => {}} />
+          </I18nProvider>,
+        );
+        const names = within(file('src/app.ts')).getAllByRole('button')
+          .filter(b => b.classList.contains('ui-diff-select-button'))
+          .map(b => b.getAttribute('aria-label') ?? '');
+        expect(names, layout).toHaveLength(5);
+        expect(new Set(names).size, `${layout}: ${names.join(' | ')}`).toBe(names.length);
+        const locale = getUILocale();
+        expect(names.filter(n => n === translate(locale, 'ui.diff.selectRemovedLine', '11')), layout).toHaveLength(1);
+        expect(names.filter(n => n === translate(locale, 'ui.diff.selectLine', '11')), layout).toHaveLength(1);
+        unmount();
+      }
+    });
+
     it('shows no toggle when not selectable', () => {
       render(<DiffViewer files={[APP]} />);
-      expect(screen.queryByRole('button', { name: 'ui.diff.selectLine' })).toBeNull();
+      expect(screen.queryByRole('button', { name: SELECT })).toBeNull();
     });
   });
 
