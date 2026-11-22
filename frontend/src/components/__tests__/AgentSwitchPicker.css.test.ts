@@ -138,9 +138,11 @@ describe('AgentSwitchPicker.css — triggers and popovers (KT-1885 review)', () 
       .toBe('var(--kr-space-6)');
   });
 
-  it('the exact-model popover is 320 px wide, within the window, and its placeholder is short enough for it', () => {
-    expect(declaration(rule(PICKER, ".kr-agent-switch-popover[data-mode='exact-model']"), 'width'))
-      .toBe('min(320px, calc(100vw - 2 * var(--kr-space-2)))');
+  // KT-1994 — the exact-model mode and the tier mode are one grouped list, one width.
+  it('the grouped list is 440 px wide, within the window, and the model search placeholder is short enough for it', () => {
+    expect(declaration(rule(PICKER, '.kr-agent-switch-popover:has(.kr-agent-switch-mode)'), 'width'))
+      .toBe('min(440px, calc(100vw - 2 * var(--kr-space-2)))');
+    expect(PICKER).not.toMatch(/\.kr-agent-switch-popover\[data-mode='exact-model'\]\s*\{/);
     for (const dictionary of [fr, en, es, zh]) {
       expect((dictionary as Record<string, string>)['agentPicker.searchModel'].length).toBeLessThanOrEqual(32);
     }
@@ -185,6 +187,15 @@ describe('AgentSwitchPicker.css — the rules this lot adds stay on the tokens (
     ['components/AgentSwitchPicker.css', '.kr-agent-switch-tier-agent'],
     ['components/AgentSwitchPicker.css', '.kr-agent-switch-tier-choices'],
     ['components/AgentSwitchPicker.css', ".kr-agent-switch-badge[data-state='catalog']"],
+    // KT-1994 — the grouped list's rows.
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-group-header'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-mode'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-mode-label'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-mode-value'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-more-toggle'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-recent-choice'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-custom'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-tier-model'],
     ['components/aiHelper.css', '.wf-apicall-ai-agent-selector .kr-agent-switch-btn'],
     ['pages/DiscussionsPage.css', '.disc-mention-popover.kr-agent-switch-palette'],
   ];
@@ -197,6 +208,14 @@ describe('AgentSwitchPicker.css — the rules this lot adds stay on the tokens (
     for (const [, , value] of body.matchAll(/(?:^|[;\s])((?:padding|margin|gap)[\w-]*)\s*:\s*([^;]+);/g)) {
       expect(value, `${selector}: raw spacing « ${value} »`).not.toMatch(/\b[1-9]\d*px\b/);
     }
+  });
+
+  it('the model id is written in the code face, whole, at the 12 px floor', () => {
+    const body = rule(PICKER, '.kr-agent-switch-mode-model,\n.kr-agent-switch-tier-model');
+    expect(declaration(body, 'font-family')).toBe('var(--kr-font-mono)');
+    expect(declaration(body, 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(body, 'overflow-wrap')).toBe('anywhere');
+    expect(body).not.toMatch(/text-overflow|white-space\s*:\s*nowrap/);
   });
 
   it('the availability badge reads at the 12 px floor', () => {

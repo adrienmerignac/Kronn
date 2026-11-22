@@ -112,11 +112,13 @@ describe('a tier row: the shared state once, next to the agent (KT-1885 review 2
     expect(badges[0]).toHaveAttribute('data-state', 'unavailable');
   });
 
-  it('a tier button is one line: its icon and its name, nothing else visible', () => {
+  // KT-1994 — the @ menu writes the model under each tier's name; nothing else is visible.
+  it('a tier button is its icon and its name on one line, then the model it runs, nothing else visible', () => {
     render(<AgentPickerPalette ariaLabel="Agents" t={t} rows={[row('claude', () => resolution('live'))]} />);
     for (const button of tierButtons(screen.getByRole('option'))) {
       const visible = Array.from(button.children).filter(child => !(child as HTMLElement).hidden && child.tagName !== 'svg');
-      expect(visible.map(child => child.className)).toEqual(['kr-agent-switch-tier-label']);
+      expect(visible.map(child => child.className)).toEqual(['kr-agent-switch-tier-label', 'kr-agent-switch-tier-model']);
+      expect(button.querySelector('.kr-agent-switch-tier-model')).toHaveTextContent('model-live');
     }
   });
 });

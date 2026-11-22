@@ -645,6 +645,10 @@ function AgentSwitchPickerDemo({ t }: { t: T }) {
   const [chip, setChip] = useState<AgentType>('Codex');
   const [many, setMany] = useState<AgentSwitchTarget[]>([{ agent: 'ClaudeCode' }, { agent: 'Codex' }]);
   const [exact, setExact] = useState<ShadowAgent | undefined>(undefined);
+  // KT-1994 — the full list: modes with their model, other models, « Personnalisé », « Récents ».
+  const [full, setFull] = useState<{ target: AgentSwitchTarget; tier: ModelTier; model: string | null }>({
+    target: { agent: 'ClaudeCode' }, tier: 'default', model: null,
+  });
   const label = t('designSystem.demo.agentLabel');
   const availability = (target: AgentSwitchTarget): AgentAvailability | null => target.agent === 'GeminiCli'
     ? { state: 'unavailable', label: t('designSystem.demo.agentUnavailable') }
@@ -662,6 +666,24 @@ function AgentSwitchPickerDemo({ t }: { t: T }) {
             tierLabels={tierLabels}
             defaultModelLabel={t('disc.defaultAgentModel')}
             onTargetSelectionChange={async (target, tier) => setField({ agent: target.agent, tier })}
+          />
+        </div>
+      </Row>
+      <Row label={t('designSystem.demo.agentFullList')}>
+        <div className="ds-demo-agent-field">
+          <AgentSwitchPicker
+            {...common}
+            variant="field"
+            currentAgent={full.target.agent}
+            currentConnectionId={full.target.connectionId}
+            currentTier={full.tier}
+            tierLabels={tierLabels}
+            defaultModelLabel={t('disc.defaultAgentModel')}
+            onTargetSelectionChange={async (target, tier) => setFull({ target, tier, model: null })}
+            customModel={{
+              model: full.model,
+              onSelect: async (target, model) => setFull(current => ({ target, tier: current.tier, model })),
+            }}
           />
         </div>
       </Row>
