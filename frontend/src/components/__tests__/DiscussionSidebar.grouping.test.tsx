@@ -29,6 +29,7 @@ vi.mock('../../lib/api', async () => {
 
 import { projects as projectsApi } from '../../lib/api';
 import { DiscussionSidebar } from '../DiscussionSidebar';
+import { discussionAgentModel } from '../../lib/agentModelResolution';
 import type { Discussion, Project, BatchRunSummary, ExecutionDiscussionLink } from '../../types/generated';
 
 const noop = () => {};
@@ -145,6 +146,35 @@ describe('DiscussionSidebar — grouping', () => {
     expect(agent.querySelector('.ui-visually-hidden')).toHaveTextContent('gpt-5.5-codex');
     expect(agent).toHaveAttribute('title', 'Codex · gpt-5.5-codex');
     expect(screen.getByRole('button', { name: 'Discussion model-disc — 0 messages, Codex · gpt-5.5-codex' })).toBeInTheDocument();
+  });
+
+  // KT-1936 review, finding 3 — the row names the model the header names: on a
+  // mode whose configuration names a model, that model; « default model » only
+  // when nobody can name one.
+  it('announces the model of the discussion\'s mode, as the header does, else the unknown state', () => {
+    const empty = { economy: null, default: null, reasoning: null };
+    const familyTiers = {
+      claude_code: empty, codex: empty, gemini_cli: empty, kiro: empty, vibe: empty,
+      copilot_cli: empty, ollama: empty, lite_llm: empty, nvidia: empty,
+      open_code: { economy: null, default: null, reasoning: 'opencode-go/kimi-k3.1-pro' },
+    };
+    const room = { ...mkDisc({ id: 'room', agent: 'OpenCode' }), tier: 'reasoning' as const, model: null };
+    const other = { ...mkDisc({ id: 'other', agent: 'OpenCode' }), tier: 'default' as const, model: null };
+    render(
+      <DiscussionSidebar
+        {...baseProps}
+        discussions={[room, other]}
+        agentModels={{
+          room: discussionAgentModel(room, { familyTiers }),
+          other: discussionAgentModel(other, { familyTiers }),
+        }}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Discussion room — 0 messages, OpenCode · opencode-go/kimi-k3.1-pro' }))
+      .toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Discussion other — 0 messages, OpenCode · ui.agentIdentity.model.providerDefault' }))
+      .toBeInTheDocument();
+    expect(document.querySelector('[title="OpenCode · opencode-go/kimi-k3.1-pro"]')).not.toBeNull();
   });
 
   it('keeps the shared-shell and discussion sizing classes on the sidebar', () => {

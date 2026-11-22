@@ -13,7 +13,8 @@ export const AGENT_IDENTITY_ROLES: readonly AgentIdentityRole[] = ['main', 'oneO
  * unknown states instead of a blank or a tier name.
  * - `notDeclared`: a joined CLI session that declared none at join;
  * - `notRecorded`: a legacy message whose model was not stored;
- * - `providerDefault`: the provider's default, before the first reply names it.
+ * - `providerDefault`: the provider's default, a model nobody can name yet
+ *   (« default model »: the agent's name is written just before it).
  */
 export type AgentIdentityModel =
   | { kind: 'id'; id: string }
@@ -47,12 +48,12 @@ export function agentModel(
 type Translate = (key: string, ...args: (string | number)[]) => string;
 
 /** The model as written: its id, or the words of its unknown state. */
-export function agentModelText(model: AgentIdentityModel, agentLabel: string, t: Translate): string {
+export function agentModelText(model: AgentIdentityModel, t: Translate): string {
   switch (model.kind) {
     case 'id': return model.id;
     case 'notDeclared': return t('ui.agentIdentity.model.notDeclared');
     case 'notRecorded': return t('ui.agentIdentity.model.notRecorded');
-    case 'providerDefault': return t('ui.agentIdentity.model.providerDefault', agentLabel);
+    case 'providerDefault': return t('ui.agentIdentity.model.providerDefault');
   }
 }
 
@@ -66,8 +67,6 @@ export interface AgentIdentityTextParts {
   roleLabel?: string | null;
   tier?: ModelTier | null;
   tierLabel?: string | null;
-  /** The agent named in « default model of … »; defaults to `name`. */
-  agentLabel?: string;
 }
 
 /** « name · model · role »: the same identity, for a title, a tooltip or an
@@ -76,7 +75,7 @@ export function agentIdentityText(parts: AgentIdentityTextParts, t: Translate): 
   const role = parts.roleLabel ?? (parts.role ? agentRoleText(parts.role, t) : null);
   return [
     parts.name,
-    agentModelText(parts.model, parts.agentLabel ?? parts.name, t),
+    agentModelText(parts.model, t),
     parts.tierLabel ?? null,
     role,
   ].filter(Boolean).join(' · ');

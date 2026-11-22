@@ -44,11 +44,10 @@ export function WorkflowStepActivityBubble({
         >
           {/* KT-1936 — the step's agent, its role « workflow step ». The step
            *  reports no model until its reply names one: the explicit
-           *  « default model of <agent> » state, never a blank. */}
+           *  « default model » state, never a blank. */}
           <AgentIdentity
             icon={<Cpu size={12} />}
             name={trigger}
-            agentLabel={agentLabel}
             color={agentTextColor(step.agent_type)}
             model={{ kind: 'providerDefault' }}
             role="workflowStep"

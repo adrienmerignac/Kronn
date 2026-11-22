@@ -10,7 +10,7 @@ import {
 import type { HonestPresenceState } from '../lib/discPresence';
 import { Loader2, X } from 'lucide-react';
 import { CopyIdPill } from './CopyIdPill';
-import { AGENT_LABELS, AGENT_MENTIONS, agentTextColor } from '../lib/constants';
+import { AGENT_MENTIONS, agentTextColor } from '../lib/constants';
 import { useT } from '../lib/I18nContext';
 import { AgentIdentity } from './ui/AgentIdentity';
 import { Tooltip } from './ui/Tooltip';
@@ -158,7 +158,7 @@ function presenceLabel(
 
 export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }: DiscParticipantsHeaderProps) {
   // AgentIdentity's own words (roles, unknown models) come from the locale.
-  const { t: tUi } = useT();
+  const { t: tUi, tp } = useT();
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [awayAfterMs, setAwayAfterMs] = useState(DEFAULT_AWAY_AFTER_MS);
   const [selectedParticipantId, setSelectedParticipantId] = useState<number | null>(null);
@@ -242,7 +242,6 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
     Number(participantRole(b, mainAgent) === 'main') - Number(participantRole(a, mainAgent) === 'main'));
   const identityOf = (p: ParticipantRow) => ({
     name: mentionOf(p.agent_type),
-    agentLabel: AGENT_LABELS[p.agent_type] ?? p.agent_type,
     model: participantModel(p),
     role: participantRole(p, mainAgent),
   });
@@ -250,7 +249,7 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
   return (
     <div className="disc-participants-row" data-testid="disc-participants-row">
       <ParticipantsStrip
-        moreLabel={total => t('disc.participantsMore', total)}
+        moreLabel={total => tp('disc.participantsMore', total)}
         allLabel={t('disc.participantsAll')}
         empty={(
           <span className="disc-participants-empty">
@@ -378,11 +377,7 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
               <div>
                 <dt>{t('disc.participantModel')}</dt>
                 <dd className="disc-participant-model" data-state={participantModel(selectedParticipant).kind}>
-                  {agentModelText(
-                    participantModel(selectedParticipant),
-                    AGENT_LABELS[selectedParticipant.agent_type] ?? selectedParticipant.agent_type,
-                    tUi,
-                  )}
+                  {agentModelText(participantModel(selectedParticipant), tUi)}
                 </dd>
               </div>
               {selectedParticipant.workflow_step && (

@@ -439,6 +439,19 @@ function findModelOrRole(node, seen = new Set()) {
   return null;
 }
 
+/** The nearest JSX element or fragment holding `node` as one of its
+ *  children, through the expressions between them (`{cond && <span/>}`,
+ *  `{a ? <b/> : <c/>}`); null past a function or an attribute. */
+function jsxContainerOf(node) {
+  let current = node.parent;
+  while (current) {
+    if (current.type === 'JSXElement' || current.type === 'JSXFragment') return current;
+    if (!['JSXExpressionContainer', 'LogicalExpression', 'ConditionalExpression'].includes(current.type)) return null;
+    current = current.parent;
+  }
+  return null;
+}
+
 const noAdhocAgentIdentity = {
   meta: {
     type: 'problem',
@@ -452,7 +465,11 @@ const noAdhocAgentIdentity = {
     return {
       JSXElement(node) {
         if (!writesInAgentColour(node.openingElement)) return;
-        const hit = findModelOrRole({ type: 'Children', children: node.children });
+        // Inside the coloured element: `<span style={…}>{name}<i>{model}</i></span>`.
+        // Next to it, in the same parent: `<div><span style={…}>{name}</span><i>{model}</i></div>`.
+        const container = jsxContainerOf(node);
+        const hit = findModelOrRole({ type: 'Children', children: node.children })
+          ?? (container ? findModelOrRole({ type: 'Children', children: container.children }, new Set([node])) : null);
         if (hit) context.report({ node: node.openingElement, messageId: 'identity' });
       },
     };

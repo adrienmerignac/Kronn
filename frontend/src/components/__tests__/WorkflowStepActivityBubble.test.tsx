@@ -71,7 +71,7 @@ describe('WorkflowStepActivityBubble', () => {
     // KT-1936 — AgentIdentity: name, the explicit model state, the role chip.
     const identity = screen.getByTestId('workflow-step-agent-identity');
     expect(identity.querySelector('.ui-agent-identity')).not.toBeNull();
-    expect(identity).toHaveTextContent('@claude · ui.agentIdentity.model.providerDefault Claude Code · ui.agentIdentity.role.workflowStep');
+    expect(identity).toHaveTextContent('@claude · ui.agentIdentity.model.providerDefault · ui.agentIdentity.role.workflowStep');
     expect(identity.querySelector('[data-testid="agent-identity-model"]')).toHaveAttribute('data-state', 'providerDefault');
     expect(bubble).not.toHaveTextContent('CLI');
   });

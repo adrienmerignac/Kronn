@@ -171,7 +171,7 @@ describe('ChatHeader — shared agent switcher', () => {
       }],
     });
 
-    const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+    const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
     await waitFor(() => expect(trigger).toBeEnabled());
     expect(trigger).toHaveTextContent('@openrouter');
     expect(trigger).not.toHaveTextContent('Custom');
@@ -179,7 +179,7 @@ describe('ChatHeader — shared agent switcher', () => {
 
   it('persists an agent and AI mode together from the quick picker', async () => {
     const { onAgentSwitch } = renderHeader();
-    const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+    const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
 
     expect(trigger).toHaveClass('kr-agent-switch-btn');
     expect(trigger).toHaveTextContent('@claude');
@@ -215,7 +215,7 @@ describe('ChatHeader — shared agent switcher', () => {
 
   it('changes only the AI mode without forcing an agent switch', async () => {
     const { onAgentSwitch } = renderHeader();
-    const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+    const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
     await waitFor(() => expect(trigger).toBeEnabled());
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole('menuitem', {
@@ -247,7 +247,7 @@ describe('ChatHeader — shared agent switcher', () => {
         nvidia: { ...blank },
       },
     });
-    const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+    const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
     await waitFor(() => expect(trigger).toBeEnabled());
     expect(trigger).toHaveAttribute(
       'title',
@@ -292,7 +292,7 @@ describe('ChatHeader — shared agent switcher', () => {
 
     it('shows the agent, its role as its own label and the concrete model on the switchable button', async () => {
       renderHeader({ modelTiers: tiers });
-      const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+      const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
       await waitFor(() => expect(trigger).toBeEnabled());
 
       expect(trigger).toHaveTextContent('@claude');
@@ -307,7 +307,7 @@ describe('ChatHeader — shared agent switcher', () => {
 
     it('shows the saved discussion model next to the role', async () => {
       renderHeader({ modelTiers: tiers, discussion: { ...makeDiscussion(), model: 'opus' } });
-      const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+      const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
       await waitFor(() => expect(trigger).toBeEnabled());
       expect(within(trigger).getByText('disc.targetDiscussionAgent', { selector: '.ui-agent-identity-role span' })).toBeInTheDocument();
       expect(trigger.querySelector('[data-testid="agent-identity-model"]')).toHaveTextContent('opus');
@@ -324,7 +324,7 @@ describe('ChatHeader — shared agent switcher', () => {
         { ...agentReply('no-model', null), agent_type: 'Codex' },
       ];
       renderHeader({ modelTiers: tiers, discussion });
-      const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+      const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
       await waitFor(() => expect(trigger).toBeEnabled());
 
       expect(within(trigger).getByText('disc.targetDiscussionAgent', { selector: '.ui-agent-identity-role span' })).toBeInTheDocument();
@@ -343,7 +343,7 @@ describe('ChatHeader — shared agent switcher', () => {
         { ...agentReply('economy', 'gpt-mini', { model_tier: 'economy' }), agent_type: 'Codex' },
       ];
       renderHeader({ modelTiers: tiers, discussion });
-      const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+      const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
       await waitFor(() => expect(trigger).toBeEnabled());
 
       const model = trigger.querySelector('[data-testid="agent-identity-model"]');
@@ -369,7 +369,7 @@ describe('ChatHeader — shared agent switcher', () => {
           currentModelFallback="claude-sonnet-4-5"
         />,
       );
-      expect(screen.queryByRole('button', { name: 'disc.switchAgentAndTier' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ })).toBeNull();
       const label = document.querySelector('.kr-agent-switch-static')!;
       expect(label).toHaveTextContent('@claude');
       expect(within(label as HTMLElement).getByText('disc.targetDiscussionAgent', { selector: '.ui-agent-identity-role span' }))
@@ -398,13 +398,13 @@ describe('ChatHeader — shared agent switcher', () => {
 
   it('is disabled while the discussion is sending', () => {
     renderHeader({ sending: true });
-    expect(screen.getByRole('button', { name: 'disc.switchAgentAndTier' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ })).toBeDisabled();
   });
 
   // KT-1994 — the discussion's exact model (KT-1993) is « Personnalisé », not the mode's model.
   it('shows a saved discussion model before the catalogue is opened, as a custom model', async () => {
     renderHeader({ discussion: { ...makeDiscussion(), model: 'explicit-disc-model' } });
-    const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+    const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
     await waitFor(() => expect(trigger).toBeEnabled());
     expect(trigger).toHaveAttribute('title', 'disc.switchAgentAndTier · agentPicker.custom · explicit-disc-model');
   });
@@ -415,7 +415,7 @@ describe('ChatHeader — shared agent switcher', () => {
     // KT-1994 review — the typed id is offered once, for the discussion's agent.
     it('a typed model id is saved as the discussion’s exact model, with its agent and connection', async () => {
       const { onAgentSwitch } = renderHeader();
-      const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+      const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
       await waitFor(() => expect(trigger).toBeEnabled());
       fireEvent.click(trigger);
       fireEvent.change(screen.getByRole('searchbox', { name: 'agentPicker.search' }), { target: { value: 'claude-next-preview' } });
@@ -433,7 +433,7 @@ describe('ChatHeader — shared agent switcher', () => {
     it('a refused id is reported next to the entry and the discussion keeps its choice', async () => {
       vi.mocked(discussionsApi.update).mockRejectedValue(new Error('model id must not start with "-"'));
       const { onAgentSwitch, toast } = renderHeader();
-      const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+      const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
       await waitFor(() => expect(trigger).toBeEnabled());
       fireEvent.click(trigger);
       fireEvent.change(screen.getByRole('searchbox', { name: 'agentPicker.search' }), { target: { value: '-c' } });
@@ -453,7 +453,7 @@ describe('ChatHeader — shared agent switcher', () => {
 
     it('after a reload the stored model is still « Personnalisé », checked under its agent; a mode leaves it', async () => {
       renderHeader({ discussion: { ...makeDiscussion(), model: 'claude-fable-b' } });
-      const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+      const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
       await waitFor(() => expect(trigger).toBeEnabled());
       expect(trigger.querySelector('.kr-agent-switch-custom')).toHaveTextContent('agentPicker.custom');
       expect(trigger.querySelector('[data-testid="agent-identity-model"]')).toHaveTextContent('claude-fable-b');
@@ -475,7 +475,7 @@ describe('ChatHeader — shared agent switcher', () => {
     vi.mocked(discussionsApi.update).mockRejectedValue(new Error('offline'));
     const { toast, onAgentSwitch } = renderHeader();
 
-    const trigger = screen.getByRole('button', { name: 'disc.switchAgentAndTier' });
+    const trigger = screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ });
     await waitFor(() => expect(trigger).toBeEnabled());
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole('menuitem', { name: 'Codex · disc.tier.default' }));
@@ -491,7 +491,7 @@ describe('ChatHeader — shared agent switcher', () => {
 
     const enable = await screen.findByRole('button', { name: 'disc.nativeAgentEnable' });
     expect(enable).toHaveTextContent('disc.nativeAgentDisabled');
-    expect(screen.queryByRole('button', { name: 'disc.switchAgentAndTier' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ })).toBeNull();
 
     await act(async () => {
       fireEvent.click(enable);
@@ -506,7 +506,7 @@ describe('ChatHeader — shared agent switcher', () => {
       );
       expect(onDiscussionUpdated).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByRole('button', { name: 'disc.switchAgentAndTier' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ })).toBeInTheDocument();
   });
 
   it('keeps the native control disabled until a failed mode read can be retried', async () => {
@@ -519,7 +519,7 @@ describe('ChatHeader — shared agent switcher', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(screen.getByRole('button', { name: 'disc.switchAgentAndTier' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^disc\.switchAgentAndTier( — |$)/ })).toBeDisabled();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5_000);

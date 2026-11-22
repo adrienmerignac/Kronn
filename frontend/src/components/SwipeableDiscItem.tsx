@@ -7,9 +7,10 @@ import {
   Link2, Download, AlertOctagon, AlertTriangle, Check, MoreHorizontal, Copy, Archive, Trash2,
 } from 'lucide-react';
 import type { Discussion } from '../types/generated';
-import { AGENT_LABELS, isValidationDisc, isBriefingDisc, isBootstrapDisc } from '../lib/constants';
+import { isValidationDisc, isBriefingDisc, isBootstrapDisc } from '../lib/constants';
 import { AgentIdentity } from './ui/AgentIdentity';
-import { agentIdentityText, agentModel } from './ui/agentIdentityKinds';
+import { agentIdentityText, type AgentIdentityModel } from './ui/agentIdentityKinds';
+import { discussionAgentModel } from '../lib/agentModelResolution';
 import { formatRelativeTime } from '../lib/relativeTime';
 import { sourceAgentShortLabel, unseenBasis } from '../lib/discussionUiUtils';
 import { gravatarUrl } from '../lib/gravatar';
@@ -29,6 +30,10 @@ export interface SwipeableDiscItemProps {
   /** Human-facing provider identity. Dynamic HTTP discussions keep `Custom`
    * as their wire AgentType, so the parent resolves the named connection. */
   agentLabel?: string;
+  /** KT-1936 — the model the header names for this discussion (`discussionAgentModel`:
+   *  exact model, the mode's model, the last reply, else « default model »).
+   *  Without it the row resolves what it has: the exact model and the last reply. */
+  agentModel?: AgentIdentityModel;
   isActive: boolean;
   lastSeenCount: number;
   isSending: boolean;
@@ -80,7 +85,7 @@ export interface SwipeableDiscItemProps {
 }
 
 export const SwipeableDiscItem = memo(function SwipeableDiscItem({
-  disc, agentLabel, isActive, lastSeenCount, isSending, isQueued = false, onSelect, onArchive, onDelete, onStop, t, archiveLabel,
+  disc, agentLabel, agentModel: resolvedModel, isActive, lastSeenCount, isSending, isQueued = false, onSelect, onArchive, onDelete, onStop, t, archiveLabel,
   sourceAgents, importedBy, selectionMode = false, isSelected = false, onToggleSelection, onTogglePin,
   contextLabel, collectionRowClassName, weightBadge,
 }: SwipeableDiscItemProps) {
@@ -103,9 +108,9 @@ export const SwipeableDiscItem = memo(function SwipeableDiscItem({
   // KT-1936 — the row is read to find a discussion: the agent only on screen,
   // its model in the tooltip and the accessible name (the header shows it once
   // the discussion opens).
-  const rowModel = agentModel(disc.model, 'providerDefault');
+  const rowModel = resolvedModel ?? discussionAgentModel(disc);
   const agentText = agentIdentityText(
-    { name: visibleAgent, agentLabel: AGENT_LABELS[disc.agent] ?? visibleAgent, model: rowModel },
+    { name: visibleAgent, model: rowModel },
     tUi,
   );
 
@@ -335,7 +340,7 @@ export const SwipeableDiscItem = memo(function SwipeableDiscItem({
                   {' · '}
                 </>
               )}
-              {msgCount} msg · <span className="disc-item-agent" title={agentText}><AgentIdentity size="compact" name={visibleAgent} agentLabel={AGENT_LABELS[disc.agent] ?? visibleAgent} model={rowModel} /></span>
+              {msgCount} msg · <span className="disc-item-agent" title={agentText}><AgentIdentity size="compact" name={visibleAgent} model={rowModel} /></span>
               {relativeWhen && (
                 <>
                   {' · '}

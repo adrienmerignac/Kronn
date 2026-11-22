@@ -403,17 +403,29 @@ model. One component does it, on every surface: the discussion header (the
 picker's trigger, its static form too), the message header, the activity
 bubbles (pending, streaming, failed), the workflow-step bubble and message,
 the participant chips and their details, and the discussion list rows.
-`[src: file: frontend/src/components/ui/AgentIdentity.tsx:46#AgentIdentity]`
+`[src: file: frontend/src/components/ui/AgentIdentity.tsx:44#AgentIdentity]`
 
 - **Order:** icon, name, model, tier icon, role chip. Its text is « name ·
   model · role », so the button around it reads the same.
 - **The model** is the secondary text role, the code face, never under the
   12 px floor. With no concrete id it writes one of three states, never a
   blank or a tier name: « model not declared » (a joined CLI session that
-  declared none), « model not recorded » (a legacy message), « default model
-  of <agent> » (the provider's default before the first reply; the workflow
-  step, which reports none). `agentModel(id, fallback)` picks.
-  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:39#agentModel]`
+  declared none), « model not recorded » (a legacy message), « default model »
+  (a model nobody can name yet: the provider's default before the first
+  reply; the workflow step, which reports none). The agent is not repeated in
+  that state: its name is written just before it. `agentModel(id, fallback)`
+  picks.
+  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:40#agentModel]`
+- **Which model a discussion's agent runs** is resolved one way for the
+  header's picker trigger, the discussion list row and the activity bubbles
+  (pending, streaming, failed), so the three never disagree: the exact model
+  the discussion holds, else the model its mode points to (the family's mode
+  models in Settings, or the HTTP connection's own), else the model of the
+  agent's last reply on that mode, else « default model ». None of them reads
+  the catalogue, which the picker loads only when it opens: their text does
+  not change when the list opens.
+  `[src: file: frontend/src/lib/agentModelResolution.ts:76#discussionAgentModel]`
+  `[src: file: frontend/src/lib/agentModelResolution.ts:30#resolveIdentityModel]`
 - **The roles:** main agent, one-off agent, CLI session, workflow step
   (`ui.agentIdentity.role.*`); `roleLabel` writes another word in the chip
   (the picker's caller, the guided-tour demo).
@@ -423,9 +435,14 @@ the participant chips and their details, and the discussion list rows.
 - **Cut model:** `truncateModel` (the picker trigger, the participant chip)
   cuts the id past 17 characters with an ellipsis; the full id stays in the
   DOM, so in the accessible name, and the caller writes it in its tooltip with
-  `agentIdentityText()`.
-  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:36#AGENT_IDENTITY_MODEL_MAX_CHARS]`
-  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:75#agentIdentityText]`
+  `agentIdentityText()`. A button that names itself with `aria-label` (which
+  replaces its text) writes its action, then that same identity: the picker
+  trigger reads « Changer d'agent ou de mode IA — @opencode ·
+  opencode-go/kimi-k3.1-pro · Avancé · agent principal », the mode or
+  « Personnalisé » in the place of the tier.
+  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:37#AGENT_IDENTITY_MODEL_MAX_CHARS]`
+  `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:74#agentIdentityText]`
+  `[src: file: frontend/src/components/AgentSwitchPicker.tsx:1338#identityText]`
 - **Colour:** the name takes `agentTextColor()`, a text-safe token per agent
   (`--kr-agent-<agent>-text`) that holds 4.5:1 on every surface of every
   theme; the brand colour (`agentColor()`) stays on dots, borders and icons;
@@ -445,7 +462,21 @@ participant's details. The same on a wide screen when the chips do not fit.
 The role comes from the participant: a workflow step, the main agent (a
 native participant of the discussion's own agent), a one-off agent (another
 native one) or a joined CLI session.
-`[src: file: frontend/src/components/ParticipantsStrip.tsx:32#ParticipantsStrip]`
+
+- **The full list** is a floating layer built like `Menu`: a portal into
+  `document.body` placed by `useAnchoredStyle` (`ui/anchor.ts`), so the
+  header's clipping ancestors cannot cut it and it stays inside the window.
+  Focus moves to its first row on open, the arrows move between rows, Escape
+  closes it and gives focus back to the counter, a press outside closes it.
+  The counter's name is a plural form (`tp('disc.participantsMore', n)`),
+  right for one participant and for several.
+- **In the room header**, the strip shares one line with the agent picker:
+  the trigger gives way first (`min-width: 0` down its chain; the model takes
+  the ellipsis before the name and the role chip), and the strip never goes
+  under the room of its counter, the way to the full list
+  (`.disc-chat-header-sub > .disc-participants-row`: basis 0, `min-width:
+  var(--kr-space-8)`; held by `components/ui/stylesheets.test.ts`).
+`[src: file: frontend/src/components/ParticipantsStrip.tsx:42#ParticipantsStrip]`
 `[src: file: frontend/src/lib/stripOverflow.ts:5#measureStripOverflow]`
 `[src: file: frontend/src/components/DiscParticipantsHeader.tsx:108#participantRole]`
 

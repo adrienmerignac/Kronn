@@ -25,8 +25,6 @@ export interface AgentIdentityProps {
   tier?: ModelTier | null;
   /** The mode's name: the icon's accessible name (hidden when absent). */
   tierLabel?: string;
-  /** The agent named in « default model of … »; defaults to `name`. */
-  agentLabel?: string;
   /** An icon before the name, hidden from assistive technology. */
   icon?: ReactNode;
   size?: AgentIdentitySize;
@@ -44,11 +42,11 @@ export interface AgentIdentityProps {
  * (a chip, the picker trigger) as well as in a line of text.
  */
 export function AgentIdentity({
-  name, color, model, role, roleLabel, tier, tierLabel, agentLabel, icon,
+  name, color, model, role, roleLabel, tier, tierLabel, icon,
   size = 'inline', truncateModel = false, className,
 }: AgentIdentityProps) {
   const { t } = useT();
-  const modelText = agentModelText(model, agentLabel ?? name, t);
+  const modelText = agentModelText(model, t);
   const roleText = roleLabel ?? (role ? agentRoleText(role, t) : null);
   const compact = size === 'compact';
   const classes = className ? `ui-agent-identity ${className}` : 'ui-agent-identity';

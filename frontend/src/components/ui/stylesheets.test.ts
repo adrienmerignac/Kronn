@@ -195,4 +195,49 @@ describe('components/ui stylesheets', () => {
       expect(files, `${name} test`).toContain(`${name}.test.tsx`);
     }
   });
+
+  // KT-1936 review, finding 1 — at 400 and 768 px the room header's agent row
+  // held a 388px trigger in a 310 / 358px row, and the participants strip fell
+  // to 0px with its « +N » counter off-screen. The trigger shrinks (min-width 0
+  // down the chain, the model first), the strip keeps its counter's room.
+  it('lets the agent trigger shrink in the room header, the model first, and keeps the strip\'s counter in its row', () => {
+    const read = (path: string) => readFileSync(join(SRC, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const page = read('pages/DiscussionsPage.css');
+    const picker = read('components/AgentSwitchPicker.css');
+    const identity = read('components/ui/AgentIdentity.css');
+    const strip = read('components/ParticipantsStrip.css');
+    const decls = (text: string, selector: string) => new Map(
+      declsFor(text, selector).split(';').map(d => d.trim()).filter(Boolean)
+        .map(d => [d.slice(0, d.indexOf(':')).trim(), d.slice(d.indexOf(':') + 1).trim()] as const),
+    );
+
+    // The row: the agent control may shrink to nothing; the strip's basis is 0
+    // so the trigger gives way first, and it never goes under the counter's room.
+    const control = decls(page, '.disc-chat-header-sub > .disc-native-agent-control');
+    expect(control.get('min-width')).toBe('0');
+    expect(control.get('flex')).toBe('0 1 auto');
+    const row = decls(page, '.disc-chat-header-sub > .disc-participants-row');
+    expect(row.get('flex')).toBe('1 1 0');
+    expect(row.get('min-width')).toBe('var(--kr-space-8)');
+    expect(decls(page, '.disc-native-agent-toggle').get('flex-shrink')).toBe('0');
+
+    // Down the chain: picker, button, identity, model all at min-width 0.
+    expect(decls(picker, '.kr-agent-switch').get('min-width')).toBe('0');
+    expect(decls(picker, '.kr-agent-switch-btn').get('min-width')).toBe('0');
+    expect(decls(picker, '.kr-agent-switch-identity').get('min-width')).toBe('0');
+    expect(decls(identity, '.ui-agent-identity').get('min-width')).toBe('0');
+    const model = decls(identity, '.ui-agent-identity-model');
+    expect(model.get('min-width')).toBe('0');
+    expect(model.get('text-overflow')).toBe('ellipsis');
+
+    // The model takes the ellipsis first: its shrink weight dwarfs the name's and the role's.
+    const trigger = '.kr-agent-switch-identity.ui-agent-identity';
+    expect(Number(decls(picker, `${trigger} .ui-agent-identity-model`).get('flex-shrink'))).toBeGreaterThanOrEqual(100);
+    expect(decls(picker, `${trigger} .ui-agent-identity-name`).get('flex-shrink')).toBe('1');
+    expect(decls(picker, `${trigger} .ui-agent-identity-role`).get('min-width')).toBe('0');
+
+    // The counter never shrinks; the full list is a fixed layer, not absolute in the row.
+    expect(decls(strip, '.kr-participants-strip-more').get('flex-shrink')).toBe('0');
+    expect(decls(strip, '.kr-participants-strip-all').get('position')).toBeUndefined();
+  });
 });

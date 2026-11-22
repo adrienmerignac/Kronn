@@ -51,7 +51,9 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
     expect(headerTop).toContain('display: grid');
     // Two columns: title, then the invite pinned right on the same line.
     expect(headerTop).toContain('grid-template-columns: minmax(0, 1fr) auto');
-    expect(stripInSub).toContain('min-width: 0');
+    // KT-1936 — the strip gives way to nothing below its « +N » counter's room.
+    expect(stripInSub).toContain('flex: 1 1 0');
+    expect(stripInSub).toContain('min-width: var(--kr-space-8)');
     expect(participantList).toContain('flex-wrap: nowrap');
     expect(participantList).toContain('overflow-x: auto');
   });

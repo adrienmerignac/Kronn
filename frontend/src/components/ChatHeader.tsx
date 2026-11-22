@@ -25,6 +25,7 @@ import { DiscInviteButton } from './DiscInviteButton';
 import { DiscussionIdPill } from './DiscussionIdPill';
 import { DetailHeaderShell } from './DetailHeaderShell';
 import { AgentSwitchPicker } from './AgentSwitchPicker';
+import { lastReplyModel as lastReplyModelOf } from '../lib/agentModelResolution';
 import type { AgentSwitchTarget } from './AgentSwitchPicker';
 import { ContextHelp } from './ContextHelp';
 import type { ExternalApiConnectionView } from '../lib/api';
@@ -120,16 +121,10 @@ export function ChatHeader({
   // model, the header names the one the agent last replied with, else "default
   // model of <agent>"; never the role or the tier alone.
   const currentTier = discussion.tier ?? 'default';
-  const lastReplyModel = useMemo(() => {
-    for (let index = discussion.messages.length - 1; index >= 0; index--) {
-      const message = discussion.messages[index];
-      if (message.role !== 'Agent' || message.agent_type !== discussion.agent) continue;
-      if (message.model_tier && message.model_tier !== currentTier) continue;
-      const model = message.model?.trim();
-      if (model) return model;
-    }
-    return null;
-  }, [discussion.messages, discussion.agent, currentTier]);
+  const lastReplyModel = useMemo(
+    () => lastReplyModelOf(discussion.messages, discussion.agent, currentTier),
+    [discussion.messages, discussion.agent, currentTier],
+  );
   // Nothing recorded: the picker writes the explicit « default model of <agent> » state.
   const headerModelFallback = lastReplyModel ?? undefined;
 

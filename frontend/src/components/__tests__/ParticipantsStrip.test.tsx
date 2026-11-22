@@ -7,6 +7,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { ParticipantsStrip } from '../ParticipantsStrip';
 import { measureStripOverflow } from '../../lib/stripOverflow';
+import { tPlural } from '../../lib/i18n';
 
 const CHIP = 80;
 const STRIP = 200;
@@ -60,6 +61,56 @@ describe('ParticipantsStrip', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'row-3' })); });
     expect(onSelect).toHaveBeenCalledWith(3);
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  // KT-1936 review, finding 2 — the list is a floating layer (portal and
+  // anchored placement, as Menu): a header that clips cannot cut it.
+  it('renders the full list in document.body, at a fixed place, not inside the strip', async () => {
+    render(<ParticipantsStrip entries={entries(4)} moreLabel={n => `all ${n}`} allLabel="All participants" />);
+    await act(async () => { fireEvent.click(screen.getByTestId('participants-more')); });
+    const list = screen.getByRole('dialog', { name: 'All participants' });
+    expect(list.parentElement).toBe(document.body);
+    expect(document.querySelector('.kr-participants-strip')!.contains(list)).toBe(false);
+    expect(list.style.position).toBe('fixed');
+    expect(screen.getByTestId('participants-more')).toHaveAttribute('aria-controls', list.id);
+  });
+
+  it('moves focus into the list on open; Escape closes it and gives focus back to the counter', async () => {
+    render(<ParticipantsStrip entries={entries(4)} moreLabel={n => `all ${n}`} allLabel="All participants" />);
+    const more = screen.getByTestId('participants-more');
+    await act(async () => { fireEvent.click(more); });
+    expect(screen.getByRole('button', { name: 'row-0' })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
+    expect(screen.getByRole('button', { name: 'row-1' })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowUp' });
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowUp' });
+    expect(screen.getByRole('button', { name: 'row-3' })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(more).toHaveFocus();
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes on a press outside, without taking the focus back', async () => {
+    render(<div><button type="button">elsewhere</button><ParticipantsStrip entries={entries(4)} moreLabel={n => `all ${n}`} allLabel="All" /></div>);
+    await act(async () => { fireEvent.click(screen.getByTestId('participants-more')); });
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'elsewhere' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('names the counter rightly for one participant and for several, in the four locales', () => {
+    // fr, en, es: a singular form without the count; zh has one form, which
+    // reads right for any count (no « all 1 »).
+    for (const locale of ['fr', 'en', 'es'] as const) {
+      const one = tPlural(locale, 'disc.participantsMore', 1);
+      expect(one).not.toContain('1');
+      expect(one).not.toContain('disc.participantsMore');
+      expect(tPlural(locale, 'disc.participantsMore', 3)).toContain('3');
+    }
+    expect(tPlural('zh', 'disc.participantsMore', 1)).toBe('查看参与者（1）');
+    expect(tPlural('zh', 'disc.participantsMore', 3)).toBe('查看参与者（3）');
+    expect(tPlural('fr', 'disc.participantsMore', 1)).toBe('Voir le participant');
+    expect(tPlural('fr', 'disc.participantsMore', 3)).toBe('Voir les 3 participants');
   });
 
   it('measures what scrolled into view', () => {

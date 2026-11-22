@@ -43,8 +43,8 @@ describe('AgentIdentity', () => {
     expect(model.textContent).toBe(`ui.agentIdentity.model.${state}`);
   });
 
-  it('names the agent in the provider default state', () => {
-    expect(agentModelText({ kind: 'providerDefault' }, 'Ollama', t)).toBe('ui.agentIdentity.model.providerDefault(Ollama)');
+  it('does not repeat the agent in the provider default state: its name is written just before', () => {
+    expect(agentModelText({ kind: 'providerDefault' }, t)).toBe('ui.agentIdentity.model.providerDefault');
     expect(agentModel('  ', 'notRecorded')).toEqual({ kind: 'notRecorded' });
     expect(agentModel(' qwen3:32b ', 'notRecorded')).toEqual({ kind: 'id', id: 'qwen3:32b' });
   });
@@ -108,8 +108,8 @@ describe('AgentIdentity', () => {
       .toBe('Codex · gpt-5-codex-max-preview · ui.agentIdentity.role.cli');
     expect(agentIdentityText({ name: 'Kiro', model: { kind: 'notDeclared' } }, t))
       .toBe('Kiro · ui.agentIdentity.model.notDeclared');
-    expect(agentIdentityText({ name: '@ollama', agentLabel: 'Ollama', model: { kind: 'providerDefault' }, roleLabel: 'X' }, t))
-      .toBe('@ollama · ui.agentIdentity.model.providerDefault(Ollama) · X');
+    expect(agentIdentityText({ name: '@ollama', model: { kind: 'providerDefault' }, roleLabel: 'X' }, t))
+      .toBe('@ollama · ui.agentIdentity.model.providerDefault · X');
   });
 
   it('has no axe violation inside a button and in a line of text', async () => {

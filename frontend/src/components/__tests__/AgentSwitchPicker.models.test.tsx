@@ -101,7 +101,7 @@ function FullList(props: {
 }
 
 async function open() {
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Agent' })); });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Agent( — |$)/ })); });
   const popover = screen.getByRole('dialog', { name: 'Agent' });
   await waitFor(() => expect(list).toHaveBeenCalled());
   await act(async () => {});
@@ -338,7 +338,7 @@ describe('a custom model: chosen, saved, labelled (KT-1994)', () => {
 
   it('a held custom model reads « Personnalisé » on the trigger and stays visible under its agent while folded', async () => {
     render(<FullList model="claude-fable-b" />);
-    const trigger = screen.getByRole('button', { name: 'Agent' });
+    const trigger = screen.getByRole('button', { name: /^Agent( — |$)/ });
     const chip = trigger.querySelector('.kr-agent-switch-custom')!;
     expect(chip).toHaveTextContent('agentPicker.custom');
     expect(trigger.querySelector('.ui-agent-identity-tier')).toBeNull();
@@ -379,7 +379,7 @@ describe('a custom model: chosen, saved, labelled (KT-1994)', () => {
     expect(free.nextElementSibling).toBe(alert);
     // Still open, the previous choice untouched.
     expect(screen.getByRole('dialog', { name: 'Agent' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Agent' }).querySelector('.kr-agent-switch-custom')).toBeNull();
+    expect(screen.getByRole('button', { name: /^Agent( — |$)/ }).querySelector('.kr-agent-switch-custom')).toBeNull();
   });
 
   it('a typed id equal to a model the current agent lists is that model, not a free one', async () => {
@@ -485,7 +485,7 @@ describe('the shadow editor: one list, custom labelled (KT-1994)', () => {
     );
     await open();
     // The catalogue names Opus as the Avancé mode: a mode, not a custom model.
-    const trigger = screen.getByRole('button', { name: 'Agent' });
+    const trigger = screen.getByRole('button', { name: /^Agent( — |$)/ });
     expect(trigger.querySelector('.kr-agent-switch-custom')).toBeNull();
     expect(trigger.querySelector('.kr-agent-switch-current-tier')).toHaveAttribute('data-tier', 'reasoning');
     const claude = group('Claude Code');
@@ -503,7 +503,7 @@ describe('the shadow editor: one list, custom labelled (KT-1994)', () => {
       <AgentSwitchPicker currentAgent="ClaudeCode" availableAgents={[]} availableTargets={TARGETS} title="Agent" ariaLabel="Agent"
         exactModel={{ value: { agent: 'ClaudeCode', model: 'claude-fable-b' }, onChange, main: { agent: 'Codex' }, testId: 'exact' }} />,
     );
-    expect(screen.getByRole('button', { name: 'Agent' }).querySelector('.kr-agent-switch-custom')).toHaveTextContent('agentPicker.custom');
+    expect(screen.getByRole('button', { name: /^Agent( — |$)/ }).querySelector('.kr-agent-switch-custom')).toHaveTextContent('agentPicker.custom');
   });
 
   it('a mode row picks the model that mode names', async () => {
@@ -593,7 +593,7 @@ describe('the trigger writes the model id, catalogue loaded or not (KT-1994 revi
       model('http:openrouter', 'vendor/model-002', { agent_type: 'Custom', display_name: 'Vendor Two' }),
     ])] });
     render(<FullList currentAgent="Custom" currentConnectionId="openrouter" />);
-    const trigger = screen.getByRole('button', { name: 'Agent' });
+    const trigger = screen.getByRole('button', { name: /^Agent( — |$)/ });
     const suffix = () => trigger.querySelector('[data-testid="agent-identity-model"]');
     expect(list).not.toHaveBeenCalled();
     expect(suffix()).toHaveTextContent(/^vendor\/model-002$/);
@@ -608,7 +608,7 @@ describe('the trigger writes the model id, catalogue loaded or not (KT-1994 revi
         tierLabels={TIER_LABELS} onTargetSelectionChange={vi.fn()} currentModelFallback="Default model of Claude Code"
         compact title="Agent" ariaLabel="Agent" />,
     );
-    const trigger = screen.getByRole('button', { name: 'Agent' });
+    const trigger = screen.getByRole('button', { name: /^Agent( — |$)/ });
     const suffix = () => trigger.querySelector('[data-testid="agent-identity-model"]');
     expect(suffix()).toHaveTextContent(/^Default model of Claude Code$/);
     await open();

@@ -842,8 +842,10 @@ export const MessageBubble = memo(function MessageBubble(props: MessageBubblePro
               </div>
             )}
             {msg.role === 'Agent' && (
-              <div className="disc-msg-agent-label" style={{ color: agentTextColor(agentType, mentionColors), justifyContent: 'space-between' }}>
-                <span className="flex-row gap-2">
+              <div className="disc-msg-agent-label" style={{ justifyContent: 'space-between' }}>
+                {/* The agent colour on the identity's line only (its workflow,
+                 *  CLI and session notes), not on the whole header row. */}
+                <span className="flex-row gap-2" style={{ color: agentTextColor(agentType, mentionColors) }}>
                   {/* "<agent>[ · <model>][ · <owner>]" — answers WHO + WHAT at a
                    *  glance. model_tier is present on local agent messages; a
                    *  federated agent reply also carries its owner's pseudo
@@ -854,7 +856,6 @@ export const MessageBubble = memo(function MessageBubble(props: MessageBubblePro
                   <AgentIdentity
                     icon={<Cpu size={12} />}
                     name={agentTrigger}
-                    agentLabel={AGENT_LABELS[agentType] ?? agentType}
                     color={agentTextColor(agentType, mentionColors)}
                     model={agentModel(msg.model, 'notRecorded')}
                     role={agentIdentityRole}

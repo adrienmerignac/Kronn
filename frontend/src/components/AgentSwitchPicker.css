@@ -49,9 +49,25 @@
 }
 
 /* The identity shrinks first: its model is cut with an ellipsis (17
-   characters at most), the full id stays in the button's title and name. */
+   characters at most), the full id stays in the button's title and name.
+   KT-1936 — on a row too narrow for the whole trigger (the room header at
+   400 and 768 px) the model gives way first (its shrink weight dwarfs the
+   others'); the name and the role chip give way only once the model is gone. */
 .kr-agent-switch-identity {
   flex: 0 1 auto;
+  min-width: 0;
+}
+
+.kr-agent-switch-identity.ui-agent-identity .ui-agent-identity-model {
+  flex-shrink: 1000;
+}
+
+.kr-agent-switch-identity.ui-agent-identity .ui-agent-identity-name,
+.kr-agent-switch-identity.ui-agent-identity .ui-agent-identity-role {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The exact-model trigger's mode icon (the shadow editor). */

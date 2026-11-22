@@ -65,8 +65,9 @@ import { triggerDownload } from '../lib/downloadBlob';
 import { buildBatchTriageRows, buildContinuationDraft, type BatchTriageRow } from '../lib/batchTriage';
 import { useT } from '../lib/I18nContext';
 import { useSustainedFlag } from '../hooks/useSustainedFlag';
-import { AgentIdentity } from '../components/ui/AgentIdentity';
-import { agentModel, type AgentIdentityRole } from '../components/ui/agentIdentityKinds';
+import { ActivityAgentIdentity } from '../components/ActivityAgentIdentity';
+import type { AgentIdentityModel, AgentIdentityRole } from '../components/ui/agentIdentityKinds';
+import { discussionAgentModel } from '../lib/agentModelResolution';
 import { AGENT_LABELS, agentColor, agentTextColor, isAgentRestricted as isAgentRestrictedUtil, hasAgentFullAccess, getProjectGroup, isUsable, isRoomAgentDisabled, isBriefingDisc, isBootstrapDisc, isValidationDisc } from '../lib/constants';
 import type { ToastFn } from '../hooks/useToast';
 import {
@@ -138,27 +139,9 @@ function newClientMessageId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-/** KT-1936 — the agent of an activity bubble: its name, its model (the
- *  discussion's own for the main agent, else the explicit « default model of
- *  <agent> » until the reply names one) and its role. */
-function ActivityAgentIdentity({ agent, label, role = 'main', model }: {
-  agent: AgentType;
-  label?: string;
-  role?: AgentIdentityRole;
-  model?: string | null;
-}) {
-  const name = label ?? AGENT_LABELS[agent] ?? agent;
-  return (
-    <AgentIdentity
-      icon={<Cpu size={12} />}
-      name={name}
-      agentLabel={AGENT_LABELS[agent] ?? agent}
-      color={agentTextColor(agent)}
-      model={agentModel(model, 'providerDefault')}
-      role={role}
-    />
-  );
-}
+/** KT-1936 — a one-off agent's reply: its mode is not known before the reply
+ *  names its model. */
+const ONE_OFF_REPLY_MODEL: AgentIdentityModel = { kind: 'providerDefault' };
 
 function PendingAgentReplyBubble({
   replyId,
@@ -174,7 +157,7 @@ function PendingAgentReplyBubble({
   model,
 }: {
   role?: AgentIdentityRole;
-  model?: string | null;
+  model: AgentIdentityModel;
   replyId: string;
   discussionId: string;
   replyIds: ReplyIds;
@@ -274,7 +257,7 @@ function StreamingAgentReplyBubble({
   model,
 }: {
   role?: AgentIdentityRole;
-  model?: string | null;
+  model: AgentIdentityModel;
   replyId: string;
   discussionId: string;
   replyIds: ReplyIds;
@@ -1252,6 +1235,27 @@ export function DiscussionsPage({
   const activeExternalConnection = activeDiscussion
     ? externalConnectionForDiscussion(activeDiscussion, externalConnections)
     : null;
+  // KT-1936 — the main agent's model, resolved as the header resolves it
+  // (exact model, the mode's model, the last reply, else « default model »):
+  // the activity bubbles and the list row never contradict the header.
+  const familyModelTiers = agentAccess?.model_tiers ?? null;
+  const activeAgentModel = useMemo<AgentIdentityModel>(
+    () => activeDiscussion
+      ? discussionAgentModel(activeDiscussion, { familyTiers: familyModelTiers, connection: activeExternalConnection })
+      : ONE_OFF_REPLY_MODEL,
+    [activeDiscussion, familyModelTiers, activeExternalConnection],
+  );
+  const sidebarAgentModels = useMemo(() => {
+    const detailedById = new Map<string, LoadedDiscussion>();
+    Object.values(loadedDiscussions).forEach(discussion => detailedById.set(discussion.id, discussion));
+    return Object.fromEntries(allDiscussions.map(discussion => {
+      const detailed = detailedById.get(discussion.id) ?? discussion;
+      return [discussion.id, discussionAgentModel(detailed, {
+        familyTiers: familyModelTiers,
+        connection: externalConnectionForDiscussion(detailed, externalConnections),
+      })];
+    }));
+  }, [allDiscussions, loadedDiscussions, familyModelTiers, externalConnections]);
   const sidebarAgentLabels = useMemo(() => {
     const detailedById = new Map<string, LoadedDiscussion>();
     Object.values(loadedDiscussions).forEach(discussion => detailedById.set(discussion.id, discussion));
@@ -4010,7 +4014,7 @@ export function DiscussionsPage({
                     }
                     agentLabel={recoveryAgentLabel}
                     role={reply.agent === activeDiscussion.agent ? 'main' : 'oneOff'}
-                    model={reply.agent === activeDiscussion.agent ? activeDiscussion.model : null}
+                    model={reply.agent === activeDiscussion.agent ? activeAgentModel : ONE_OFF_REPLY_MODEL}
                     />
                 )
               : (
@@ -4026,7 +4030,7 @@ export function DiscussionsPage({
                     stopping={stoppingDispatchIds.has(reply.id)}
                     onStop={() => { void handleStopDispatch(reply.id); }}
                     role={reply.agent === activeDiscussion.agent ? 'main' : 'oneOff'}
-                    model={reply.agent === activeDiscussion.agent ? activeDiscussion.model : null}
+                    model={reply.agent === activeDiscussion.agent ? activeAgentModel : ONE_OFF_REPLY_MODEL}
                   />
                 )
           ));
@@ -4189,7 +4193,7 @@ export function DiscussionsPage({
             </Fragment>
           );
         });
-  }, [activeContextFiles, activeDiscussion, activeExternalConnection, agentLogs, attachmentsByMessageId, inertMentionsByMessage,
+  }, [activeAgentModel, activeContextFiles, activeDiscussion, activeExternalConnection, agentLogs, attachmentsByMessageId, inertMentionsByMessage,
     chainableQPs, copiedMsgId, deferredStreamingText, deletingMessageIds, discussionActionsByMessageId,
     durablePartial, editingMsgId, editingText, expandedSummaryMsgId, externalConnectionAliases,
     globalSearchTarget, handleDiscussionActionChanged, handleMsgCopy, handleMsgDelete, handleMsgEditCancel,
@@ -4218,6 +4222,7 @@ export function DiscussionsPage({
         <DiscussionSidebar
           discussions={allDiscussions}
           agentLabels={sidebarAgentLabels}
+          agentModels={sidebarAgentModels}
           projects={projects}
           activeId={activeDiscussionId}
           sendingMap={sendingMap}

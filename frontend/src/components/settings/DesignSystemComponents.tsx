@@ -751,9 +751,10 @@ const DEMO_IDENTITIES: readonly { agent: AgentType; name: string; model: AgentId
 ];
 
 function AgentIdentityDemo({ t }: { t: T }) {
+  const { tp } = useT();
   const [main, codex] = DEMO_IDENTITIES;
   const identity = (d: typeof main, extra: Partial<Parameters<typeof AgentIdentity>[0]> = {}) => (
-    <AgentIdentity name={d.name} agentLabel={d.agent} color={agentTextColor(d.agent)} model={d.model} role={d.role} tier={d.tier}
+    <AgentIdentity name={d.name} color={agentTextColor(d.agent)} model={d.model} role={d.role} tier={d.tier}
       tierLabel={d.tier ? t(`disc.tier.${d.tier}`) : undefined} {...extra} />
   );
   const unknownModels: Record<string, string> = { notDeclared: '@gemini-cli', notRecorded: '@codex', providerDefault: '@ollama' };
@@ -769,22 +770,21 @@ function AgentIdentityDemo({ t }: { t: T }) {
       </Row>
       <Row label={t('designSystem.demo.identity.unknown')}>
         {AGENT_IDENTITY_UNKNOWN_STATES.map(state => (
-          <AgentIdentity key={state} name={unknownModels[state]} agentLabel={unknownModels[state].slice(1)}
-            color={agentTextColor(state === 'notDeclared' ? 'GeminiCli' : state === 'notRecorded' ? 'Codex' : 'Ollama')}
+          <AgentIdentity key={state} name={unknownModels[state]}            color={agentTextColor(state === 'notDeclared' ? 'GeminiCli' : state === 'notRecorded' ? 'Codex' : 'Ollama')}
             model={{ kind: state }} role={state === 'notDeclared' ? 'cli' : 'oneOff'} />
         ))}
       </Row>
       <Row label={t('designSystem.demo.identity.strip')}>
         <div className="ds-demo-identity-strip">
           <ParticipantsStrip
-            moreLabel={total => t('disc.participantsMore', total)}
+            moreLabel={total => tp('disc.participantsMore', total)}
             allLabel={t('disc.participantsAll')}
             entries={DEMO_IDENTITIES.map(d => ({
               key: d.name,
               chip: (
-                <Tooltip content={agentIdentityText({ name: d.name, agentLabel: d.agent, model: d.model, role: d.role }, t)}>
+                <Tooltip content={agentIdentityText({ name: d.name, model: d.model, role: d.role }, t)}>
                   <button type="button" className="disc-participant-chip"
-                    aria-label={t('disc.participantDetails', agentIdentityText({ name: d.name, agentLabel: d.agent, model: d.model, role: d.role }, t))}>
+                    aria-label={t('disc.participantDetails', agentIdentityText({ name: d.name, model: d.model, role: d.role }, t))}>
                     <span aria-hidden className="disc-participant-presence-dot" data-presence="listening" />
                     {identity(d, { truncateModel: true, tier: undefined })}
                   </button>

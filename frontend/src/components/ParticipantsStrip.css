@@ -44,11 +44,13 @@
   background: var(--kr-accent-bg);
 }
 
+/* A floating layer in document.body: `useAnchoredStyle` sets its fixed place
+   under the counter, inside the window (as Menu), so no clipping ancestor
+   cuts it. */
 .kr-participants-strip-all {
-  position: absolute;
-  top: calc(100% + var(--kr-space-1));
-  right: 0;
   z-index: var(--kr-z-popover);
+  box-sizing: border-box;
+  width: max-content;
   max-width: min(var(--kr-overlay-w-sm), calc(100vw - 2 * var(--kr-space-2)));
   max-height: 60vh;
   overflow-y: auto;
@@ -82,8 +84,14 @@
   cursor: pointer;
 }
 
-.kr-participants-strip-all button:hover {
+.kr-participants-strip-all button:hover,
+.kr-participants-strip-all button:focus-visible {
   background: var(--kr-bg-hover);
+}
+
+.kr-participants-strip-all button:focus-visible {
+  outline: 2px solid var(--kr-accent);
+  outline-offset: -2px;
 }
 
 @media (pointer: coarse) {

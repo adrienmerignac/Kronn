@@ -6,7 +6,7 @@ import { agentPaletteOptionId } from '../lib/agentPickerPalette';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import {
-  resolveCatalogTier, matchesCatalogSearch, catalogTargetSearchTerms, modelRuntimeTargetId,
+  resolveCatalogTier, matchesCatalogSearch, catalogTargetSearchTerms, modelRuntimeTargetId, modeModelId,
   type ResolvedCatalogTier,
 } from '../lib/modelCatalogSelection';
 import { useModelCatalogSnapshot } from '../hooks/useModelCatalogSnapshot';
@@ -30,7 +30,8 @@ import {
 } from '../lib/agentAvailability';
 import { SearchField } from './ui/SearchField';
 import { AgentIdentity } from './ui/AgentIdentity';
-import { agentModel, type AgentIdentityModel } from './ui/agentIdentityKinds';
+import { agentIdentityText, type AgentIdentityModel } from './ui/agentIdentityKinds';
+import { resolveIdentityModel } from '../lib/agentModelResolution';
 import { agentModelLabel } from './workflows/shadowRowModel';
 import type {
   AgentType,
@@ -51,19 +52,6 @@ type TranslatePlural = (key: string, count: number, ...args: (string | number)[]
  * OpenRouter on 2026-11-21): the rest is counted, and the search reaches it.
  */
 export const OTHER_MODELS_RENDER_LIMIT = 50;
-
-/**
- * KT-1994 — the model id a mode runs: what the catalogue resolves for it (a
- * replacement first), else the backend's launch verdict for that tier
- * (`effective_model`, else `requested_model`). Empty when nothing declares one.
- */
-function modeModelId(resolution: ResolvedCatalogTier | null | undefined, tier: ModelTier | null): string {
-  if (!resolution || tier === null) return '';
-  const id = resolution.replacement || resolution.entry?.model_id || resolution.configured;
-  if (id) return id;
-  const verdict = resolution.view?.tier_verdicts?.find(candidate => candidate.tier === tier);
-  return verdict?.effective_model || verdict?.requested_model || '';
-}
 
 /**
  * KT-1994 — a model id that breaks only after `/` and `:` (a <wbr> there),
@@ -1256,7 +1244,7 @@ function TierPicker({
     : suffix?.trim()
       ? { kind: 'id', id: suffix.trim() }
       : showsCurrentModel && currentTier
-        ? agentModel(configuredId || currentModelFallback, 'providerDefault')
+        ? resolveIdentityModel({ mode: configuredId, lastReply: currentModelFallback })
         : null;
   const identityTier = tierPicker && currentTier && !custom ? currentTier : null;
   const identity = (name: string, color?: string) => identityModel ? (
@@ -1265,7 +1253,6 @@ function TierPicker({
       name={name}
       color={color}
       model={identityModel}
-      agentLabel={targetLabel(currentTarget)}
       roleLabel={role}
       tier={identityTier}
       tierLabel={identityTier ? tierTitle(currentTarget, identityTier) : undefined}
@@ -1344,10 +1331,22 @@ function TierPicker({
     }
   };
 
+  // KT-1936 — the identity as words: agent, the FULL model id (or its unknown
+  // state), the mode or « Personnalisé », the role. The visible model is cut
+  // past 17 characters; this text is the trigger's accessible name after its
+  // action, and the static form's tooltip.
+  const identityText = (name: string) => identityModel ? agentIdentityText({
+    name,
+    model: identityModel,
+    tierLabel: custom ? t('agentPicker.custom') : identityTier ? tierLabel(identityTier) : null,
+    roleLabel: role ?? null,
+  }, t) : null;
+
   if (!canChange) {
+    const name = displayName ?? targetLabel(currentTarget);
     return (
-      <span className={staticClassName ?? 'kr-agent-switch-static'}>
-        {identity(displayName ?? targetLabel(currentTarget), agentTextColor(currentTarget.agent))}
+      <span className={staticClassName ?? 'kr-agent-switch-static'} title={identityText(name) ?? undefined}>
+        {identity(name, agentTextColor(currentTarget.agent))}
       </span>
     );
   }
@@ -1378,7 +1377,9 @@ function TierPicker({
           : tierPicker && currentTier
             ? `${title} · ${tierTitle(currentTarget, currentTier)}`
             : title}
-        aria-label={ariaLabel}
+        aria-label={!multiple && identityText(triggerText)
+          ? `${ariaLabel} — ${identityText(triggerText)}`
+          : ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
         disabled={disabled || saving}
@@ -1583,7 +1584,11 @@ function ExactModelPicker({
         type="button"
         className="kr-agent-switch-btn wf-shadow-picker-btn"
         data-testid={testId}
-        aria-label={ariaLabel}
+        // KT-1936 — the action, then what the trigger shows (agent and model,
+        // « Personnalisé »): an aria-label replaces the button's own text.
+        aria-label={children
+          ? ariaLabel
+          : `${ariaLabel} — ${[fullLabel, custom ? t('agentPicker.custom') : ''].filter(Boolean).join(' · ')}`}
         aria-haspopup="dialog"
         aria-expanded={open}
         title={children ? undefined : [fullLabel, custom ? t('agentPicker.custom') : ''].filter(Boolean).join(' · ')}

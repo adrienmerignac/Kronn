@@ -2010,11 +2010,23 @@ button.disc-contact-open {
 }
 
 /* The chip strip shares row 2 with the agent control and the details toggle,
-   so it takes the space those two leave and scrolls inside it. */
+   so it takes the space those two leave and scrolls inside it.
+   KT-1936 — its basis is 0: on a narrow row (400, 768 px) the agent trigger
+   gives way first, and the strip always keeps the room of its « +N » counter
+   (the way to the full list), so the counter stays in view and clickable. */
 .disc-chat-header-sub > .disc-participants-row {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: var(--kr-space-8);
   width: auto;
+}
+
+/* KT-1936 — the agent trigger shrinks inside its row: min-width 0 down the
+   chain (control, picker, button, identity); the model takes the ellipsis
+   first (AgentSwitchPicker.css), the full id stays in the title and the
+   accessible name. */
+.disc-chat-header-sub > .disc-native-agent-control {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 /* 0.8.5 — short disc-id pill in ChatHeader. Click → copy full UUID
@@ -2350,6 +2362,7 @@ button.disc-contact-open {
 
 .disc-native-agent-toggle {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 20px;

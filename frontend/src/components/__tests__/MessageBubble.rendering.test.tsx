@@ -591,7 +591,10 @@ describe('MessageBubble — @user carries the real human identity', () => {
       return element;
     });
     expect(chip).not.toBeNull();
-    expect(rendered.container.querySelector<HTMLElement>('.disc-msg-agent-label')?.style.color)
+    // KT-1936 — the colour sits on the identity's line, and on the name itself.
+    expect(rendered.container.querySelector<HTMLElement>('.disc-msg-agent-label > .flex-row')?.style.color)
+      .toBe('#123abc');
+    expect(rendered.container.querySelector<HTMLElement>('.disc-msg-agent-label .ui-agent-identity-name')?.style.color)
       .toBe('#123abc');
   });
 });
