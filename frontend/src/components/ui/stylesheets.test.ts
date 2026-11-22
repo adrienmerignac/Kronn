@@ -196,45 +196,66 @@ describe('components/ui stylesheets', () => {
     }
   });
 
-  // KT-1936 review, finding 1 — at 400 and 768 px the room header's agent row
-  // held a 388px trigger in a 310 / 358px row, and the participants strip fell
-  // to 0px with its « +N » counter off-screen. The trigger shrinks (min-width 0
-  // down the chain, the model first), the strip keeps its counter's room.
-  it('lets the agent trigger shrink in the room header, the model first, and keeps the strip\'s counter in its row', () => {
+  // KT-1936 review, finding 1, then round 2 — at 400 and 768 px the room
+  // header's agent row first held a 388px trigger in a 310 / 358px row (the
+  // participants off-screen), then a trigger squeezed to 89px with not one
+  // letter of its name. Owner option A: the whole agent line scrolls
+  // sideways, the « +N » counter pinned outside it; the trigger has a floor
+  // (name and role chip whole, model at least 8 characters before the
+  // ellipsis) and above it the model gives way first.
+  it('scrolls the room header\'s agent line sideways and holds the trigger\'s floor', () => {
     const read = (path: string) => readFileSync(join(SRC, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const page = read('pages/DiscussionsPage.css');
-    const picker = read('components/AgentSwitchPicker.css');
-    const identity = read('components/ui/AgentIdentity.css');
+    const line = read('components/HeaderScrollLine.css');
     const strip = read('components/ParticipantsStrip.css');
     const decls = (text: string, selector: string) => new Map(
       declsFor(text, selector).split(';').map(d => d.trim()).filter(Boolean)
         .map(d => [d.slice(0, d.indexOf(':')).trim(), d.slice(d.indexOf(':') + 1).trim()] as const),
     );
 
-    // The row: the agent control may shrink to nothing; the strip's basis is 0
-    // so the trigger gives way first, and it never goes under the counter's room.
-    const control = decls(page, '.disc-chat-header-sub > .disc-native-agent-control');
-    expect(control.get('min-width')).toBe('0');
-    expect(control.get('flex')).toBe('0 1 auto');
-    const row = decls(page, '.disc-chat-header-sub > .disc-participants-row');
-    expect(row.get('flex')).toBe('1 1 0');
-    expect(row.get('min-width')).toBe('var(--kr-space-8)');
+    // The line: it fits its row, its scroller scrolls sideways only, with no
+    // scrollbar, and keeps the header's height (the focus rings' room is
+    // given back by a negative margin).
+    const lineBox = decls(line, '.kr-header-line');
+    expect(lineBox.get('min-width')).toBe('0');
+    expect(lineBox.get('container-type')).toBe('inline-size');
+    const scroller = decls(line, '.kr-header-line-scroller');
+    expect(scroller.get('min-width')).toBe('0');
+    expect(scroller.get('overflow-x')).toBe('auto');
+    expect(scroller.get('overflow-y')).toBe('hidden');
+    expect(scroller.get('scrollbar-width')).toBe('none');
+    expect(scroller.get('margin-block')).toBe(`calc(-1 * ${scroller.get('padding-block')})`);
+    // Its content at its own width, on one line: nothing wraps, nothing shrinks.
+    const track = decls(line, '.kr-header-line-track');
+    expect(track.get('flex-wrap')).toBe('nowrap');
+    expect(track.get('width')).toBe('max-content');
+    expect(decls(line, '.kr-header-line-track > *').get('flex')).toBe('0 0 auto');
+    // The fade while it scrolls further right; the end slot never shrinks.
+    expect(decls(line, '.kr-header-line[data-fade-end] .kr-header-line-scroller').get('mask-image'))
+      .toContain('transparent');
+    expect(decls(line, '.kr-header-line-end').get('flex')).toBe('0 0 auto');
+    // The strip does not scroll by itself on the line.
+    expect(decls(line, '.kr-header-line .kr-participants-strip-list').get('overflow')).toBe('visible');
+
+    // The trigger's floor: no part of the chain shrinks or is capped …
+    for (const part of ['.disc-native-agent-control', '.kr-agent-switch', '.kr-agent-switch-btn', '.kr-agent-switch-identity']) {
+      const rule = decls(page, `.kr-header-line ${part}`);
+      expect(rule.get('flex-shrink'), part).toBe('0');
+      expect(rule.get('max-width'), part).toBe('none');
+    }
+    // … the name and the role chip are whole …
+    const trigger = '.kr-header-line .kr-agent-switch-identity.ui-agent-identity';
+    for (const part of ['name', 'role']) {
+      const rule = decls(page, `${trigger} .ui-agent-identity-${part}`);
+      expect(rule.get('flex-shrink'), part).toBe('0');
+      expect(rule.get('overflow'), part).toBe('visible');
+    }
+    // … and the model is 9ch at least (8 characters and the ellipsis), 17 at
+    // most, between the two following the line's width.
+    const model = decls(page, `${trigger} .ui-agent-identity-model`);
+    expect(model.get('max-width')).toMatch(/^clamp\(9ch, 100cqw - [^,]+, 17ch\)$/);
+    expect(model.get('flex-shrink')).toBe('0');
     expect(decls(page, '.disc-native-agent-toggle').get('flex-shrink')).toBe('0');
-
-    // Down the chain: picker, button, identity, model all at min-width 0.
-    expect(decls(picker, '.kr-agent-switch').get('min-width')).toBe('0');
-    expect(decls(picker, '.kr-agent-switch-btn').get('min-width')).toBe('0');
-    expect(decls(picker, '.kr-agent-switch-identity').get('min-width')).toBe('0');
-    expect(decls(identity, '.ui-agent-identity').get('min-width')).toBe('0');
-    const model = decls(identity, '.ui-agent-identity-model');
-    expect(model.get('min-width')).toBe('0');
-    expect(model.get('text-overflow')).toBe('ellipsis');
-
-    // The model takes the ellipsis first: its shrink weight dwarfs the name's and the role's.
-    const trigger = '.kr-agent-switch-identity.ui-agent-identity';
-    expect(Number(decls(picker, `${trigger} .ui-agent-identity-model`).get('flex-shrink'))).toBeGreaterThanOrEqual(100);
-    expect(decls(picker, `${trigger} .ui-agent-identity-name`).get('flex-shrink')).toBe('1');
-    expect(decls(picker, `${trigger} .ui-agent-identity-role`).get('min-width')).toBe('0');
 
     // The counter never shrinks; the full list is a fixed layer, not absolute in the row.
     expect(decls(strip, '.kr-participants-strip-more').get('flex-shrink')).toBe('0');

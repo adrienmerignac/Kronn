@@ -579,9 +579,20 @@ describe('ChatHeader — shared agent switcher', () => {
     it('gives the agent on/off control the first position on row 2', async () => {
       renderHeader();
       const sub = document.querySelector('.disc-chat-header-sub')!;
+      // KT-1936 review round 2 — row 2 is one HeaderScrollLine: what scrolls
+      // starts with the main agent's control, then the participants, then the
+      // trust chip; the end slot (the « +N » counter) is outside what scrolls.
+      const line = sub.firstElementChild!;
+      expect(line).toHaveClass('kr-header-line');
+      const track = line.querySelector('.kr-header-line-scroller > .kr-header-line-track')!;
       await waitFor(() => {
-        expect(sub.firstElementChild?.classList.contains('disc-native-agent-control')).toBe(true);
+        expect(track.firstElementChild?.classList.contains('disc-native-agent-control')).toBe(true);
       });
+      // (The trust chip, last, shows only above Standard: not in this room.)
+      const order = Array.from(track.children).map(child => child.className);
+      expect(order.indexOf('disc-participants-row')).toBeGreaterThan(0);
+      expect(line.lastElementChild).toHaveClass('kr-header-line-end');
+      expect(line.querySelector('.kr-header-line-scroller')!.contains(line.lastElementChild)).toBe(false);
     });
 
     it('has one Details button, on the title row, with the open-side-panel icon', () => {

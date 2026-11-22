@@ -1,9 +1,10 @@
 import {
-  useCallback, useEffect, useId, useLayoutEffect, useRef, useState,
+  useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState,
   type KeyboardEvent, type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { measureStripOverflow } from '../lib/stripOverflow';
+import { measureChipsOutOfView, measureStripOverflow } from '../lib/stripOverflow';
+import { HeaderScrollLineContext } from './headerScrollLineContext';
 import { useAnchoredStyle } from './ui/anchor';
 import './ParticipantsStrip.css';
 
@@ -38,6 +39,11 @@ export interface ParticipantsStripProps {
  * a header that clips its overflow cannot cut it, and it stays inside the
  * window. Focus moves into it on open; Escape closes it and gives focus back
  * to the counter; a press outside closes it.
+ *
+ * KT-1936 review round 2 — inside a HeaderScrollLine (the room header) the
+ * whole line scrolls, not the strip: the chips are counted against the line's
+ * visible box, the fade is the line's, and the counter goes to the line's
+ * pinned end slot, outside what scrolls, so it is always in view.
  */
 export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: ParticipantsStripProps) {
   const listId = useId();
@@ -47,25 +53,40 @@ export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: Parti
   const [overflow, setOverflow] = useState({ hidden: 0, fadeEnd: false });
   const [open, setOpen] = useState(false);
   const { style, placed } = useAnchoredStyle(moreRef, layerRef, open, 'bottom', 'end');
+  const line = useContext(HeaderScrollLineContext);
+  const lineScroller = line?.scroller ?? null;
 
   const measure = useCallback(() => {
     const list = listRef.current;
     if (!list) return;
-    const next = measureStripOverflow(list);
+    // The empty state is not a chip: it never makes a counter.
+    const next = entries.length === 0
+      ? { hidden: 0, fadeEnd: false }
+      : lineScroller
+        ? { hidden: measureChipsOutOfView(lineScroller, list), fadeEnd: false }
+        : measureStripOverflow(list);
     setOverflow(current => (current.hidden === next.hidden && current.fadeEnd === next.fadeEnd ? current : next));
     // Every chip in view again (a wider window): the counter goes, its list too.
     if (next.hidden === 0) setOpen(false);
-  }, []);
+  }, [lineScroller, entries.length]);
 
   useLayoutEffect(measure, [measure, entries]);
 
   useEffect(() => {
     const list = listRef.current;
-    if (!list || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(list);
-    return () => observer.disconnect();
-  }, [measure]);
+    if (!list) return;
+    lineScroller?.addEventListener('scroll', measure, { passive: true });
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(measure);
+      observer.observe(list);
+      if (lineScroller) observer.observe(lineScroller);
+    }
+    return () => {
+      lineScroller?.removeEventListener('scroll', measure);
+      observer?.disconnect();
+    };
+  }, [measure, lineScroller]);
 
   const close = useCallback((returnFocus: boolean) => {
     setOpen(false);
@@ -111,6 +132,29 @@ export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: Parti
     buttons[next].focus();
   };
 
+  // A participant chosen in the full list: its chip scrolls into view, so
+  // the details it opens sit under it.
+  const revealChip = (index: number) => {
+    const item = listRef.current?.children[index] as HTMLElement | undefined;
+    item?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  };
+
+  const more = showMore ? (
+    <button
+      ref={moreRef}
+      type="button"
+      className="kr-participants-strip-more"
+      data-testid="participants-more"
+      aria-label={moreLabel(entries.length)}
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      aria-controls={open ? listId : undefined}
+      onClick={() => (open ? close(false) : setOpen(true))}
+    >
+      +{overflow.hidden}
+    </button>
+  ) : null;
+
   return (
     <div className="kr-participants-strip" data-fade-end={overflow.fadeEnd || undefined}>
       <div ref={listRef} className="disc-participants-list kr-participants-strip-list" onScroll={measure}>
@@ -118,21 +162,7 @@ export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: Parti
           <span key={entry.key} className="kr-participants-strip-item">{entry.chip}</span>
         ))}
       </div>
-      {showMore && (
-        <button
-          ref={moreRef}
-          type="button"
-          className="kr-participants-strip-more"
-          data-testid="participants-more"
-          aria-label={moreLabel(entries.length)}
-          aria-expanded={open}
-          aria-haspopup="dialog"
-          aria-controls={open ? listId : undefined}
-          onClick={() => (open ? close(false) : setOpen(true))}
-        >
-          +{overflow.hidden}
-        </button>
-      )}
+      {more && (line?.end ? createPortal(more, line.end) : more)}
       {open && createPortal(
         <div
           ref={layerRef}
@@ -145,9 +175,9 @@ export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: Parti
           onKeyDown={onListKeyDown}
         >
           <ul>
-            {entries.map(entry => (
+            {entries.map((entry, index) => (
               <li key={entry.key}>
-                <button type="button" onClick={() => { close(false); entry.onSelect(); }}>{entry.row}</button>
+                <button type="button" onClick={() => { close(false); revealChip(index); entry.onSelect(); }}>{entry.row}</button>
               </li>
             ))}
           </ul>

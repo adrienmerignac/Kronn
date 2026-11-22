@@ -470,15 +470,33 @@ native one) or a joined CLI session.
   closes it and gives focus back to the counter, a press outside closes it.
   The counter's name is a plural form (`tp('disc.participantsMore', n)`),
   right for one participant and for several.
-- **In the room header**, the strip shares one line with the agent picker:
-  the trigger gives way first (`min-width: 0` down its chain; the model takes
-  the ellipsis before the name and the role chip), and the strip never goes
-  under the room of its counter, the way to the full list
-  (`.disc-chat-header-sub > .disc-participants-row`: basis 0, `min-width:
-  var(--kr-space-8)`; held by `components/ui/stylesheets.test.ts`).
-`[src: file: frontend/src/components/ParticipantsStrip.tsx:42#ParticipantsStrip]`
+- **In the room header** (review round 2, option A of the owner's mockup),
+  the whole agent line is ONE line that scrolls sideways
+  (`HeaderScrollLine`): the main agent's trigger first, then its on/off
+  toggle, the participant chips, the scope and the trust chips. The « +N »
+  counter is pinned at the line's right end, outside what scrolls (the strip
+  portals it into the line's end slot, through `headerScrollLineContext`), and
+  counts the chips not fully inside the line, on either side. The right edge
+  fades while the line can scroll further right. A plain mouse wheel scrolls
+  it sideways; a focused control is scrolled into view by the browser. The
+  header keeps its height and nothing wraps.
+- **The trigger's floor** in that line: its name whole, its mode icon, its
+  role chip whole, and its model no shorter than 8 characters before the
+  ellipsis (`9ch`; an unknown state follows the same rule). Above the floor the
+  model gives way first: its `max-width` is `clamp(9ch, 100cqw - 18rem, 17ch)`,
+  the line being the size container. What the floor does not fit, the line
+  scrolls (`pages/DiscussionsPage.css`, `components/HeaderScrollLine.css`;
+  held by `components/ui/stylesheets.test.ts`).
+- **The participant details** opened by a chip are a floating layer too
+  (`ParticipantDetailsLayer`: portal and `useAnchoredStyle` under the chip),
+  because the scrolling line would clip a layer absolute inside it. A row of
+  the full list scrolls its chip into view before opening its details.
+`[src: file: frontend/src/components/ParticipantsStrip.tsx:48#ParticipantsStrip]`
+`[src: file: frontend/src/components/HeaderScrollLine.tsx:27#HeaderScrollLine]`
 `[src: file: frontend/src/lib/stripOverflow.ts:5#measureStripOverflow]`
-`[src: file: frontend/src/components/DiscParticipantsHeader.tsx:108#participantRole]`
+`[src: file: frontend/src/lib/stripOverflow.ts:15#measureChipsOutOfView]`
+`[src: file: frontend/src/components/DiscParticipantsHeader.tsx:110#participantRole]`
+`[src: file: frontend/src/components/DiscParticipantsHeader.tsx:167#ParticipantDetailsLayer]`
 
 ## The one agent picker
 

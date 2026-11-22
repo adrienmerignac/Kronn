@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { discussions as discussionsApi } from '../lib/api';
 import {
   honestPresenceState,
@@ -16,6 +17,7 @@ import { AgentIdentity } from './ui/AgentIdentity';
 import { Tooltip } from './ui/Tooltip';
 import { agentIdentityText, agentModel, agentModelText, type AgentIdentityModel, type AgentIdentityRole } from './ui/agentIdentityKinds';
 import { ParticipantsStrip } from './ParticipantsStrip';
+import { useAnchoredStyle } from './ui/anchor';
 
 /// 0.8.6 phase 2 — discussion participants header.
 ///
@@ -156,12 +158,43 @@ function presenceLabel(
   return t('disc.presenceDormantMinutes', Math.ceil(delay / 60));
 }
 
+/**
+ * KT-1936 review round 2 — a participant's details, a floating layer in
+ * document.body under its chip (`useAnchoredStyle`, as Menu): the header's
+ * agent line scrolls sideways, and a layer absolute inside it was clipped.
+ * Keyed by participant, so another chip places it again.
+ */
+function ParticipantDetailsLayer({ anchorRef, children, ...props }: {
+  anchorRef: RefObject<HTMLElement | null>;
+  children: ReactNode;
+  id: string;
+  'aria-label': string;
+}) {
+  const layerRef = useRef<HTMLElement>(null);
+  const { style } = useAnchoredStyle(anchorRef, layerRef, true, 'bottom', 'start');
+  return createPortal(
+    <section
+      ref={layerRef}
+      className="disc-participant-details"
+      role="dialog"
+      data-testid="disc-participant-details"
+      style={style}
+      {...props}
+    >
+      {children}
+    </section>,
+    document.body,
+  );
+}
+
 export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }: DiscParticipantsHeaderProps) {
   // AgentIdentity's own words (roles, unknown models) come from the locale.
   const { t: tUi, tp } = useT();
   const [participants, setParticipants] = useState<ParticipantRow[]>([]);
   const [awayAfterMs, setAwayAfterMs] = useState(DEFAULT_AWAY_AFTER_MS);
   const [selectedParticipantId, setSelectedParticipantId] = useState<number | null>(null);
+  // The selected participant's chip: where its details layer is anchored.
+  const selectedChipRef = useRef<HTMLButtonElement | null>(null);
 
   const applyParticipants = useCallback((list: ParticipantRow[]) => {
     setParticipants(list);
@@ -281,6 +314,7 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
               ].filter(Boolean).join(' — ')}
             >
             <button
+              ref={selectedParticipantId === p.id ? selectedChipRef : undefined}
               type="button"
               className="disc-participant-chip"
               data-status={p.status}
@@ -338,12 +372,11 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
         })}
       />
       {selectedParticipant && selectedDisplayName && selectedPresenceLabel && (
-          <section
+          <ParticipantDetailsLayer
+            key={selectedParticipant.id}
+            anchorRef={selectedChipRef}
             id={`disc-participant-details-${selectedParticipant.id}`}
-            className="disc-participant-details"
-            role="dialog"
             aria-label={t('disc.participantDetails', selectedDisplayName)}
-            data-testid="disc-participant-details"
           >
             <header>
               <strong>
@@ -420,7 +453,7 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
                 className="disc-participant-resume"
               />
             )}
-          </section>
+          </ParticipantDetailsLayer>
       )}
 
     </div>

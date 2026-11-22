@@ -44,16 +44,16 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
     const headerCss = readFileSync('src/pages/DiscussionsPage.css', 'utf8');
     const participantCss = readFileSync('src/styles/components.css', 'utf8');
     const headerTop = headerCss.match(/\.disc-chat-header-top\s*\{([^}]*)\}/)?.[1] ?? '';
-    const stripInSub = headerCss
-      .match(/\.disc-chat-header-sub > \.disc-participants-row\s*\{([^}]*)\}/)?.[1] ?? '';
+    const lineCss = readFileSync('src/components/HeaderScrollLine.css', 'utf8');
+    const scroller = lineCss.match(/\.kr-header-line-scroller\s*\{([^}]*)\}/)?.[1] ?? '';
     const participantList = participantCss.match(/\.disc-participants-list\s*\{([^}]*)\}/)?.[1] ?? '';
 
     expect(headerTop).toContain('display: grid');
     // Two columns: title, then the invite pinned right on the same line.
     expect(headerTop).toContain('grid-template-columns: minmax(0, 1fr) auto');
-    // KT-1936 — the strip gives way to nothing below its « +N » counter's room.
-    expect(stripInSub).toContain('flex: 1 1 0');
-    expect(stripInSub).toContain('min-width: var(--kr-space-8)');
+    // KT-1936 review round 2 — in the room header the whole agent line
+    // scrolls sideways (HeaderScrollLine), the strip with it.
+    expect(scroller).toContain('overflow-x: auto');
     expect(participantList).toContain('flex-wrap: nowrap');
     expect(participantList).toContain('overflow-x: auto');
   });
@@ -83,7 +83,13 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
     expect(chips[1].querySelector('.ui-agent-identity-name')?.textContent).toBe('@codex');
     expect(document.querySelector('[data-testid="disc-participant-details"]')).toBeNull();
     await openParticipant();
-    expect(document.querySelector('[data-testid="disc-participant-details"]')).not.toBeNull();
+    const details = document.querySelector<HTMLElement>('[data-testid="disc-participant-details"]');
+    expect(details).not.toBeNull();
+    // KT-1936 review round 2 — a floating layer in document.body, at a fixed
+    // place under its chip: the header's scrolling agent line cannot clip it.
+    expect(details!.parentElement).toBe(document.body);
+    expect(details!.style.position).toBe('fixed');
+    expect(chips[0].getAttribute('aria-controls')).toBe(details!.id);
     expect(chips[0].getAttribute('aria-expanded')).toBe('true');
     fireEvent.click(document.querySelector('.disc-participant-details header button') as HTMLButtonElement);
     expect(document.querySelector('[data-testid="disc-participant-details"]')).toBeNull();

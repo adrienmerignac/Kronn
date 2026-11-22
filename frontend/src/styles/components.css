@@ -656,11 +656,11 @@ select.input option {
   background: var(--kr-error);
 }
 
+/* KT-1936 — a floating layer in document.body: ParticipantDetailsLayer sets
+   its fixed place under the chip, inside the window (useAnchoredStyle). */
 .disc-participant-details {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 5px);
-  left: 0;
+  z-index: var(--kr-z-popover);
+  box-sizing: border-box;
   width: min(320px, calc(100vw - 32px));
   padding: 10px;
   border: 1px solid var(--kr-border);
