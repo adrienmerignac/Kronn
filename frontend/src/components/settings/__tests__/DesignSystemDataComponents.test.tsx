@@ -56,6 +56,40 @@ describe('DesignSystemPage — dense-data components (KT-1886)', () => {
     expect(css.match(/\.ds-demo-container\s*\{([^}]*)\}/)?.[1] ?? '').not.toMatch(/padding/);
   });
 
+  it('gives every size container of the gallery a wrapper with a width of its own, so none collapses to 0 px', () => {
+    // A size container (container-type) has a zero intrinsic width: as a flex
+    // item with no width or flex-basis it collapses and its demo vanishes.
+    const sizes = /(?:^|;)\s*(?:width|flex-basis):|(?:^|;)\s*flex:\s*\S+\s+\S+\s+\S+/;
+    const rules = (css: string) => [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .map(([, selector, body]) => ({ selector: selector.trim(), body }));
+    const gallery = rules(readFileSync(join(SRC, 'components', 'settings', 'DesignSystemSection.css'), 'utf8'));
+    // In the gallery's stylesheet, a rule that makes a size container sizes it.
+    for (const rule of gallery.filter(r => /container-type:\s*(?:inline-)?size/.test(r.body))) {
+      expect(rule.body, rule.selector).toMatch(sizes);
+    }
+    // The size containers the new components make, read from their stylesheets.
+    const containers = ['Table', 'KeyValueList'].flatMap(file => rules(readFileSync(join(SRC, 'components', 'ui', `${file}.css`), 'utf8'))
+      .filter(r => /container-type:\s*(?:inline-)?size/.test(r.body)).map(r => r.selector));
+    expect(containers).toEqual(['.ui-table', '.ui-kv-frame']);
+    render(<DesignSystemPage t={t} tab="components" />);
+    const forms = new Set<string>();
+    for (const name of ENTRIES) {
+      for (const block of section(name).querySelectorAll(containers.join(', '))) {
+        // Its direct wrapper is a demo container of a declared form...
+        const wrapper = block.parentElement!;
+        expect(wrapper, `${name} ${block.className}`).toHaveClass('ds-demo-container');
+        expect(wrapper.getAttribute('data-form'), name).toMatch(/^(?:wide|narrow)$/);
+        forms.add(wrapper.getAttribute('data-form')!);
+      }
+    }
+    expect([...forms].sort()).toEqual(['narrow', 'wide']);
+    // ...and the rule of each form sets a width or a flex-basis.
+    for (const form of forms) {
+      const rule = gallery.find(r => r.selector === `.ds-demo-container[data-form="${form}"]`);
+      expect(rule?.body ?? '', form).toMatch(sizes);
+    }
+  });
+
   it('writes the sample numbers in the interface\'s locale, never with English separators', () => {
     render(<DesignSystemPage t={t} tab="components" />);
     const all = ENTRIES.map(name => section(name).textContent ?? '').join(' ');

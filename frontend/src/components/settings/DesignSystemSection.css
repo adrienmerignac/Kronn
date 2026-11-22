@@ -388,8 +388,13 @@
   min-width: 0;
 }
 
+/* A demo container holds a size container (ui-table, ui-kv), whose
+   intrinsic width is zero: inline-size containment ignores its content. So
+   each container has a width of its own; as a flex item of a labelled row,
+   with no width, it would collapse to 0 px and its demo vanish. */
 .ds-demo-container[data-form="wide"] {
   align-self: stretch;
+  width: 100%;
 }
 
 .ds-demo-container[data-form="narrow"] {

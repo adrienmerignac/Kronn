@@ -279,6 +279,13 @@ Escape closes one layer, the innermost first
   numbers are written with `Intl.NumberFormat` in the interface's locale;
   the test is `DesignSystemDataComponents.test.tsx`.
   `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:721#WideAndNarrow]`
+- **A size container needs a width of its own.** Inline-size containment
+  ignores the content, so a `Table` or `KeyValueList` placed as a flex item
+  with no width or flex-basis collapses to 0 px and vanishes. In the gallery
+  each one sits directly in a `.ds-demo-container` whose form sets a width
+  (`wide`: `width: 100%`; `narrow`: `flex: 0 1 20rem`); the gallery test
+  checks both. A screen that hosts them in a flex row does the same.
+  `[src: file: frontend/src/components/settings/DesignSystemSection.css:395]`
 
 ## Rules
 
