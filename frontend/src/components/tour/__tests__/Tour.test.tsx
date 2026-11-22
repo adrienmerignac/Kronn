@@ -254,7 +254,16 @@ describe('Guided Tour', () => {
   it('start calls setPage with the first step page', () => {
     renderTour();
     fireEvent.click(screen.getByTestId('start'));
-    expect(setPage).toHaveBeenCalledWith(TOUR_STEPS[0].page);
+    expect(setPage).toHaveBeenCalledWith(TOUR_STEPS[0].page, undefined);
+  });
+
+  // KT-1923 — Settings has five sub-pages and `/config` opens the first: the
+  // agents step names its section, so the tour opens the sub-page that holds it.
+  it('opens Settings on the sub-page of the section a step points at', () => {
+    const agentsStep = TOUR_STEPS.find(step => step.id === 'agents-config');
+    expect(agentsStep?.page).toBe('settings');
+    expect(agentsStep?.settingsSection).toBe('settings-agent-config');
+    expect(TOUR_STEPS.filter(step => step.page === 'settings').every(step => step.settingsSection)).toBe(true);
   });
 
   it('tour steps include pages beyond projects', () => {

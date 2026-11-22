@@ -64,6 +64,11 @@ export function Dashboard({ onReset }: DashboardProps) {
   // The address names the page: back, forward and reload all follow it.
   const { pathname } = useLocation();
   const nav = useKronnNavigate();
+  // KT-1923 — a tour step on Settings names the section it shows: its sub-page.
+  const openTourPage = useCallback((page: DashboardPage, settingsSection?: string) => {
+    if (settingsSection) nav.toSettingsSection(settingsSection);
+    else nav.toPage(page);
+  }, [nav]);
   const page: DashboardPage = pathToPage(pathname) ?? DEFAULT_PAGE;
   // Cross-page prefill for discussion creation (e.g. "validate audit" from Projects)
   const [discPrefill, setDiscPrefill] = useState<DiscussionPrefill | null>(null);
@@ -669,7 +674,7 @@ export function Dashboard({ onReset }: DashboardProps) {
     <div className="dash-app">
       <BootHold active={!firstDataSettled} phase={backendHealth === 'down' ? 'slow' : 'opening'} />
       <ToastContainer />
-      <TourProvider setPage={nav.toPage}>
+      <TourProvider setPage={openTourPage}>
       {/* Nav */}
       <nav className="dash-nav" ref={navRef}>
         <div className="dash-nav-brand" data-mobile={isMobile}>

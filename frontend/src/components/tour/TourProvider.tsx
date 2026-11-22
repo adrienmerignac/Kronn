@@ -36,7 +36,8 @@ export function useTour(): TourContextValue {
 }
 
 interface TourProviderProps {
-  setPage: (page: Page) => void;
+  /** Opens a page; on Settings, the sub-page that holds `settingsSection` when the step names one. */
+  setPage: (page: Page, settingsSection?: string) => void;
   children: React.ReactNode;
 }
 
@@ -172,8 +173,8 @@ export function TourProvider({ setPage, children }: TourProviderProps) {
     }
 
     // Page navigation
-    if (toStep.page !== fromStep?.page) {
-      setPage(toStep.page);
+    if (toStep.page !== fromStep?.page || toStep.settingsSection !== fromStep?.settingsSection) {
+      setPage(toStep.page, toStep.settingsSection);
       await new Promise(r => setTimeout(r, 300));
     }
 
@@ -324,7 +325,8 @@ export function TourProvider({ setPage, children }: TourProviderProps) {
       latestProgress.skippedStepIds,
     );
     setActive(true);
-    setPage(TOUR_STEPS[resumeStep]?.page ?? TOUR_STEPS[0].page);
+    const resumeAt = TOUR_STEPS[resumeStep] ?? TOUR_STEPS[0];
+    setPage(resumeAt.page, resumeAt.settingsSection);
     // If resuming mid-tour, drive the full navigation pipeline so the
     // target step's `beforeStep` hook (and any page switch) runs —
     // otherwise a refresh inside the profiles sub-flow would land on

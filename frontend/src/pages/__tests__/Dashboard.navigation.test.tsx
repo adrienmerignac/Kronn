@@ -363,15 +363,17 @@ describe('Dashboard navigation', () => {
   it('opens Artifacts settings with a blocked site typed in, on load and from a link in place', async () => {
     await renderDashboard('/config/artifacts?origin=https%3A%2F%2Fvimeo.com');
     expect(await screen.findByTestId('settings-page')).toHaveAttribute('data-prefill', 'https://vimeo.com');
-    // Consumed: a reload must not prefill it again.
-    await waitFor(() => expect(window.location.pathname).toBe('/config'));
+    // Consumed: a reload must not prefill it again. KT-1923 — it gives way to
+    // the section's own address, on the Work sub-page.
+    await waitFor(() => expect(window.location.pathname).toBe('/config/work'));
+    expect(window.location.hash).toBe('#settings-artifacts');
     expect(window.location.search).toBe('');
 
     await act(async () => {
       navigateAppTab('/config/artifacts?origin=https%3A%2F%2Fplayer.example.com');
     });
     await waitFor(() => expect(screen.getByTestId('settings-page')).toHaveAttribute('data-prefill', 'https://player.example.com'));
-    await waitFor(() => expect(window.location.pathname).toBe('/config'));
+    await waitFor(() => expect(window.location.pathname).toBe('/config/work'));
   });
 
   it('drops a stale discussion id and keeps the safe list view', async () => {
@@ -388,12 +390,14 @@ describe('Dashboard navigation', () => {
 });
 
 describe('Dashboard page addresses', () => {
+  // The tab's address, and where it lands: `/config` opens the first
+  // sub-page of Settings (KT-1923).
   const PAGES = [
-    ['discussions', '/discussions', 'discussion-page'],
-    ['planning', '/planning', 'planning-page'],
-    ['workflows', '/workflows', 'workflow-page'],
-    ['mcps', '/plugins', 'mcp-page'],
-    ['settings', '/config', 'settings-page'],
+    ['discussions', '/discussions', 'discussion-page', '/discussions'],
+    ['planning', '/planning', 'planning-page', '/planning'],
+    ['workflows', '/workflows', 'workflow-page', '/workflows'],
+    ['mcps', '/plugins', 'mcp-page', '/plugins'],
+    ['settings', '/config', 'settings-page', '/config/you'],
   ] as const;
 
   it('makes every tab a link to its page, so a modified click opens it in a new tab', async () => {
@@ -434,22 +438,22 @@ describe('Dashboard page addresses', () => {
     expect(navTab('projects')).toHaveAttribute('aria-current', 'page');
   });
 
-  it.each(PAGES)('opens %s straight from its address', async (page, path, testId) => {
+  it.each(PAGES)('opens %s straight from its address', async (page, path, testId, landed) => {
     await renderDashboard(path);
 
     expect(await screen.findByTestId(testId)).toBeInTheDocument();
     expect(navTab(page)).toHaveAttribute('aria-current', 'page');
     expect(navTab('projects')).not.toHaveAttribute('aria-current');
-    expect(window.location.pathname).toBe(path);
+    expect(window.location.pathname).toBe(landed);
   });
 
-  it.each(PAGES)('moves the address to %s when its tab is clicked', async (page, path, testId) => {
+  it.each(PAGES)('moves the address to %s when its tab is clicked', async (page, _path, testId, landed) => {
     await renderDashboard('/projects');
 
     await act(async () => { navTab(page).click(); });
 
     expect(await screen.findByTestId(testId)).toBeInTheDocument();
-    expect(window.location.pathname).toBe(path);
+    expect(window.location.pathname).toBe(landed);
   });
 
   it('keeps one page on screen at a time', async () => {
