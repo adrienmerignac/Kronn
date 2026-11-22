@@ -148,7 +148,7 @@ this is permission to attempt execution, not proof of account access. Missing CL
 authentication failures and unavailable/unknown identities are not covered by
 that exception, and other runtimes keep their existing failure policy.
 [src: file: backend/src/core/model_catalog/mod.rs:1191-1222#retained_claude_model]
-[src: file: backend/src/api/discussions/streaming.rs:4253-4299#preflight_resolve]
+[src: file: backend/src/api/discussions/streaming.rs:4299-4345#preflight_resolve]
 [src: file: backend/src/workflows/runner.rs:2165-2250#preflight_resolve]
 [src: file: backend/src/workflows/steps.rs:1222-1275#preflight_workflow_launch]
 
@@ -260,7 +260,7 @@ when it was not. QPs with no effort or only whitespace keep the old behavior.
 [src: file: backend/src/db/sql/176_discussion_effort_snapshots.sql:1-8#discussion_effort_snapshots]
 [src: file: backend/src/api/discussions/crud.rs:665-687#capture]
 [src: file: backend/src/api/discussions/crud.rs:833-841#UnresolvedQuickPromptEffort]
-[src: file: backend/src/api/discussions/streaming.rs:4182-4235#for_run]
+[src: file: backend/src/api/discussions/streaming.rs:4257-4310#for_run]
 [src: file: backend/src/db/discussion_effort.rs:56-76#for_run]
 
 These snapshots are local execution state, not a portable QP setting. Exporting
