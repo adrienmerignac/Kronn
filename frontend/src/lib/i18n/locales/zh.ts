@@ -7158,7 +7158,7 @@ const zh: TranslationDict = {
   "settings.nav.sectionCount.other": "{0} 个分区",
   "settings.subPage.sections": "{0} 页面的分区",
   "settings.search.label": "搜索设置",
-  "settings.search.placeholder": "搜索设置…",
+  "settings.search.placeholder": "搜索…",
   "settings.search.results": "搜索结果",
   "settings.search.count.one": "{0} 个结果",
   "settings.search.count.other": "{0} 个结果",

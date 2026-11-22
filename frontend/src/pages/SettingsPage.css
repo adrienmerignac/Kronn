@@ -3,6 +3,15 @@
 /* ── Page frame ────────────────────────────────────────── */
 .settings-page {
   --set-nav-width: 220px;
+  /* The height of the fixed top bar, and a breath under it. */
+  --set-anchor-offset: 84px;
+}
+
+/* KT-1923 — every anchor Settings can land on (a section, a group or a field
+   inside it, a fold, an agent's row) stops below the fixed top bar, so the
+   heading that takes the focus is never covered: one rule, not one per card. */
+.settings-page [id] {
+  scroll-margin-top: var(--set-anchor-offset);
 }
 
 .set-page-header {
@@ -362,7 +371,6 @@
   border-radius: var(--kr-r-xl);
   margin-bottom: var(--kr-sp-5);
   box-shadow: var(--kr-shadow-sm);
-  scroll-margin-top: 84px;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
@@ -1709,9 +1717,6 @@
 
 .set-agent-handoff-card {
   grid-column: 1 / -1;
-  /* Deep links land below the fixed application header instead of hiding the
-     card title underneath it. Mirrors the offset used by top-level cards. */
-  scroll-margin-top: 84px;
 }
 
 .set-agent-handoff-toggle {
@@ -6541,12 +6546,9 @@
     border-radius: var(--kr-r-xs) var(--kr-r-xs) 0 0;
   }
 
-  .set-card {
-    scroll-margin-top: 112px;
-  }
-
-  .set-agent-handoff-card {
-    scroll-margin-top: 112px;
+  /* The list sits above the content: the top bar is taller here. */
+  .settings-page {
+    --set-anchor-offset: 112px;
   }
 }
 

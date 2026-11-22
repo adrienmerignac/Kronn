@@ -385,8 +385,8 @@ the current theme. An entry's address is its tab plus the heading in the hash
 (`/config/design-system/components#ds-c-menu`). The old `/config#design-system`
 and the old `/config#ds-…` entry anchors still land on the right tab and entry:
 the table is `DESIGN_SYSTEM_ANCHOR_TABS`.
-`[src: file: frontend/src/lib/routes.ts:383#DESIGN_SYSTEM_ANCHOR_TABS]`
-`[src: file: frontend/src/lib/routes.ts:400#legacyDesignSystemLocation]`
+`[src: file: frontend/src/lib/routes.ts:425#DESIGN_SYSTEM_ANCHOR_TABS]`
+`[src: file: frontend/src/lib/routes.ts:442#legacyDesignSystemLocation]`
 The route is its own chunk, never preloaded, so Settings does not load the
 gallery.
 `[src: file: frontend/src/routes/lazyRoutes.ts:17#DesignSystemRoute]` Adding a component: add it to `UI_GALLERY_COMPONENTS`, a
@@ -402,25 +402,30 @@ KT-1885) goes in `SHARED_GALLERY_COMPONENTS`, shown after them.
 Settings is five sub-pages — Vous, Agents et modèles, Travail, Sécurité,
 Système (`/config/you` … `/config/system`). One table, `SETTINGS_SECTIONS`
 in `lib/routes.ts`, says which sections each holds, in order, with the i18n
-key of each section's name, the keys of the labels of its settings, its
-folds and the anchors inside it: it is the single source of the list, the
+key of each section's name, the keys of every name it draws (field labels,
+group headings, the card's own heading when it differs from the name in the
+list; a hint drawn inside a label is matched with it, never shown), its folds
+and the anchors inside it: it is the single source of the list, the
 section links, the redirects of the old `/config#…` anchors and the search.
 A new section, a moved one or a new setting starts there.
-`[src: file: frontend/src/lib/routes.ts:161#SETTINGS_SECTIONS]`
+`[src: file: frontend/src/lib/routes.ts:168#SETTINGS_SECTIONS]`
 
 - **The list** (`SettingsNav`, a `nav` named « Pages des réglages ») —
   `SearchField` on top, then the five sub-pages with their section count, the
   current one `aria-current="page"`, then the design system apart. It is a
   plain navigation over the existing `.set-nav` frame, so the shell of lot 2
   can take its place without changing an address.
-  `[src: file: frontend/src/components/settings/SettingsNav.tsx:42#SettingsNav]`
+  `[src: file: frontend/src/components/settings/SettingsNav.tsx:49#SettingsNav]`
 - **The search** (`searchSettings`) matches every word of the query in the
-  section names and the setting labels of the table, in the current locale,
-  accents ignored. The hits list their sub-page and section and announce
+  sub-page names, the section names and the names of the table, and in the
+  names of the agents (a hit lands on the agent's row,
+  `agent-config-<agent>`, and opens its card; the local agent lands on the
+  local models), in the current locale, accents ignored. A placeholder is
+  never indexed: a field is found by its label. The hits list their sub-page and section and announce
   their count (`role="status"`); Down from the field goes to the first hit;
   no hit is an `EmptyState` of kind `noResult`. A hit is a link to the
   section's address.
-  `[src: file: frontend/src/lib/settingsSearch.ts:33#searchSettings]`
+  `[src: file: frontend/src/lib/settingsSearch.ts:72#searchSettings]`
 - **A sub-page** opens on a `DetailHeader` (its name, its sentence) and a row
   of links to its sections (`SettingsSubPageHead`). A section that used to
   sit inside another, or that folds, is a `SettingsListedSection` (a card
@@ -433,13 +438,21 @@ A new section, a moved one or a new setting starts there.
   stays mounted.
   `[src: file: frontend/src/components/settings/SettingsFold.tsx:28#SettingsFold]`
 - **After a jump** (a section link, a hit, an arrival), the focus goes to the
-  heading of the section, without scrolling: the caller scrolls.
+  heading of the section, without scrolling: the caller scrolls. Every
+  element with an id inside Settings stops below the fixed top bar through
+  one rule (`.settings-page [id]`, `scroll-margin-top:
+  var(--set-anchor-offset)`, 84 px, 112 px on a narrow window); no card
+  carries its own margin.
   `[src: file: frontend/src/pages/SettingsPage.tsx:157#focusSectionHeading]`
 - **A sub-page is drawn on its first visit and kept**, hidden while another
   is shown, so an edit in progress survives a visit elsewhere.
 - **No control is lost**: `SettingsPage.subpages.test.tsx` counts, per
   section, the buttons, fields and links against the single page of the base
-  commit, and finds every former setting label through the search.
+  commit. It also renders each sub-page with its folds open, reads every
+  `label`, `h3` and `h4`, and asserts each gives a hit on the section that
+  draws it; the names that are options, not settings (« Toujours »,
+  « Désactivé »…), sit in an explicit allow-list in the test. A setting added
+  without its key in the table fails it.
 
 ## AgentIdentity: an agent, its model and its role (KT-1936)
 

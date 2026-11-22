@@ -124,12 +124,19 @@ export function settingsSubPageFromSegment(segment: string | undefined): Setting
   return SETTINGS_SUB_PAGES.find(page => page === segment) ?? null;
 }
 
+/**
+ * A name the search finds in a section: the i18n key of a field's label, of a
+ * group heading or of the card's own heading; with `also`, the keys of the
+ * hint its label draws, whose words find it too (it is shown by its label).
+ */
+export type SettingsFieldDef = string | { label: string; also: readonly string[] };
+
 /** A part of a section that stays folded until opened (the debug log viewer). */
 export interface SettingsFoldDef {
   /** Its anchor, and the id its fold control keeps open. */
   id: string;
-  /** The i18n keys of the labels of the settings inside it, for the search. */
-  fields: readonly string[];
+  /** The names drawn inside it, for the search. */
+  fields: readonly SettingsFieldDef[];
 }
 
 /** One section of Settings: where it lives, what it is called, what it holds. */
@@ -139,8 +146,8 @@ export interface SettingsSectionDef {
   page: SettingsSubPage;
   /** The i18n key of its name, in the list, the section links and the search. */
   title: string;
-  /** The i18n keys of the labels of its settings, for the search. */
-  fields: readonly string[];
+  /** The names it draws (field labels, group and card headings), for the search. */
+  fields: readonly SettingsFieldDef[];
   /** Folded until opened: its fold is its id. */
   folded?: boolean;
   /** Folded parts inside it. */
@@ -162,7 +169,11 @@ export const SETTINGS_SECTIONS: readonly SettingsSectionDef[] = [
   // Vous
   {
     id: 'settings-identity', page: 'you', title: 'settings.identity',
-    fields: ['settings.pseudo', 'settings.avatarEmail', 'settings.bio', 'settings.exposeProxyOrigin', 'settings.frontendOrigins'],
+    fields: [
+      'settings.identityProfileTitle', 'settings.pseudo', 'settings.avatarEmail', 'settings.bio',
+      'settings.identityContextTitle', 'settings.identityNetworkTitle', 'settings.exposeProxyOrigin', 'settings.frontendOrigins',
+      'settings.desktopPort',
+    ],
   },
   {
     id: 'settings-appearance', page: 'you', title: 'config.preferences',
@@ -184,21 +195,27 @@ export const SETTINGS_SECTIONS: readonly SettingsSectionDef[] = [
   },
   {
     id: 'settings-local-models', page: 'agents', title: 'settings.sections.localModels',
-    fields: ['agents.concurrency'],
+    fields: ['agents.concurrency', 'agents.tools', 'ollama.decisionSlot', 'ollama.contextOverride'],
   },
   {
     id: 'settings-media', page: 'agents', title: 'settings.sections.media',
     fields: [
       'comfyui.settings.endpoint', 'comfyui.settings.installDir', 'comfyui.settings.steps', 'comfyui.settings.cfg',
-      'comfyui.settings.sampler', 'comfyui.settings.scheduler',
+      'comfyui.settings.denoise', 'comfyui.settings.sampler', 'comfyui.settings.scheduler', 'media.references.limit',
     ],
   },
   { id: 'settings-compression', page: 'agents', title: 'settings.sections.compression', fields: ['config.rtk.title'] },
   {
     id: 'settings-catalogue', page: 'agents', title: 'settings.sections.catalogue', folded: true,
-    fields: ['modelCatalog.title', 'modelCatalog.searchPlaceholder'],
+    fields: [
+      'modelCatalog.title', 'modelCatalog.target', 'modelCatalog.modelId', 'modelCatalog.displayName', 'modelCatalog.tier',
+      'modelCatalog.reasoningModes',
+    ],
   },
-  { id: 'settings-usage', page: 'agents', title: 'settings.sections.usage', folded: true, fields: ['usage.title'] },
+  {
+    id: 'settings-usage', page: 'agents', title: 'settings.sections.usage', folded: true,
+    fields: ['usage.title', 'usage.period', 'usage.filter.agent', 'usage.filter.model', 'telemetryCoverage.title'],
+  },
   {
     id: 'settings-capabilities', page: 'agents', title: 'config.capabilities',
     fields: ['skills.title', 'profiles.title', 'directives.title', 'config.externalMcps'],
@@ -214,35 +231,60 @@ export const SETTINGS_SECTIONS: readonly SettingsSectionDef[] = [
     fields: [
       'config.workers.reviewRounds', 'config.workers.backgroundPriority', 'config.workers.maxConcurrent',
       'config.workers.heavyOutput', 'config.workers.bashDefault', 'config.workers.bashMax', 'config.workers.osJunk',
-      'config.workers.managedRoots', 'laneWarm.seedAlignment', 'laneWarm.compilerEnv', 'laneWarm.command', 'laneWarm.timeout',
+      'config.workers.managedRoots', 'config.workers.commitName', 'config.workers.commitEmail', 'laneWarm.seedAlignment', 'laneWarm.compilerEnv', 'laneWarm.command', 'laneWarm.timeout',
     ],
   },
-  { id: 'settings-worktrees', page: 'work', title: 'settings.worktrees.title', fields: [] },
-  { id: 'settings-sourcing', page: 'work', title: 'config.sourcing', fields: [], anchors: ['settings-sourcing-spec'] },
-  { id: 'settings-continual-learning', page: 'work', title: 'config.learning', fields: [] },
+  {
+    id: 'settings-worktrees', page: 'work', title: 'settings.worktrees.title',
+    fields: ['settings.worktrees.copy', 'settings.worktrees.adopt', 'settings.worktrees.confirm'],
+  },
+  {
+    id: 'settings-sourcing', page: 'work', title: 'config.sourcing',
+    fields: ['settings.sourcingTitle', 'settings.antiHalluc'], anchors: ['settings-sourcing-spec'],
+  },
+  {
+    id: 'settings-continual-learning', page: 'work', title: 'config.learning',
+    fields: ['settings.clTitle', 'settings.clToggleLabel', 'settings.clRiskTitle'],
+  },
   {
     id: 'settings-artifacts', page: 'work', title: 'config.artifacts',
     fields: ['settings.embeds.originLabel'], anchors: ['settings-embed-origin'],
   },
   // Sécurité
-  { id: 'settings-recovery', page: 'security', title: 'settings.recovery.title', fields: [] },
-  { id: 'settings-authenticator', page: 'security', title: 'trust.proof.nav', fields: ['trust.proof.adminSecret'] },
-  { id: 'settings-trust', page: 'security', title: 'trust.nav', fields: [] },
+  {
+    id: 'settings-recovery', page: 'security', title: 'settings.recovery.title',
+    fields: ['settings.recovery.setLabel', 'settings.recovery.replaceLabel'],
+  },
+  {
+    id: 'settings-authenticator', page: 'security', title: 'trust.proof.nav',
+    fields: ['trust.proof.step1', 'trust.proof.adminSecret', 'trust.proof.firstCode', 'trust.proof.actionCode'],
+  },
+  { id: 'settings-trust', page: 'security', title: 'trust.nav', fields: ['trust.section.title', 'trust.audit.title'] },
   {
     id: 'settings-server', page: 'security', title: 'config.server',
     fields: ['config.authToken', 'config.domain', 'config.timezone'],
   },
-  { id: 'credentials', page: 'security', title: 'settings.credentials.title', fields: ['settings.credentials.authorityLabel'] },
+  { id: 'credentials', page: 'security', title: 'settings.credentials.title', fields: [
+    'settings.credentials.authorityLabel', 'settings.credentials.newLabel', 'settings.credentials.newRole',
+  ] },
   // Système
   {
     id: 'settings-database', page: 'system', title: 'config.database',
-    fields: ['config.executionVariableRetention', 'config.runPayloadRetention', 'config.export', 'config.dbBackup', 'config.import'],
+    fields: [
+      'config.dbUsage.title',
+      { label: 'config.executionVariableRetention', also: ['config.executionVariableRetentionHint'] },
+      { label: 'config.runPayloadRetention', also: ['config.runPayloadRetentionHint'] },
+      'config.export', 'config.dbBackup', 'config.import',
+    ],
     anchors: ['run-payload-retention'],
   },
-  { id: 'settings-disk', page: 'system', title: 'settings.disk.title', fields: [] },
+  {
+    id: 'settings-disk', page: 'system', title: 'settings.disk.title',
+    fields: ['settings.disk.launchMin', 'settings.disk.idleHours', 'settings.disk.stalledDays'],
+  },
   {
     id: 'settings-api-audit', page: 'system', title: 'apiCallLogs.title', folded: true, requiresConfiguredApi: true,
-    fields: ['apiCallLogs.filterPlugin', 'apiCallLogs.autoRefresh'],
+    fields: ['apiCallLogs.filterSource', 'apiCallLogs.filterStatus', 'apiCallLogs.filterPlugin', 'apiCallLogs.autoRefresh'],
   },
   {
     id: 'settings-debug', page: 'system', title: 'settings.debugSection',

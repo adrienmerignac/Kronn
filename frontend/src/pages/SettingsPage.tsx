@@ -8,7 +8,7 @@ import {
   type SettingsIntent,
   type SettingsSubPage,
 } from '../lib/routes';
-import { visibleSettingsSections } from '../lib/settingsSearch';
+import { visibleSettingsSections, type SettingsSearchAgent } from '../lib/settingsSearch';
 import { SettingsNav } from '../components/settings/SettingsNav';
 import { SettingsFoldContext, type SettingsFoldState } from '../components/settings/settingsFoldContext';
 import { SettingsListedSection, SettingsSubPageHead } from '../components/settings/SettingsSection';
@@ -162,6 +162,12 @@ function focusSectionHeading(target: HTMLElement) {
   if (!heading.matches('a[href], button, input, select, textarea, [tabindex]')) heading.setAttribute('tabindex', '-1');
   heading.setAttribute('data-settings-focus', '');
   heading.focus({ preventScroll: true });
+}
+
+/** The agent an anchor names a row of (`agent-config-ClaudeCode` → `ClaudeCode`), or null. */
+function agentOfAnchor(anchor: string | null | undefined): string | null {
+  const prefix = 'agent-config-';
+  return anchor?.startsWith(prefix) && anchor.length > prefix.length ? anchor.slice(prefix.length) : null;
 }
 
 /** Focuses the heading of an anchor once it is drawn on the visible sub-page;
@@ -365,11 +371,21 @@ export function SettingsPage({
   // Each arrival on an anchor (an address, Back, a link from another page)
   // opens the fold it lands on and gives its heading the focus; the route
   // brings it into view.
+  // An anchor on an agent's row (`agent-config-<agent>`) opens its card.
+  const [agentReveal, setAgentReveal] = useState<{ agentType: string; token: number } | null>(() => {
+    const agentType = agentOfAnchor(arrivalAnchor);
+    return agentType ? { agentType, token: 0 } : null;
+  });
+  const revealAgentOf = useCallback((anchor: string | null) => {
+    const agentType = agentOfAnchor(anchor);
+    if (agentType) setAgentReveal(previous => ({ agentType, token: (previous?.token ?? 0) + 1 }));
+  }, []);
   const [takenArrival, setTakenArrival] = useState({ anchor: arrivalAnchor, token: arrivalToken });
   if (takenArrival.anchor !== arrivalAnchor || takenArrival.token !== arrivalToken) {
     setTakenArrival({ anchor: arrivalAnchor, token: arrivalToken });
     const fold = settingsFoldOf(arrivalAnchor);
     if (fold && !openFolds.has(fold)) setOpenFolds(new Set([...openFolds, fold]));
+    revealAgentOf(arrivalAnchor);
   }
   useEffect(() => {
     if (!arrivalAnchor) return undefined;
@@ -389,13 +405,14 @@ export function SettingsPage({
     const section = settingsSectionOf(anchor);
     if (!section) return;
     openFoldOf(anchor);
+    revealAgentOf(anchor);
     if (section.page !== current) {
       if (onOpenAnchor) { onOpenAnchor(anchor); return; }
       setOwnSubPage(section.page);
     }
     setJump(previous => ({ anchor, count: (previous?.count ?? 0) + 1 }));
     onAnchorFollowed?.(anchor);
-  }, [current, onAnchorFollowed, onOpenAnchor, openFoldOf]);
+  }, [current, onAnchorFollowed, onOpenAnchor, openFoldOf, revealAgentOf]);
   const selectSubPage = (page: SettingsSubPage) => {
     if (page === current) return;
     if (onOpenSubPage) onOpenSubPage(page); else setOwnSubPage(page);
@@ -559,6 +576,7 @@ export function SettingsPage({
       inDocker={inDocker}
       modelTierTarget={modelTierTarget}
       onModelTierTargetConsumed={onModelTierTargetConsumed}
+      revealAgent={agentReveal}
       sections={parts => (
     <>
 
@@ -2159,6 +2177,12 @@ export function SettingsPage({
     ),
   };
 
+  const searchAgents: SettingsSearchAgent[] = agents.map(agent => ({
+    agent_type: agent.agent_type,
+    name: agent.name,
+    configurable: agent.installed || agent.runtime_available,
+  }));
+
   return (
     <SettingsFoldContext.Provider value={foldState}>
     <div className="settings-page">
@@ -2188,6 +2212,7 @@ export function SettingsPage({
         <SettingsNav
           current={current}
           hasConfiguredApi={hasConfiguredApi}
+          agents={searchAgents}
           livePages={serverDebugMode ? ['system'] : []}
           onSubPage={selectSubPage}
           onHit={hit => goTo(hit.anchor)}

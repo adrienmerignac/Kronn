@@ -104,6 +104,9 @@ interface AgentsSectionProps {
    *  via `onModelTierTargetConsumed` once taken. */
   modelTierTarget?: { agentType: string; tier: string } | null;
   onModelTierTargetConsumed?: () => void;
+  /** KT-1923 — an agent whose row an address or a search hit lands on
+   *  (`agent-config-<agent>`): its card opens. A new `token` opens it again. */
+  revealAgent?: { agentType: string; token: number } | null;
   /** KT-1923 — lays out the parts that are sections of Settings of their own;
    *  without it they stay inside the agents section. `usagePanel` is not drawn then. */
   sections?: (parts: AgentsSectionParts) => ReactNode;
@@ -175,6 +178,7 @@ export function AgentsSection({
   inDocker = false,
   modelTierTarget = null,
   onModelTierTargetConsumed,
+  revealAgent = null,
   sections,
 }: AgentsSectionProps) {
   // The tier to point at, kept until it is found: the arrival intent is
@@ -214,8 +218,15 @@ export function AgentsSection({
     // A System CTA deep-links to one agent's tier picker, which lives in the
     // fold. Opening it at mount means the focus effect below finds its target
     // on the first try instead of retrying against a card that never renders.
-    return modelTierTarget ? new Set([modelTierTarget.agentType]) : new Set();
+    return new Set([modelTierTarget?.agentType, revealAgent?.agentType].filter((agent): agent is string => Boolean(agent)));
   });
+  const [takenReveal, setTakenReveal] = useState(revealAgent);
+  if (revealAgent !== takenReveal) {
+    setTakenReveal(revealAgent);
+    if (revealAgent && !expandedAgents.has(revealAgent.agentType)) {
+      setExpandedAgents(new Set(expandedAgents).add(revealAgent.agentType));
+    }
+  }
   const [tierEditing, setTierEditing] = useState<Record<string, {
     economy: string; default: string; reasoning: string;
     economy_effort: string; default_effort: string; reasoning_effort: string;

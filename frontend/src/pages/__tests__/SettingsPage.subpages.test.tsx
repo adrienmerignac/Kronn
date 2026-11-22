@@ -101,7 +101,6 @@ const FORMER_LABELS: readonly (readonly [string, string])[] = [
   ['settings-media', 'Guidage (CFG)'],
   ['settings-media', 'Sampler'],
   ['settings-media', 'Scheduler'],
-  ['settings-catalogue', 'Rechercher un modèle…'],
   ['settings-capabilities', 'Skills'],
   ['settings-capabilities', 'Profils agent'],
   ['settings-capabilities', 'Directives'],
@@ -147,13 +146,6 @@ async function openFolds() {
   await settle();
 }
 
-/** Everything a reader can read in a region: its text and the names of its controls. */
-function readable(region: Element): string {
-  const names = [...region.querySelectorAll('[aria-label], [title], [placeholder]')]
-    .flatMap(el => ['aria-label', 'title', 'placeholder'].map(name => el.getAttribute(name) ?? ''));
-  return normalizeSettingsText([region.textContent ?? '', ...names].join(' '));
-}
-
 afterEach(() => {
   cleanup();
   localStorage.clear();
@@ -188,20 +180,23 @@ describe('Settings sub-pages — the inventory against the single page of the ba
       // Outside the sections, the sub-page holds only the links to them.
       expect(countControls(content, sections)).toEqual({ buttons: 0, fields: 0, links: expected.length });
 
-      // What the search says a section holds, it holds.
-      for (const id of expected) {
-        const section = SETTINGS_SECTIONS.find(candidate => candidate.id === id)!;
-        const keys = [...section.fields, ...(section.folds ?? []).flatMap(fold => fold.fields)];
-        for (const key of keys) {
-          expect({ id, key, found: readable(document.getElementById(id)!).includes(normalizeSettingsText(fr[key])) })
-            .toEqual({ id, key, found: true });
-        }
-      }
     },
   );
 });
 
 describe('Settings sub-pages — the search', () => {
+  it('names every section and every setting it indexes in the four locales', () => {
+    const keys = SETTINGS_SECTIONS.flatMap(section => [
+      section.title,
+      ...[...section.fields, ...(section.folds ?? []).flatMap(fold => fold.fields)]
+        .flatMap(field => (typeof field === 'string' ? [field] : [field.label, ...field.also])),
+    ]);
+    for (const locale of ['en', 'fr', 'es', 'zh'] as const) {
+      const dictionary = dictionaries[locale] as Record<string, string>;
+      expect(keys.filter(key => !dictionary[key]?.trim()).map(key => `${locale}:${key}`)).toEqual([]);
+    }
+  });
+
   const searchField = () => screen.getByRole('searchbox', { name: 'Rechercher un réglage' });
   const search = (query: string) => { fireEvent.change(searchField(), { target: { value: query } }); };
   const hitsTo = (sectionId: string) => [...document.querySelectorAll<HTMLAnchorElement>(
@@ -222,6 +217,108 @@ describe('Settings sub-pages — the search', () => {
       expect({ id, label, hits: hits.some(hit => normalizeSettingsText(hit.textContent ?? '').includes(normalizeSettingsText(label))) })
         .toEqual({ id, label, hits: true });
     }
+  });
+
+  /**
+   * The names drawn on the sub-pages that are a value or an option of a
+   * setting, not its name, so the search does not list them. Each says why.
+   */
+  const NOT_SETTING_NAMES: Readonly<Record<string, string>> = {
+    Illimité: 'option of a worker limit',
+    Auto: 'option of a worker setting',
+    Toujours: 'option of a worker setting',
+    Jamais: 'option of a worker setting',
+    Désactivé: 'state of the debug mode',
+  };
+
+  /** The name a `label`, `h3` or `h4` draws: its own text, without the controls it wraps. */
+  const drawnName = (el: Element): string => {
+    const copy = el.cloneNode(true) as Element;
+    // A hint drawn inside a label (`<small>`) is not its name.
+    copy.querySelectorAll('input, select, textarea, button, option, small, .ui-visually-hidden, .set-sr-only, [aria-hidden="true"]')
+      .forEach(inner => inner.remove());
+    return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+  };
+
+  it('finds every name drawn on a sub-page (field labels, group and card headings) on the section that draws it', async () => {
+    const misses: string[] = [];
+    let checked = 0;
+    for (const page of Object.keys(GROUPING) as SettingsSubPage[]) {
+      await renderSettings(<SettingsPage {...settingsProps} subPage={page} />);
+      await openFolds();
+      const names: (readonly [string, string])[] = [];
+      for (const id of GROUPING[page]) {
+        const section = document.getElementById(id)!;
+        for (const el of section.querySelectorAll('label, h3, h4')) {
+          const name = drawnName(el);
+          if (name && !(name in NOT_SETTING_NAMES)) names.push([id, name]);
+        }
+      }
+      for (const [id, name] of names) {
+        checked += 1;
+        search(name);
+        if (hitsTo(id).length === 0) misses.push(`${page} | ${id} | ${name}`);
+      }
+      cleanup();
+    }
+    expect(misses).toEqual([]);
+    // The collector read the sub-pages (54 names in this fixture, once the options are left out).
+    expect(checked).toBeGreaterThanOrEqual(50);
+  });
+
+  it('finds a sub-page by its name and an agent by its name, on its row', async () => {
+    await renderSettings(<SettingsPage {...settingsProps} />);
+    search('sécurité');
+    const page = document.querySelector<HTMLAnchorElement>('[data-testid="settings-search-hits"] a[data-page-hit="security"]');
+    expect(page).toHaveAttribute('href', '/config/security');
+    search('système');
+    expect(document.querySelector('[data-testid="settings-search-hits"] a[data-page-hit="system"]')).toHaveAttribute('href', '/config/system');
+
+    search('claude code');
+    const [agent] = hitsTo('settings-agent-config');
+    expect(agent).toHaveAttribute('href', '/config/agents#agent-config-ClaudeCode');
+    expect(agent.textContent).toContain('Agents et modèles › Agents');
+
+    // Following it opens the agents sub-page and the agent's card, with the focus in it.
+    expect(document.getElementById('agent-config-ClaudeCode')).toBeNull();
+    await act(async () => { fireEvent.click(agent); });
+    expect(visibleSubPage()).toHaveAttribute('data-subpage', 'agents');
+    expect(screen.getByTestId('agent-configure-ClaudeCode')).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => expect(document.getElementById('agent-config-ClaudeCode')).toContainElement(document.activeElement as HTMLElement));
+
+    // A sub-page's name opens the sub-page.
+    search('sécurité');
+    await act(async () => { fireEvent.click(document.querySelector('[data-testid="settings-search-hits"] a[data-page-hit="security"]')!); });
+    expect(visibleSubPage()).toHaveAttribute('data-subpage', 'security');
+  });
+
+  // The queries of the review of 2026-11-22 that found nothing, and where they land.
+  it.each([
+    ['anti', 'settings-sourcing'],
+    ['purge', 'settings-database'],
+    ['profil', 'settings-identity'],
+    ['instructions', 'settings-identity'],
+    ['partage', 'settings-identity'],
+    ['plafond', 'settings-local-models'],
+    ['peut agir', 'settings-local-models'],
+    ['suivi des tokens', 'settings-usage'],
+    ['remplacer', 'settings-recovery'],
+    ['code actuel', 'settings-authenticator'],
+    ['accordé', 'settings-trust'],
+    ["activer l'apprentissage", 'settings-continual-learning'],
+    ['ollama', 'settings-local-models'],
+    ['codex', 'settings-agent-config'],
+  ])('finds « %s » on %s', async (query, sectionId) => {
+    const agents = [...settingsProps.agents, { ...settingsProps.agents[0], name: 'Codex', agent_type: 'Codex' as const }];
+    await renderSettings(<SettingsPage {...settingsProps} agents={agents} />);
+    search(query);
+    expect(hitsTo(sectionId).length).toBeGreaterThan(0);
+  });
+
+  it('does not list a placeholder as a setting', async () => {
+    await renderSettings(<SettingsPage {...settingsProps} />);
+    search('Rechercher un modèle');
+    expect(hitsTo('settings-catalogue')).toEqual([]);
   });
 
   it('lists the hits with their sub-page and section, announces their count, and says when nothing matches', async () => {
@@ -299,6 +396,19 @@ describe('Settings sub-pages — the list, the folds and the state of an edit', 
     );
   });
 
+  it('says « Voix » in French and keeps the placeholder short enough for the 220 px list', async () => {
+    await renderSettings(<SettingsPage {...settingsProps} subPage="you" />);
+    const field = screen.getByRole('searchbox', { name: 'Rechercher un réglage' });
+    expect(field).toHaveAttribute('placeholder', 'Rechercher…');
+    expect(visibleSubPage().querySelector('.set-subpage-links a[href="/config/you#settings-voice"]')?.textContent).toBe('Voix');
+    for (const locale of ['en', 'fr', 'es', 'zh'] as const) {
+      const dictionary = dictionaries[locale] as Record<string, string>;
+      expect({ locale, length: dictionary['settings.search.placeholder'].length <= 12 }).toEqual({ locale, length: true });
+    }
+    expect((dictionaries.es as Record<string, string>)['settings.voice']).toBe('Voz');
+    expect((dictionaries.zh as Record<string, string>)['settings.voice']).toBe('语音');
+  });
+
   it('leaves the API call log out of the list when no API plugin has a config', async () => {
     await renderSettings(<SettingsPage {...settingsProps} hasConfiguredApi={false} subPage="system" />);
     expect(document.getElementById('settings-api-audit')).toBeNull();
@@ -333,6 +443,31 @@ describe('Settings sub-pages — the list, the folds and the state of an edit', 
     expect(screen.getByTestId('usage-section')).toBeInTheDocument();
     expect(screen.queryByTestId('model-catalog-section')).toBeNull();
     await waitFor(() => expect(document.getElementById('settings-usage')).toContainElement(document.activeElement as HTMLElement));
+  });
+
+  it('draws every anchor the table knows inside the page, under its one scroll-margin rule', async () => {
+    const anchors = SETTINGS_SECTIONS.flatMap(section => [
+      section.id, ...(section.anchors ?? []), ...(section.folds ?? []).map(fold => fold.id),
+    ]);
+    // Anchors drawn only in some states: the handoff group and the sourcing
+    // spec with their data, a field once its value has loaded.
+    const conditional = new Set(['settings-agent-handoffs', 'settings-sourcing-spec', 'run-payload-retention', 'settings-embed-origin']);
+    const drawn = new Set<string>();
+    for (const page of Object.keys(GROUPING) as SettingsSubPage[]) {
+      await renderSettings(<SettingsPage {...settingsProps} subPage={page} arrivalAnchor="agent-config-ClaudeCode" arrivalToken="a" />);
+      await openFolds();
+      for (const anchor of anchors) {
+        const el = document.getElementById(anchor);
+        if (!el) continue;
+        drawn.add(anchor);
+        expect({ anchor, inPage: el.matches('.settings-page [id]') }).toEqual({ anchor, inPage: true });
+      }
+      if (page === 'agents') {
+        expect(document.getElementById('agent-config-ClaudeCode')?.matches('.settings-page [id]')).toBe(true);
+      }
+      cleanup();
+    }
+    expect(anchors.filter(anchor => !drawn.has(anchor) && !conditional.has(anchor))).toEqual([]);
   });
 
   it('opens the debug log viewer an arrival lands on', async () => {

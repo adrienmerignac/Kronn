@@ -11,7 +11,12 @@ import {
   settingsSubPagePath,
   type SettingsSubPage,
 } from '../../lib/routes';
-import { searchSettings, visibleSettingsSections, type SettingsSearchHit } from '../../lib/settingsSearch';
+import {
+  searchSettings,
+  visibleSettingsSections,
+  type SettingsSearchAgent,
+  type SettingsSearchHit,
+} from '../../lib/settingsSearch';
 import '../ui/visuallyHidden.css';
 import './SettingsNav.css';
 
@@ -20,12 +25,14 @@ interface SettingsNavProps {
   current: SettingsSubPage;
   /** The API call log section exists, so it is counted and searched. */
   hasConfiguredApi: boolean;
+  /** The agents of this Kronn, found by their name. */
+  agents?: readonly SettingsSearchAgent[];
   /** Sub-pages with something live (debug capture on): a pulsing dot. */
   livePages?: readonly SettingsSubPage[];
   /** A plain click on a sub-page. */
   onSubPage: (page: SettingsSubPage) => void;
-  /** A plain click on a search hit. */
-  onHit: (hit: SettingsSearchHit) => void;
+  /** A plain click on a search hit that names an anchor (a hit on a sub-page's name is `onSubPage`). */
+  onHit: (hit: Exclude<SettingsSearchHit, { kind: 'page' }>) => void;
   /** A plain click on the design system link. */
   onOpenDesignSystem?: () => void;
   /** Below the list: the version and the tour progress. */
@@ -40,14 +47,14 @@ interface SettingsNavProps {
  * changing an address.
  */
 export function SettingsNav({
-  current, hasConfiguredApi, livePages = [], onSubPage, onHit, onOpenDesignSystem, footer,
+  current, hasConfiguredApi, agents, livePages = [], onSubPage, onHit, onOpenDesignSystem, footer,
 }: SettingsNavProps) {
   const { t, tp } = useT();
   const [query, setQuery] = useState('');
   const hitsRef = useRef<HTMLUListElement | null>(null);
   const resultsId = useId();
   const searching = query.trim() !== '';
-  const hits = searching ? searchSettings(query, t, { hasConfiguredApi }) : [];
+  const hits = searching ? searchSettings(query, t, { hasConfiguredApi, agents }) : [];
 
   // Down from the field goes to the first hit; up and down move between hits.
   const focusHit = (index: number) => {
@@ -91,24 +98,43 @@ export function SettingsNav({
           aria-label={t('settings.search.results')}
           data-testid="settings-search-hits"
         >
-          {hits.map((hit, index) => (
-            <li key={`${hit.section.id}:${hit.anchor}:${hit.label}`}>
-              <AppLink
-                to={settingsSectionPath(hit.anchor)}
-                className="set-subnav-hit"
-                data-section={hit.section.id}
-                onNavigate={() => onHit(hit)}
-                onKeyDown={event => onHitKeyDown(event, index)}
-              >
-                <span className="set-subnav-hit-label">{hit.label}</span>
-                <span className="set-subnav-hit-where">
-                  {hit.kind === 'section'
-                    ? t(`settings.pages.${hit.section.page}.title`)
-                    : t('settings.search.where', t(`settings.pages.${hit.section.page}.title`), t(hit.section.title))}
-                </span>
-              </AppLink>
-            </li>
-          ))}
+          {hits.map((hit, index) => {
+            const pageName = t(`settings.pages.${hit.page}.title`);
+            if (hit.kind === 'page') {
+              return (
+                <li key={`page:${hit.page}`}>
+                  <AppLink
+                    to={settingsSubPagePath(hit.page)}
+                    className="set-subnav-hit"
+                    data-page-hit={hit.page}
+                    onNavigate={() => onSubPage(hit.page)}
+                    onKeyDown={event => onHitKeyDown(event, index)}
+                  >
+                    <span className="set-subnav-hit-label">{hit.label}</span>
+                    <span className="set-subnav-hit-where">
+                      {tp('settings.nav.sectionCount', visibleSettingsSections(hit.page, hasConfiguredApi).length)}
+                    </span>
+                  </AppLink>
+                </li>
+              );
+            }
+            return (
+              <li key={`${hit.section.id}:${hit.anchor}:${hit.label}`}>
+                <AppLink
+                  to={settingsSectionPath(hit.anchor)}
+                  className="set-subnav-hit"
+                  data-section={hit.section.id}
+                  onNavigate={() => onHit(hit)}
+                  onKeyDown={event => onHitKeyDown(event, index)}
+                >
+                  <span className="set-subnav-hit-label">{hit.label}</span>
+                  <span className="set-subnav-hit-where">
+                    {hit.kind === 'section' ? pageName : t('settings.search.where', pageName, t(hit.section.title))}
+                  </span>
+                </AppLink>
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <div id={resultsId} className="set-subnav-empty">
