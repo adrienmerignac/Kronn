@@ -4210,7 +4210,7 @@ const zh: TranslationDict = {
   'designSystem.demo.data.colStatus': '状态',
   'designSystem.demo.data.colTokens': 'Tokens',
   'designSystem.demo.data.colDuration': '时长',
-  'designSystem.demo.data.colWorktree': 'Worktree',
+  'designSystem.demo.data.colWorktree': '工作树',
   'designSystem.demo.data.run1': '夜间摘要',
   'designSystem.demo.data.run2': '每周审计',
   'designSystem.demo.data.run3': '发布说明',

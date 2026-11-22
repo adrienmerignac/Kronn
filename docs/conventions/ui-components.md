@@ -7,7 +7,10 @@ components (`Field`, `Select`, `Switch`, `FormFooter`); lot 5 migrates the
 forms to them. KT-1883 adds the feedback components (`Notice`,
 `EmptyState`, `LoadingState` with its `Skeleton`). KT-1884 adds the six
 header kinds (`ListHeader`, `DetailHeader`, `TabHeader`, `SectionHeader`,
-`DrawerHeader`, `CardHeader`), see [header-kinds.md](header-kinds.md). Pairs with
+`DrawerHeader`, `CardHeader`), see [header-kinds.md](header-kinds.md). KT-1886
+adds the dense-data components (`CopyButton`, `Table`, `KeyValueList`,
+`StatTile` / `StatGrid`, `ProgressBar`); lots 2-5 migrate the existing tables,
+lists, tiles, bars and copy actions to them. Pairs with
 [design-tokens.md](design-tokens.md) and [ui-text.md](ui-text.md).
 
 ## Where they live
@@ -15,7 +18,7 @@ header kinds (`ListHeader`, `DetailHeader`, `TabHeader`, `SectionHeader`,
 One folder, one file per component, with its stylesheet and its test next to
 it (`Button.tsx`, `Button.css`, `Button.test.tsx`). `stylesheets.test.ts`
 fails if a component lacks one of the three.
-`[src: file: frontend/src/components/ui/stylesheets.test.ts:182]`
+`[src: file: frontend/src/components/ui/stylesheets.test.ts:183]`
 
 | Component | Use | Keyboard |
 |---|---|---|
@@ -36,6 +39,11 @@ fails if a component lacks one of the three.
 | `Notice` | A message inside the page it concerns (see [feedback-channels.md](feedback-channels.md)): `tone` info / warning / danger / success, optional `title`, one `action` (`{ label, onClick }`), `onDismiss` adds a cross named "Dismiss". Tone on the icon, the inline-start border and the tint; text in `--kr-text-primary`. `role="alert"` for danger only, `status` otherwise. | native |
 | `EmptyState` | `kind` firstUse (its `action`, the primary button, is required), noResult (`onClear`, required, "Clear the filters" unless `clearLabel`), nothingSelected (no action); `title`, `description`, `icon`. The type refuses a case without its way out. | native |
 | `LoadingState` | `size` sm (a ring beside the text, inline) / md (the mark over its sentence, a panel; default) / lg (a whole page); `fullscreen` (the window, lg), `phase`, `onRetry`. md and lg keep the cold-start screen of `index.html` instead of drawing a second one, unless `holdsBootScreen={false}` (a loader shown as content); the hold follows the current props, so a loader that turns sm or stops holding releases that screen and draws itself. Same file: `Skeleton`, `kind` list (`rows`) / detail, one named status (not marked busy, so its label is read), shapes hidden from assistive technology. | — |
+| `CopyButton` | `text` or `getText` (read at the click), required `label`; `form` icon (an `IconButton`) / text (a `Button`). A copy shows a check for 1.5 s and says "Copied" in a polite live region; a refused clipboard turns danger and says "Copy failed". | native |
+| `Table` | Required `caption` (`hideCaption`); `columns` (`header`, `align`, `numeric`, `sortable`, `truncate` ellipsis / wrap, `rowHeader`); controlled `sort` / `onSortChange`; `stickyHeader`, `maxHeight` sm / md / lg, `density` compact / normal, `rowTone`, `hover`, `selection`, `actions`, `onRowOpen`, `empty`, `loading`, `footer`, `narrow` scroll / cards. | sort and open buttons, checkboxes; the bounded area is a Tab stop |
+| `KeyValueList` | A `dl`; `items` (`label`, `value`, `mono`, `copyable`, `copyText`, `truncate`), `layout` grid / inline. | the copy buttons |
+| `StatTile`, `StatGrid` | `label`, `value` (null: "—" and `unknownReason`), `unit`, `icon`, `hint`, `delta` (`text`, `direction`, `tone`), `loading`, `onClick` (a button) with `selected` (`aria-pressed`), `size` md / lg. `StatGrid` (`label` names the group) wraps its tiles by its own width. | native, when a button |
+| `ProgressBar` | Required `label` (`hideLabel`); `value`, `max`, `valueText`; no value is indeterminate; `tone` accent / success / warning / danger / info; `size` sm / md. Stacked: `segments` (`id`, `label`, `value`, `tone`), `max`, `legend`. | — |
 | `ListHeader`, `DetailHeader`, `TabHeader`, `SectionHeader`, `DrawerHeader`, `CardHeader` | One header per kind, one heading each at a fixed level (h1; h2 for detail, drawer, card; h3 for tab, section), slots `leading` / `title` / `meta` / `status` / `description` / `actions`, `compact`; `DrawerHeader` adds `onClose` + `closeLabel` (the last control), `titleId` names a drawer or a card. Which goes where: [header-kinds.md](header-kinds.md). | native |
 
 `Menu` and `Tooltip` render into `document.body` at a fixed position
@@ -165,7 +173,7 @@ Escape closes one layer, the innermost first
   demos), passes `holdsBootScreen={false}`: mounted for good, md and lg would
   otherwise hold the cold-start screen and leave Settings behind it when it
   is the first page opened
-  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:485]`.
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:493]`.
 - **Variants** live in `feedbackKinds.ts` (`NOTICE_TONES`,
   `EMPTY_STATE_KINDS`, `LOADING_SIZES`, `SKELETON_KINDS`), so the component
   files export components only (fast refresh).
@@ -183,6 +191,76 @@ Escape closes one layer, the innermost first
   one with a long title, to show it ellipsize). A demo renders its real
   heading, so the gallery's own `h3` after an `h1` or `h2` demo is the one
   `heading-order` jump its axe test allows.
+
+## Dense-data components (KT-1886)
+
+- **Narrow by the container, not the window.** `Table` and `KeyValueList`
+  are size containers (`container-type: inline-size`) and take their narrow
+  form under a width of their own: `@container ui-table (width < 40rem)`
+  (40rem is `--kr-bp-sm`), `@container ui-kv (width < 24rem)`. A table in a
+  side panel turns into cards on a wide screen too; no `@media` width query.
+  A container query cannot read a custom property, so the threshold is
+  written in rem, the one length besides a 1 or 2 px line.
+  `[src: file: frontend/src/components/ui/Table.css:245]`
+  `[src: file: frontend/src/components/ui/KeyValueList.css:91]`
+  `StatGrid` needs no query: `repeat(auto-fill, minmax(min(100%, …), 1fr))`
+  wraps its tiles by its own width, never a fixed column count.
+- **A table's narrow forms.** `narrow="scroll"` (default) keeps the columns
+  and scrolls sideways in the wrapper that is always there. `narrow="cards"`
+  makes each row a card in which every value follows its column header (a
+  label hidden from assistive technology, which already has the header row);
+  the header row is visually hidden and shows again when a control in it (a
+  sort button, the select-all) takes the focus.
+- **A scroll area the keyboard reaches.** The wrapper becomes a `region`
+  named by the caption, with `tabindex="0"`, when `maxHeight` bounds it or
+  when its content is wider than it (measured with a `ResizeObserver`); a
+  table that fits is no Tab stop.
+  `[src: file: frontend/src/components/ui/Table.tsx:107#useOverflowsSideways]`
+- **Sorting is controlled.** The table never reorders rows: a sortable header
+  is a button that calls `onSortChange` with `nextSort` (ascending first,
+  then the other way on the same column); `aria-sort` sits on the sorted
+  header only. `[src: file: frontend/src/components/ui/dataKinds.ts:38#nextSort]`
+- **A row opens from the keyboard.** With `onRowOpen` the first data cell
+  (the `rowHeader` column, else the first) holds a real button. A click on
+  the rest of the row is a mouse shortcut: it never fires from a control in
+  the row (button, link, field, label, checkbox, anything focusable), from a
+  portal (a menu, a tooltip, a dialog opened from the row), or when the
+  reader is selecting text.
+  `[src: file: frontend/src/components/ui/Table.tsx:165]`
+- **Empty and loading inside the table.** One row spanning every column:
+  `empty` (an `EmptyState`, or "Nothing to show") or a `LoadingState` sm with
+  the table `aria-busy`. The select-all is disabled when there is no row.
+- **12 px at least.** Both densities write `--kr-type-sm` or more; so do the
+  tile labels, the delta, the progress label and its legend.
+- **A copy says what happened.** `CopyButton` keeps its name (focus does not
+  re-announce), changes its icon, and writes "Copied" or "Copy failed" in a
+  polite live region next to it, empty again after
+  `COPY_FEEDBACK_MS` (1500). No clipboard, a refused permission or a
+  `getText` that throws are all a failure.
+  `[src: file: frontend/src/components/ui/CopyButton.tsx:42#CopyButton]`
+  `[src: file: frontend/src/components/ui/dataKinds.ts:6]`
+- **Never colour alone.** A delta's direction is written for assistive
+  technology ("Up", "Down", "No change") and its tone colours the arrow
+  only, the text stays `--kr-text-secondary`; an unknown value is "—" with
+  its reason in a title and in hidden text; a missing key-value is "—" read
+  as "No value".
+- **A stacked bar is read whole.** It is a `role="img"` whose name lists
+  every segment, its count and its share (percent in the UI locale, "<1 %"
+  for a share that would round to 0); each drawn segment keeps
+  `--kr-space-1` of width at least.
+  `[src: file: frontend/src/components/ui/ProgressBar.tsx:75]`
+  A single bar with no `value` is indeterminate: it slides, and under
+  `prefers-reduced-motion: reduce` it stands still, the whole track striped.
+  `[src: file: frontend/src/components/ui/ProgressBar.css:130]`
+- **Variants** live in `dataKinds.ts` (`TABLE_DENSITIES`,
+  `TABLE_MAX_HEIGHTS`, `TABLE_NARROW_FORMS`, `TABLE_ROW_TONES`,
+  `KEY_VALUE_LAYOUTS`, `STAT_TILE_SIZES`, `PROGRESS_TONES`,
+  `PROGRESS_SIZES`, `nextSort`, `COPY_FEEDBACK_MS`).
+- **In the gallery** each one is shown in a wide and a narrow container side
+  by side (`WideAndNarrow`: the narrow one is 20rem whatever the window, the
+  wide one at least 40rem, without padding), with sample data; the test is
+  `DesignSystemDataComponents.test.tsx`.
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:715#WideAndNarrow]`
 
 ## Rules
 
@@ -231,7 +309,7 @@ the four locales; the gallery test fails if a component of the folder is
 missing. A shared component built on those controls (the agent picker,
 KT-1885) goes in `SHARED_GALLERY_COMPONENTS`, shown after them.
 `[src: file: frontend/src/components/settings/designSystemGallery.ts:19#UI_GALLERY_COMPONENTS]`
-`[src: file: frontend/src/components/settings/designSystemGallery.ts:47#SHARED_GALLERY_COMPONENTS]`
+`[src: file: frontend/src/components/settings/designSystemGallery.ts:53#SHARED_GALLERY_COMPONENTS]`
 
 ## The one agent picker
 

@@ -1,8 +1,14 @@
 import { useId, useState, type ReactNode } from 'react';
-import { Archive, Copy, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Activity, Archive, Coins, Copy, Pencil, Plus, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
 import { Button, type ButtonSize, type ButtonVariant } from '../ui/Button';
 import { CardHeader } from '../ui/CardHeader';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { CopyButton } from '../ui/CopyButton';
+import { KeyValueList, type KeyValueItem } from '../ui/KeyValueList';
+import { ProgressBar, type ProgressSegment } from '../ui/ProgressBar';
+import { StatGrid, StatTile } from '../ui/StatTile';
+import { Table, type TableColumn } from '../ui/Table';
+import { PROGRESS_TONES, type TableSort } from '../ui/dataKinds';
 import { DetailHeader } from '../ui/DetailHeader';
 import { Dialog } from '../ui/Dialog';
 import { Drawer } from '../ui/Drawer';
@@ -703,6 +709,259 @@ function AgentSwitchPickerDemo({ t }: { t: T }) {
   );
 }
 
+/** KT-1886 — a data component in a wide and in a narrow container, side by
+ *  side: the narrow form comes from the container's width (20rem), not from
+ *  the window's, so both show on any screen. */
+function WideAndNarrow({ t, render }: { t: T; render: (form: 'wide' | 'narrow') => ReactNode }) {
+  return (
+    <div className="ds-demo-pair">
+      <div className="ds-demo-container" data-form="wide">
+        <span className="ds-demo-label">{t('designSystem.demo.data.wide')}</span>
+        {render('wide')}
+      </div>
+      <div className="ds-demo-container" data-form="narrow">
+        <span className="ds-demo-label">{t('designSystem.demo.data.narrow')}</span>
+        {render('narrow')}
+      </div>
+    </div>
+  );
+}
+
+/** A clipboard that always refuses, to show the failure. */
+const refusedCopy = (): string => { throw new Error('refused'); };
+
+function CopyButtonDemo({ t }: { t: T }) {
+  const command = 'git worktree add .kronn/worktrees/task-kt-1886-4e41d02c kronn/task/kt-1886-4e41d02c';
+  return (
+    <>
+      <Row label={t('designSystem.demo.data.iconForm')}>
+        {SIZES.map(size => <CopyButton key={size} size={size} text="kt-1886" label={t('designSystem.demo.data.copyId')} />)}
+      </Row>
+      <Row label={t('designSystem.demo.data.textForm')}>
+        <CopyButton form="text" text={command} label={t('designSystem.demo.data.copyCommand')} />
+      </Row>
+      <Row label={t('designSystem.demo.data.failure')}>
+        <CopyButton getText={refusedCopy} label={t('designSystem.demo.data.copyBroken')} />
+        <CopyButton form="text" getText={refusedCopy} label={t('designSystem.demo.data.copyBroken')} />
+      </Row>
+      <WideAndNarrow t={t} render={() => (
+        <p className="ds-demo-copy-line">
+          <code>{command}</code>
+          <CopyButton size="sm" text={command} label={t('designSystem.demo.data.copyCommand')} />
+        </p>
+      )} />
+    </>
+  );
+}
+
+interface DemoRun { id: string; name: string; status: 'failed' | 'done' | 'running' | 'cancelled'; tokens: number; seconds: number; worktree: string }
+
+const DEMO_RUNS: readonly Omit<DemoRun, 'name'>[] = [
+  { id: 'run1', status: 'failed', tokens: 18_240, seconds: 312, worktree: '/srv/kronn/.kronn/worktrees/task-kt-1886-4e41d02c' },
+  { id: 'run2', status: 'done', tokens: 96_400, seconds: 1_284, worktree: '/srv/kronn/.kronn/worktrees/task-kt-1878-a1b2c3d4' },
+  { id: 'run3', status: 'running', tokens: 4_310, seconds: 48, worktree: '/srv/kronn' },
+  { id: 'run4', status: 'cancelled', tokens: 0, seconds: 9, worktree: '/srv/kronn/.kronn/worktrees/task-kt-1990-ffee0011' },
+];
+
+const RUN_TONES = { failed: 'danger', done: 'success', running: 'info', cancelled: 'neutral' } as const;
+const RUN_STATUS_KEYS = {
+  failed: 'designSystem.demo.data.statusFailed',
+  done: 'designSystem.demo.data.statusDone',
+  running: 'designSystem.demo.data.statusRunning',
+  cancelled: 'designSystem.demo.data.statusCancelled',
+} as const;
+
+const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
+/** KT-1886 — a sortable, selectable table whose rows open, in its cards form
+ *  in a wide and a narrow container; then the scroll form, empty and loading. */
+function TableDemo({ t }: { t: T }) {
+  const runNames: Record<string, string> = {
+    run1: t('designSystem.demo.data.run1'),
+    run2: t('designSystem.demo.data.run2'),
+    run3: t('designSystem.demo.data.run3'),
+    run4: t('designSystem.demo.data.run4'),
+  };
+  const [sort, setSort] = useState<TableSort | null>({ column: 'tokens', direction: 'descending' });
+  const [selected, setSelected] = useState<string[]>(['run2']);
+  const [opened, setOpened] = useState<string | null>(null);
+  const runs: DemoRun[] = DEMO_RUNS.map(run => ({ ...run, name: runNames[run.id] }));
+  const sorted = sort ? [...runs].sort((a, b) => {
+    const order = sort.column === 'name' ? a.name.localeCompare(b.name)
+      : sort.column === 'duration' ? a.seconds - b.seconds
+        : a.tokens - b.tokens;
+    return sort.direction === 'ascending' ? order : -order;
+  }) : runs;
+  const columns: TableColumn<DemoRun>[] = [
+    { id: 'name', header: t('designSystem.demo.data.colWorkflow'), cell: r => r.name, rowHeader: true, sortable: true },
+    {
+      id: 'status',
+      header: t('designSystem.demo.data.colStatus'),
+      cell: r => <StatusBadge tone={RUN_TONES[r.status]}>{t(RUN_STATUS_KEYS[r.status])}</StatusBadge>,
+    },
+    { id: 'tokens', header: t('designSystem.demo.data.colTokens'), cell: r => r.tokens.toLocaleString(), numeric: true, sortable: true },
+    { id: 'duration', header: t('designSystem.demo.data.colDuration'), cell: r => formatDuration(r.seconds), numeric: true, sortable: true },
+    { id: 'worktree', header: t('designSystem.demo.data.colWorktree'), cell: r => r.worktree, truncate: 'ellipsis' },
+  ];
+  const common = {
+    caption: t('designSystem.demo.data.runsCaption'),
+    columns,
+    rows: sorted,
+    getRowId: (r: DemoRun) => r.id,
+    sort,
+    onSortChange: setSort,
+    rowTone: (r: DemoRun) => (r.status === 'failed' ? 'danger' as const : r.status === 'cancelled' ? 'muted' as const : undefined),
+    selection: { selected, onChange: setSelected, rowLabel: (r: DemoRun) => r.name },
+    actions: (r: DemoRun) => (
+      <IconButton size="sm" variant="ghost" label={t('designSystem.demo.data.deleteRun', r.name)} icon={<Trash2 />} />
+    ),
+    onRowOpen: (r: DemoRun) => setOpened(r.name),
+    footer: (
+      <>
+        <span>{t('designSystem.demo.data.moreRows')}</span>
+        <Button size="sm">{t('designSystem.demo.data.showMore')}</Button>
+      </>
+    ),
+  };
+  return (
+    <>
+      <WideAndNarrow t={t} render={form => (
+        <Table {...common} narrow="cards" stickyHeader maxHeight={form === 'wide' ? 'md' : undefined} hideCaption={form === 'narrow'} />
+      )} />
+      <p className="ds-demo-note" aria-live="polite" data-testid="ds-table-opened">
+        {opened ? t('designSystem.demo.data.opened', opened) : t('designSystem.demo.data.openedNone')}
+      </p>
+      <Row label={t('designSystem.demo.data.scroll')}>
+        <div className="ds-demo-container" data-form="narrow">
+          <Table {...common} density="compact" hideCaption />
+        </div>
+      </Row>
+      <Row label={t('designSystem.demo.data.empty')}>
+        <div className="ds-demo-container" data-form="wide">
+          <Table
+            caption={t('designSystem.demo.data.runsCaption')}
+            hideCaption
+            columns={columns}
+            rows={[]}
+            getRowId={r => r.id}
+            empty={(
+              <EmptyState
+                kind="nothingSelected"
+                title={t('designSystem.demo.data.emptyTitle')}
+                description={t('designSystem.demo.data.emptyDescription')}
+              />
+            )}
+          />
+        </div>
+      </Row>
+      <Row label={t('designSystem.demo.data.loading')}>
+        <div className="ds-demo-container" data-form="wide">
+          <Table
+            caption={t('designSystem.demo.data.runsCaption')}
+            hideCaption
+            columns={columns}
+            rows={[]}
+            getRowId={r => r.id}
+            loading
+            loadingLabel={t('designSystem.demo.data.loadingRuns')}
+          />
+        </div>
+      </Row>
+    </>
+  );
+}
+
+function KeyValueListDemo({ t }: { t: T }) {
+  const items: KeyValueItem[] = [
+    { label: t('designSystem.demo.data.kvBranch'), value: 'kronn/task/kt-1886-4e41d02c', mono: true, copyable: true },
+    { label: t('designSystem.demo.agent'), value: 'Claude Code' },
+    { label: t('designSystem.demo.data.kvStarted'), value: null },
+    { label: t('designSystem.demo.data.colWorktree'), value: '/srv/kronn/.kronn/worktrees/task-kt-1886-4e41d02c', mono: true, truncate: true },
+    { label: t('designSystem.demo.data.colTokens'), value: (48_210).toLocaleString() },
+  ];
+  return (
+    <>
+      <Row label={t('designSystem.demo.data.grid')}>
+        <WideAndNarrow t={t} render={() => <KeyValueList items={items} />} />
+      </Row>
+      <Row label={t('designSystem.demo.data.inline')}>
+        <WideAndNarrow t={t} render={() => <KeyValueList items={items} layout="inline" />} />
+      </Row>
+    </>
+  );
+}
+
+function StatTileDemo({ t }: { t: T }) {
+  const [filtered, setFiltered] = useState(false);
+  const tiles = (
+    <StatGrid label={t('designSystem.demo.data.statWeek')}>
+      <StatTile
+        label={t('designSystem.demo.data.statRuns')}
+        value={42}
+        icon={<Activity />}
+        delta={{ text: t('designSystem.demo.data.deltaRuns'), direction: 'up', tone: 'success' }}
+        hint={t('designSystem.demo.data.last7')}
+      />
+      <StatTile
+        label={t('designSystem.demo.data.statFailed')}
+        value={3}
+        icon={<TriangleAlert />}
+        delta={{ text: t('designSystem.demo.data.deltaFailed'), direction: 'up', tone: 'danger' }}
+        hint={t('designSystem.demo.data.filterHint')}
+        onClick={() => setFiltered(f => !f)}
+        selected={filtered}
+      />
+      <StatTile label={t('designSystem.demo.data.kvCost')} value={null} unit="$" icon={<Coins />} unknownReason={t('designSystem.demo.data.costUnknown')} />
+      <StatTile label={t('designSystem.demo.data.colTokens')} value="96.4" unit="k" loading />
+    </StatGrid>
+  );
+  return (
+    <>
+      <WideAndNarrow t={t} render={() => tiles} />
+      <Row label={t('designSystem.demo.size.lg')}>
+        <StatTile size="lg" label={t('designSystem.demo.data.colTokens')} value="96.4" unit="k" delta={{ text: '0', direction: 'flat' }} />
+      </Row>
+    </>
+  );
+}
+
+function ProgressBarDemo({ t }: { t: T }) {
+  const segments: ProgressSegment[] = [
+    { id: 'done', label: t('designSystem.demo.data.segDone'), value: 14, tone: 'success' },
+    { id: 'failed', label: t('designSystem.demo.data.segFailed'), value: 1, tone: 'danger' },
+    { id: 'running', label: t('designSystem.demo.data.segRunning'), value: 4, tone: 'info' },
+    { id: 'waiting', label: t('designSystem.demo.data.segWaiting'), value: 6, tone: 'warning' },
+  ];
+  const toneLabel = (tone: string) => (tone === 'accent' ? t('designSystem.demo.data.accent') : t(`designSystem.demo.tone.${tone}`));
+  return (
+    <>
+      <WideAndNarrow t={t} render={() => (
+        <div className="ds-demo-stack">
+          <ProgressBar label={t('designSystem.demo.data.stepsDone')} value={3} max={8} valueText="3/8" />
+          <ProgressBar label={t('designSystem.demo.data.tasks')} segments={segments} legend />
+        </div>
+      )} />
+      <Row label={t('designSystem.demo.data.determinate')}>
+        <div className="ds-demo-stack">
+          <ProgressBar label={t('designSystem.demo.data.diskUsed')} value={70} valueText="70 %" tone="warning" />
+          <ProgressBar label={t('designSystem.demo.data.diskUsed')} value={70} tone="warning" size="sm" hideLabel />
+        </div>
+      </Row>
+      <Row label={t('designSystem.demo.data.indeterminate')}>
+        <div className="ds-demo-stack"><ProgressBar label={t('designSystem.demo.data.cloning')} /></div>
+      </Row>
+      <Row label={t('designSystem.demo.data.stacked')}>
+        <div className="ds-demo-stack"><ProgressBar label={t('designSystem.demo.data.tasks')} segments={segments} /></div>
+      </Row>
+      <Row label={t('designSystem.demo.tones')}>
+        <div className="ds-demo-stack">
+          {PROGRESS_TONES.map(tone => <ProgressBar key={tone} label={toneLabel(tone)} value={60} tone={tone} valueText="60 %" />)}
+        </div>
+      </Row>
+    </>
+  );
+}
+
 const DEMOS: Record<string, (props: { t: T }) => ReactNode> = {
   button: ButtonDemo,
   iconButton: IconButtonDemo,
@@ -727,6 +986,11 @@ const DEMOS: Record<string, (props: { t: T }) => ReactNode> = {
   sectionHeader: SectionHeaderDemo,
   drawerHeader: DrawerHeaderDemo,
   cardHeader: CardHeaderDemo,
+  copyButton: CopyButtonDemo,
+  table: TableDemo,
+  keyValueList: KeyValueListDemo,
+  statTile: StatTileDemo,
+  progressBar: ProgressBarDemo,
   agentSwitchPicker: AgentSwitchPickerDemo,
 };
 

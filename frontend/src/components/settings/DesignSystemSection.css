@@ -358,6 +358,62 @@
   min-height: calc(var(--kr-space-8) * 5);
 }
 
+/* KT-1886 — a data component in a wide and a narrow container, side by side.
+   The narrow container is 20rem wide whatever the window: the components
+   take their narrow form from their container's width. The wide one is at
+   least 40rem (--kr-bp-sm), so a Table keeps its columns there; it has no
+   padding, which would take it under 40rem. When both do not fit on one line
+   the narrow one wraps under the wide one. */
+.ds-demo-pair {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--kr-space-4);
+  min-width: 0;
+}
+
+.ds-demo-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kr-space-2);
+  min-width: 0;
+}
+
+.ds-demo-container[data-form="wide"] {
+  flex: 999 1 40rem;
+}
+
+.ds-demo-container[data-form="narrow"] {
+  flex: 0 1 20rem;
+  max-width: 20rem;
+  outline: 1px dashed var(--kr-border-medium);
+  outline-offset: var(--kr-space-1);
+}
+
+.ds-demo-copy-line {
+  display: flex;
+  align-items: center;
+  gap: var(--kr-space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.ds-demo-copy-line code {
+  min-width: 0;
+  font-size: var(--kr-type-sm);
+  overflow-wrap: anywhere;
+}
+
+.ds-demo-stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--kr-space-3);
+  min-width: 0;
+  max-width: calc(var(--kr-space-8) * 8);
+}
+
 /* Narrower than --kr-bp-md (768px): a custom property cannot be read in @media.
    Each token becomes a small block: its name on one unbroken line, then its
    value, its use and its preview. */
