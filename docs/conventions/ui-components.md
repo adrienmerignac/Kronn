@@ -241,10 +241,10 @@ modes are props, not copies: the trigger `variant` (`chip`, `compact`,
 (an agent and a model id, the catalogue's or one typed in the search, or
 « = principal », with the principal's own model greyed) and `customModel`
 (KT-1994: the full list of a discussion, see below).
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:483#variant]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:506#multiple]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:517#exactModel]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:525#customModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:484#variant]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:507#multiple]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:518#exactModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:526#customModel]`
 Its popover is in `<body>` on the popover layer, above every dialog, and opens
 on its search field. It is placed from its rendered size, measured on open,
 when the search or the catalogue changes it, and on resize: it stays inside
@@ -258,7 +258,7 @@ new discussion's prompt field: `100%` in its `min(...)`, no floor), so the
 column that clips it (`.disc-messages-col`, overflow hidden) never cuts a
 tier: in a narrow column it takes the anchor's width and the three tier
 columns hold down to 368 px.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:591#place]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:592#place]`
 Availability always goes through
 `AgentAvailabilityBadge` (`unavailable` and `disabled` block the choice,
 `needs-full-access` and `not-listed` only warn, `catalog` is the neutral
@@ -300,7 +300,7 @@ listed, and when nothing matches one line says so. The fold controls are
 hidden while searching. The trigger writes the model id the configuration
 names (or the custom model), whether or not the catalogue is loaded: its text
 never changes when the list opens; the display name goes to its title.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:751#AgentModelList]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:756#AgentModelList]`
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:57#modeModelId]`
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:864]`
 
@@ -324,7 +324,7 @@ server-side (KT-1993, [discussion-agent-routing](../architecture/discussion-agen
 a refusal is shown next to the entry and the previous choice stays: the picker
 trims, it never re-validates.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:50#OTHER_MODELS_RENDER_LIMIT]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1301#selectModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1304-1305#selectModel]`
 `[src: file: frontend/src/components/ChatHeader.tsx:334]`
 `[src: file: frontend/src/pages/DiscussionsPage.tsx:2469]`
 
