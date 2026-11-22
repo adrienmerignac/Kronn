@@ -261,4 +261,38 @@ describe('components/ui stylesheets', () => {
     expect(decls(strip, '.kr-participants-strip-more').get('flex-shrink')).toBe('0');
     expect(decls(strip, '.kr-participants-strip-all').get('position')).toBeUndefined();
   });
+
+  // KT-1936 review round 3 — the participant details layer (320px) took a
+  // full-size identity wider than itself: the close button was pushed out of
+  // the layer (at 400px, out of the window). Its header is a flex row whose
+  // identity shrinks and wraps, and whose close button never shrinks.
+  it('keeps the participant details\' close button inside the layer', () => {
+    const css = readFileSync(join(SRC, 'styles/components.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const decls = (selector: string) => new Map(
+      declsFor(css, selector).split(';').map(d => d.trim()).filter(Boolean)
+        .map(d => [d.slice(0, d.indexOf(':')).trim(), d.slice(d.indexOf(':') + 1).trim()] as const),
+    );
+    const header = decls('.disc-participant-details > header');
+    expect(header.get('display')).toBe('flex');
+    expect(header.get('flex-wrap') ?? 'nowrap').toBe('nowrap');
+    // The identity's box can shrink below its content …
+    const identityBox = decls('.disc-participant-details > header > strong');
+    expect(identityBox.get('min-width')).toBe('0');
+    expect(identityBox.get('flex')).toBe('1 1 auto');
+    // … and wraps rather than overflows; the name and the role chip may break
+    // only when one of them alone is wider than the layer.
+    const identity = decls('.disc-participant-details .disc-participant-details-identity');
+    expect(identity.get('flex-wrap')).toBe('wrap');
+    for (const part of ['name', 'role']) {
+      const rule = decls(`.disc-participant-details .disc-participant-details-identity .ui-agent-identity-${part}`);
+      expect(rule.get('min-width'), part).toBe('0');
+      expect(rule.get('white-space'), part).toBe('normal');
+    }
+    // The model keeps its ellipsis (AgentIdentity.css).
+    const model = declsFor(CSS.find(c => c.file === 'AgentIdentity.css')!.text, '.ui-agent-identity-model');
+    expect(model).toContain('min-width: 0');
+    expect(model).toContain('text-overflow: ellipsis');
+    // The button never shrinks.
+    expect(decls('.disc-participant-details > header > button').get('flex-shrink')).toBe('0');
+  });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act, fireEvent, cleanup } from '@testing-library/react';
+import { render, act, fireEvent, cleanup, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 
 vi.mock('../../lib/api', () => ({
@@ -525,5 +526,77 @@ describe('freshnessOf — presence thresholds aligned with PollBackoffPolicy (st
     const threeMin = 3 * 60_000;
     expect(freshnessOf(ago(2.5 * 60_000), threeMin)).toBe('idle');
     expect(freshnessOf(ago(4 * 60_000), threeMin)).toBe('away');
+  });
+});
+
+// KT-1936 review round 3 — the details layer lives in document.body, so it is
+// not next to its chip in the Tab order: it takes focus on open, keeps Tab
+// between its controls, closes on Escape (focus back on the chip) and on a
+// press outside. The same contract as the « +N » list (useAnchoredLayer).
+describe('DiscParticipantsHeader — details layer keyboard and pointer', () => {
+  async function renderResumable() {
+    (discussionsApi.participants as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: 4, agent_type: 'ClaudeCode', session_id: 'sess-r', role: 'peer', status: 'active',
+        conversation_id: 'conv-42', model: 'claude-fable-5-2',
+      },
+    ]);
+    await act(async () => {
+      render(
+        <div>
+          <button type="button">elsewhere</button>
+          <DiscParticipantsHeader discId="d-keys" t={t} />
+        </div>,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    return document.querySelector<HTMLButtonElement>('.disc-participant-chip')!;
+  }
+  const layer = () => document.querySelector<HTMLElement>('[data-testid="disc-participant-details"]');
+
+  it('opened from its chip by keyboard, moves focus into the layer and keeps Tab between its controls', async () => {
+    const user = userEvent.setup();
+    const chip = await renderResumable();
+    chip.focus();
+    await user.keyboard('{Enter}');
+    expect(layer()).not.toBeNull();
+    expect(layer()!.contains(document.activeElement)).toBe(true);
+    const close = layer()!.querySelector<HTMLButtonElement>('header button')!;
+    const resume = layer()!.querySelector<HTMLButtonElement>('.disc-participant-resume')!;
+    expect(close).toHaveFocus();
+    await user.tab();
+    expect(resume).toHaveFocus();
+    // Past the last control, Tab comes back to the first: never out of reach.
+    await user.tab();
+    expect(close).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(resume).toHaveFocus();
+  });
+
+  it('closes on Escape and gives focus back to the chip that opened it', async () => {
+    const user = userEvent.setup();
+    const chip = await renderResumable();
+    chip.focus();
+    await user.keyboard('{Enter}');
+    expect(layer()!.contains(document.activeElement)).toBe(true);
+    await user.keyboard('{Escape}');
+    expect(layer()).toBeNull();
+    expect(chip).toHaveFocus();
+    expect(chip).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes on a press outside the chip and the layer', async () => {
+    const chip = await renderResumable();
+    await openParticipant();
+    expect(layer()).not.toBeNull();
+    // A press inside the layer keeps it open.
+    fireEvent.pointerDown(layer()!.querySelector('dl')!);
+    expect(layer()).not.toBeNull();
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByRole('button', { name: 'elsewhere' }));
+    });
+    expect(layer()).toBeNull();
+    expect(chip).toHaveAttribute('aria-expanded', 'false');
   });
 });

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode, type RefObject } from 'react';
+import { useAnchoredLayer } from './ui/useAnchoredLayer';
 import { createPortal } from 'react-dom';
 import { discussions as discussionsApi } from '../lib/api';
 import {
@@ -17,7 +18,6 @@ import { AgentIdentity } from './ui/AgentIdentity';
 import { Tooltip } from './ui/Tooltip';
 import { agentIdentityText, agentModel, agentModelText, type AgentIdentityModel, type AgentIdentityRole } from './ui/agentIdentityKinds';
 import { ParticipantsStrip } from './ParticipantsStrip';
-import { useAnchoredStyle } from './ui/anchor';
 
 /// 0.8.6 phase 2 — discussion participants header.
 ///
@@ -160,21 +160,28 @@ function presenceLabel(
 
 /**
  * KT-1936 review round 2 — a participant's details, a floating layer in
- * document.body under its chip (`useAnchoredStyle`, as Menu): the header's
- * agent line scrolls sideways, and a layer absolute inside it was clipped.
- * Keyed by participant, so another chip places it again.
+ * document.body under its chip: the header's agent line scrolls sideways, and
+ * a layer absolute inside it was clipped. Keyed by participant, so another
+ * chip places it again.
+ *
+ * Review round 3 — in document.body it is not next to its chip in the Tab
+ * order: `useAnchoredLayer` (shared with the « +N » list) moves focus into it
+ * on open, keeps Tab between its controls, closes it on Escape with focus back
+ * on the chip, and on a press outside.
  */
-function ParticipantDetailsLayer({ anchorRef, children, ...props }: {
+function ParticipantDetailsLayer({ anchorRef, onClose, children, ...props }: {
   anchorRef: RefObject<HTMLElement | null>;
+  onClose: () => void;
   children: ReactNode;
   id: string;
   'aria-label': string;
 }) {
-  const layerRef = useRef<HTMLElement>(null);
-  const { style } = useAnchoredStyle(anchorRef, layerRef, true, 'bottom', 'start');
+  const { ref, style } = useAnchoredLayer<HTMLElement>({
+    anchorRef, open: true, placement: 'bottom', align: 'start', onClose,
+  });
   return createPortal(
     <section
-      ref={layerRef}
+      ref={ref}
       className="disc-participant-details"
       role="dialog"
       data-testid="disc-participant-details"
@@ -278,6 +285,9 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
     model: participantModel(p),
     role: participantRole(p, mainAgent),
   });
+  const selectedIdentityLabel = selectedParticipant
+    ? agentIdentityText(identityOf(selectedParticipant), tUi)
+    : null;
 
   return (
     <div className="disc-participants-row" data-testid="disc-participants-row">
@@ -375,12 +385,19 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
           <ParticipantDetailsLayer
             key={selectedParticipant.id}
             anchorRef={selectedChipRef}
+            onClose={() => setSelectedParticipantId(null)}
             id={`disc-participant-details-${selectedParticipant.id}`}
-            aria-label={t('disc.participantDetails', selectedDisplayName)}
+            // The full identity: the header cuts the model when it is long.
+            aria-label={t('disc.participantDetails', selectedIdentityLabel ?? selectedDisplayName)}
           >
+            {/* Review round 3 — a flex row: the identity shrinks (the model
+             *  first, then it wraps), the close button never does, so it stays
+             *  inside the layer. The full model id is in the tooltip, the
+             *  layer's name and the model row below. */}
             <header>
-              <strong>
+              <strong title={selectedIdentityLabel ?? undefined}>
                 <AgentIdentity
+                  className="disc-participant-details-identity"
                   size="full"
                   icon={iconFor(selectedParticipant.agent_type)}
                   {...identityOf(selectedParticipant)}

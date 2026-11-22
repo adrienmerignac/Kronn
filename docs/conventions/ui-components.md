@@ -491,12 +491,27 @@ native one) or a joined CLI session.
   (`ParticipantDetailsLayer`: portal and `useAnchoredStyle` under the chip),
   because the scrolling line would clip a layer absolute inside it. A row of
   the full list scrolls its chip into view before opening its details.
+- **One keyboard and pointer contract for both layers** (review round 3):
+  in `document.body` a layer is not next to its control in the Tab order, so
+  the full list and the participant details share `useAnchoredLayer`
+  (`components/ui/useAnchoredLayer.ts`, on top of `useDialogFocus`): focus
+  moves to the layer's first control once it is placed, Tab and Shift+Tab stay
+  between its controls, Escape closes it and gives focus back to the control
+  that opened it (the counter, the chip), a press outside that control and the
+  layer closes it. A new anchored layer of this kind uses the same hook.
+- **The details header** is a flex row: the full-size identity shrinks
+  (`min-width: 0`) and wraps rather than overflows, the model is the part cut
+  with an ellipsis (its full id stays in the header's tooltip, the layer's
+  accessible name and the « declared model » row), and the close button never
+  shrinks, so it stays inside the 320px layer at every width
+  (`styles/components.css`, held by `components/ui/stylesheets.test.ts`).
+`[src: file: frontend/src/components/ui/useAnchoredLayer.ts:31#useAnchoredLayer]`
 `[src: file: frontend/src/components/ParticipantsStrip.tsx:48#ParticipantsStrip]`
 `[src: file: frontend/src/components/HeaderScrollLine.tsx:27#HeaderScrollLine]`
 `[src: file: frontend/src/lib/stripOverflow.ts:5#measureStripOverflow]`
 `[src: file: frontend/src/lib/stripOverflow.ts:15#measureChipsOutOfView]`
 `[src: file: frontend/src/components/DiscParticipantsHeader.tsx:110#participantRole]`
-`[src: file: frontend/src/components/DiscParticipantsHeader.tsx:167#ParticipantDetailsLayer]`
+`[src: file: frontend/src/components/DiscParticipantsHeader.tsx:172#ParticipantDetailsLayer]`
 
 ## The one agent picker
 

@@ -5,7 +5,7 @@ import {
 import { createPortal } from 'react-dom';
 import { measureChipsOutOfView, measureStripOverflow } from '../lib/stripOverflow';
 import { HeaderScrollLineContext } from './headerScrollLineContext';
-import { useAnchoredStyle } from './ui/anchor';
+import { useAnchoredLayer } from './ui/useAnchoredLayer';
 import './ParticipantsStrip.css';
 
 export interface ParticipantsStripEntry {
@@ -49,10 +49,8 @@ export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: Parti
   const listId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
-  const layerRef = useRef<HTMLDivElement>(null);
   const [overflow, setOverflow] = useState({ hidden: 0, fadeEnd: false });
   const [open, setOpen] = useState(false);
-  const { style, placed } = useAnchoredStyle(moreRef, layerRef, open, 'bottom', 'end');
   const line = useContext(HeaderScrollLineContext);
   const lineScroller = line?.scroller ?? null;
 
@@ -88,41 +86,18 @@ export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: Parti
     };
   }, [measure, lineScroller]);
 
-  const close = useCallback((returnFocus: boolean) => {
-    setOpen(false);
-    if (returnFocus) moreRef.current?.focus();
-  }, []);
-
-  // Into the list once it is placed: before, it is hidden to be measured and
-  // a browser refuses focus on a hidden element.
-  useLayoutEffect(() => {
-    if (!open || !placed) return;
-    layerRef.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
-  }, [open, placed]);
-
-  // A press outside the counter and the list closes it; focus stays where it lands.
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (layerRef.current?.contains(target) || moreRef.current?.contains(target)) return;
-      close(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [open, close]);
+  const close = useCallback(() => setOpen(false), []);
+  // Focus into the list once placed, Tab kept inside, Escape back to the
+  // counter, a press outside closes: shared with the participant details.
+  const { ref: layerRef, style } = useAnchoredLayer<HTMLDivElement>({
+    anchorRef: moreRef, open, placement: 'bottom', align: 'end', onClose: close,
+  });
 
   const showMore = overflow.hidden > 0;
 
   const onListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      close(true);
-      return;
-    }
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-    const buttons = Array.from(layerRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+    const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
     if (!buttons.length) return;
     event.preventDefault();
     const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
@@ -149,7 +124,7 @@ export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: Parti
       aria-expanded={open}
       aria-haspopup="dialog"
       aria-controls={open ? listId : undefined}
-      onClick={() => (open ? close(false) : setOpen(true))}
+      onClick={() => (open ? close() : setOpen(true))}
     >
       +{overflow.hidden}
     </button>
@@ -177,7 +152,7 @@ export function ParticipantsStrip({ entries, moreLabel, allLabel, empty }: Parti
           <ul>
             {entries.map((entry, index) => (
               <li key={entry.key}>
-                <button type="button" onClick={() => { close(false); revealChip(index); entry.onSelect(); }}>{entry.row}</button>
+                <button type="button" onClick={() => { close(); revealChip(index); entry.onSelect(); }}>{entry.row}</button>
               </li>
             ))}
           </ul>
