@@ -79,7 +79,7 @@ entry is an arrival like any other.
   `[src: file: frontend/src/routes/appRoutes.tsx:14-31]`
   `[src: file: frontend/src/routes/dashboardRoutes.tsx:19-41#dashboardRoutes]`
   `[src: file: frontend/src/App.tsx:209-210#Outlet]`
-  `[src: file: frontend/src/pages/Dashboard.tsx:1228-1231#Outlet]`
+  `[src: file: frontend/src/pages/Dashboard.tsx:1232-1235#Outlet]`
 - **Paths** — spelled out once, in `lib/routes.ts`. Components navigate with
   `useKronnNavigate()`, never with a literal path.
   `[src: file: frontend/src/lib/routes.ts:1-8]`
@@ -190,7 +190,7 @@ the owner** (always zero until the decision compartment is filled). Its accessib
 name states the counts. It owns its polling (3 s while something moves, 15 s idle,
 once more on open and when the tab returns), so a refresh re-renders the bell and
 its panel, not the dashboard.
-[src: file: frontend/src/pages/Dashboard.tsx:770-784#ActivityBell]
+[src: file: frontend/src/pages/Dashboard.tsx:779-793#ActivityBell]
 [src: file: frontend/src/components/activity/ActivityBell.tsx:25-96#ActivityBell]
 [src: file: frontend/src/components/activity/ActivityBell.css:14-44#data-running]
 [src: file: frontend/src/hooks/useActivityOverview.ts:12-52#useActivityOverview]
