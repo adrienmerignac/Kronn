@@ -32,6 +32,7 @@ import { ContextHelp } from './ContextHelp';
 import type { ExternalApiConnectionView } from '../lib/api';
 import {
   discussionConnectionId, externalAgentTargets, externalConnectionForDiscussion,
+  type DiscussionWithMessageTargets,
 } from '../lib/externalAgentIdentity';
 
 export interface ChatHeaderProps {
@@ -55,6 +56,9 @@ export interface ChatHeaderProps {
   toast: ToastFn;
   t: (key: string, ...args: (string | number)[]) => string;
 }
+
+/** No exact model dropped yet (one array, so the memo below holds). */
+const NO_MODELS: readonly string[] = [];
 
 export function ChatHeader({
   discussion,
@@ -122,9 +126,28 @@ export function ChatHeader({
   // model, the header names the one the agent last replied with, else "default
   // model of <agent>"; never the role or the tier alone.
   const currentTier = discussion.tier ?? 'default';
+  // KT-2013 — the exact models this discussion held while shown: once one is
+  // cleared, the replies it gave are not what the next turn runs. A reply does
+  // not say it ran an exact model, so this page remembers them.
+  const heldExact = discussion.model?.trim() || '';
+  const [droppedExact, setDroppedExact] = useState<{ discussionId: string; models: readonly string[] }>(
+    () => ({ discussionId: discussion.id, models: heldExact ? [heldExact] : [] }),
+  );
+  if (droppedExact.discussionId !== discussion.id) {
+    setDroppedExact({ discussionId: discussion.id, models: heldExact ? [heldExact] : [] });
+  } else if (heldExact && !droppedExact.models.includes(heldExact)) {
+    setDroppedExact({ discussionId: discussion.id, models: [...droppedExact.models, heldExact] });
+  }
+  const excludedReplyModels = droppedExact.discussionId === discussion.id ? droppedExact.models : NO_MODELS;
+  const messageTargets = (discussion as DiscussionWithMessageTargets).message_targets;
   const lastReplyModel = useMemo(
-    () => lastReplyModelOf(discussion.messages, discussion.agent, currentTier),
-    [discussion.messages, discussion.agent, currentTier],
+    () => lastReplyModelOf(discussion.messages, discussion.agent, currentTier, {
+      // A reply of another connection is not this one's model.
+      connectionId: externalConnectionId,
+      messageTargets,
+      exclude: excludedReplyModels,
+    }),
+    [discussion.messages, discussion.agent, currentTier, externalConnectionId, messageTargets, excludedReplyModels],
   );
   // Nothing recorded: the picker writes the explicit « default model of <agent> » state.
   const headerModelFallback = lastReplyModel ?? undefined;

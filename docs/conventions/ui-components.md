@@ -506,8 +506,8 @@ the participant chips and their details, and the discussion list rows.
   agent's last reply on that mode, else « default model ». None of them reads
   the catalogue, which the picker loads only when it opens: their text does
   not change when the list opens.
-  `[src: file: frontend/src/lib/agentModelResolution.ts:76#discussionAgentModel]`
-  `[src: file: frontend/src/lib/agentModelResolution.ts:30#resolveIdentityModel]`
+  `[src: file: frontend/src/lib/agentModelResolution.ts:119#discussionAgentModel]`
+  `[src: file: frontend/src/lib/agentModelResolution.ts:36#resolveIdentityModel]`
 - **The roles:** main agent, one-off agent, CLI session, workflow step
   (`ui.agentIdentity.role.*`); `roleLabel` writes another word in the chip
   (the picker's caller, the guided-tour demo).
@@ -524,7 +524,7 @@ the participant chips and their details, and the discussion list rows.
   « Personnalisé » in the place of the tier.
   `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:37#AGENT_IDENTITY_MODEL_MAX_CHARS]`
   `[src: file: frontend/src/components/ui/agentIdentityKinds.ts:74#agentIdentityText]`
-  `[src: file: frontend/src/components/AgentSwitchPicker.tsx:1400#identityText]`
+  `[src: file: frontend/src/components/AgentSwitchPicker.tsx:1431#identityText]`
 - **Colour:** the name takes `agentTextColor()`, a text-safe token per agent
   (`--kr-agent-<agent>-text`) that holds 4.5:1 on every surface of every
   theme; the brand colour (`agentColor()`) stays on dots, borders and icons;
@@ -670,8 +670,8 @@ unfolding « Autres modèles » puts the control right under the band. Both
 measure the band's height (`stickyHeaderHeight`). Band text holds 4.5:1 in
 every theme (`agentPickerContrast.test.ts`).
 `[src: file: frontend/src/components/AgentSwitchPicker.css:455]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:737#stickyHeaderHeight]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:812#keepFocusClearOfHeader]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:743#stickyHeaderHeight]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:821#keepFocusClearOfHeader]`
 
 **Free models (KT-2010).** The catalogue entry carries no price, so the
 model's own words decide, and providers spell it several ways (owner's
@@ -712,9 +712,9 @@ listed, and when nothing matches one line says so. The fold controls are
 hidden while searching. The trigger writes the model id the configuration
 names (or the custom model), whether or not the catalogue is loaded: its text
 never changes when the list opens; the display name goes to its title.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:782#AgentModelList]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:791#AgentModelList]`
 `[src: file: frontend/src/lib/modelCatalogSelection.ts:58-64#modeModelId]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:911]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:920]`
 
 With `customModel` (the discussion header and the new-discussion form) and in
 the exact-model mode, each agent's other models (the catalogue's models no
@@ -736,15 +736,21 @@ server-side (KT-1993, [discussion-agent-routing](../architecture/discussion-agen
 a refusal is shown next to the entry and the previous choice stays: the picker
 trims, it never re-validates.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:74-78#OTHER_MODELS_RENDER_LIMIT]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1376-1377#selectModel]`
-`[src: file: frontend/src/components/ChatHeader.tsx:334]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1407-1408#selectModel]`
+`[src: file: frontend/src/components/ChatHeader.tsx:357]`
 `[src: file: frontend/src/pages/DiscussionsPage.tsx:2469]`
 
 « Récents » sits on top of those lists: the last three distinct choices
 (agent, connection, mode or exact model), most recent first, hidden while
 searching. They are written when a choice is applied, in localStorage under
 `kronn:agentPicker:recents`, a synced UI preference mirrored server-side like
-the collection favourites.
+the collection favourites. A recent row is disabled exactly when the row of
+the same choice in its group is, with that row's title: its mode (an
+unavailable mode; in the shadow picker the step's own run, which is its
+explicit model, else the mode it runs on), or the catalogue entry of its exact
+model; a refusal of a recent exact model is shown next to that recent (KT-2013).
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1123#renderRecent]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1657#isMain]`
 `[src: file: frontend/src/lib/agentPickerRecents.ts:54#readAgentPickerRecents]`
 `[src: file: frontend/src/lib/uiPreferences.ts:53]`
 

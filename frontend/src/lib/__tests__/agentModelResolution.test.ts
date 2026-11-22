@@ -85,3 +85,47 @@ describe('lastReplyModel', () => {
     expect(lastReplyModel(null, 'Codex', 'default')).toBeNull();
   });
 });
+
+// KT-2013 — the last reply names only a model the next turn runs.
+describe('lastReplyModel scope (KT-2013)', () => {
+  const reply = (id: string, model: string, replyTo?: string) => ({
+    id, role: 'Agent', agent_type: 'Custom' as const, model, reply_to_message_id: replyTo ?? null,
+  });
+  const targets = {
+    'ask-a': [{ kind: 'discussion_agent' as const, agent_type: 'Custom' as const, connection_id: 'conn-a' }],
+    'ask-b': [{ kind: 'discussion_agent' as const, agent_type: 'Custom' as const, connection_id: 'conn-b' }],
+  };
+
+  it('skips the exact models the discussion dropped and reads the reply before them', () => {
+    const messages = [
+      { role: 'Agent', agent_type: 'Codex' as const, model: 'gpt-5.5-codex' },
+      { role: 'Agent', agent_type: 'Codex' as const, model: 'gpt-exact-pin' },
+    ];
+    expect(lastReplyModel(messages, 'Codex', 'default')).toBe('gpt-exact-pin');
+    expect(lastReplyModel(messages, 'Codex', 'default', { exclude: ['gpt-exact-pin'] })).toBe('gpt-5.5-codex');
+    expect(lastReplyModel(messages, 'Codex', 'default', { exclude: ['gpt-exact-pin', 'gpt-5.5-codex'] })).toBeNull();
+  });
+
+  it('reads only the replies of the connection the agent runs on, through the targets of their trigger', () => {
+    const messages = [reply('r-a', 'model-of-a', 'ask-a'), reply('r-b', 'model-of-b', 'ask-b'), reply('r-x', 'model-unknown')];
+    expect(lastReplyModel(messages, 'Custom', 'default', { connectionId: 'conn-a', messageTargets: targets })).toBe('model-of-a');
+    expect(lastReplyModel(messages, 'Custom', 'default', { connectionId: 'conn-b', messageTargets: targets })).toBe('model-of-b');
+    // A reply whose turn names no connection, or another connection: nothing.
+    expect(lastReplyModel(messages, 'Custom', 'default', { connectionId: 'conn-c', messageTargets: targets })).toBeNull();
+    expect(lastReplyModel(messages, 'Custom', 'default', { connectionId: 'conn-a' })).toBeNull();
+    // A Custom agent whose connection is unknown names no reply.
+    expect(lastReplyModel(messages, 'Custom', 'default', { messageTargets: targets })).toBeNull();
+  });
+
+  it('the list row and the bubbles read the connection of the discussion the same way', () => {
+    const disc = {
+      agent: 'Custom' as const, tier: 'economy' as const,
+      messages: [reply('r-a', 'model-of-a', 'ask-a'), reply('r-b', 'model-of-b', 'ask-b')],
+      message_targets: targets,
+    };
+    const none = { economy_model: null, default_model: null, reasoning_model: null };
+    expect(discussionAgentModel(disc, { connection: connection({ id: 'conn-a', ...none }) }))
+      .toEqual({ kind: 'id', id: 'model-of-a' });
+    expect(discussionAgentModel(disc)).toEqual({ kind: 'providerDefault' });
+  });
+});
