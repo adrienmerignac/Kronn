@@ -253,7 +253,11 @@ to the trigger. Never place it from an estimated size. The grouped list is
 440 px wide whatever is unfolded (so it never jumps when a long model id
 appears), the plain agent lists 480 px at most, the @ menu 520 px (from a
 768 px window, up to 760 px when its anchor is that wide); never wider than
-the window.
+the window. The @ menu is also never wider than its anchor (the composer, the
+new discussion's prompt field: `100%` in its `min(...)`, no floor), so the
+column that clips it (`.disc-messages-col`, overflow hidden) never cuts a
+tier: in a narrow column it takes the anchor's width and the three tier
+columns hold down to 368 px.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:591#place]`
 Availability always goes through
 `AgentAvailabilityBadge` (`unavailable` and `disabled` block the choice,

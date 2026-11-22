@@ -5468,9 +5468,13 @@ button.disc-contact-open {
    Its height is measured (ChatInput's `boundary`): from the composer's top to
    the message list's top, so it never slides under the header or a banner,
    and it scrolls inside. This cap only holds until that measure runs. The
-   new discussion form measures its own room against its layout. */
+   new discussion form measures its own room against its layout.
+   KT-1994 — its width never exceeds its anchor's (`100%`: the composer, the
+   new discussion's prompt field, both `position: relative`), so it cannot
+   pass the column that clips it (`.disc-messages-col`, overflow hidden);
+   no floor wider than the anchor: the three tier columns hold at 368px. */
 .disc-mention-popover.kr-agent-switch-palette {
-  width: min(520px, calc(100vw - 2 * var(--kr-space-4)));
+  width: min(520px, 100%, calc(100vw - 2 * var(--kr-space-4)));
   max-height: calc(100vh - 2 * var(--kr-space-8));
   overflow-y: auto;
   background: var(--kr-bg-elevated);
@@ -5482,7 +5486,7 @@ button.disc-contact-open {
    AgentSwitchPicker.css). */
 @media (min-width: 768px) {
   .disc-mention-popover.kr-agent-switch-palette {
-    width: min(760px, max(100%, 520px), calc(100vw - 2 * var(--kr-space-4)));
+    width: min(760px, 100%, calc(100vw - 2 * var(--kr-space-4)));
   }
 }
 

@@ -260,7 +260,7 @@ describe('AgentSwitchPicker.css — the rules this lot adds stay on the tokens (
     const page = read('pages/DiscussionsPage.css');
     const wide = page.match(/@media \(min-width: 768px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
     expect(declaration(rule(wide, '.disc-mention-popover.kr-agent-switch-palette'), 'width'))
-      .toBe('min(760px, max(100%, 520px), calc(100vw - 2 * var(--kr-space-4)))');
+      .toBe('min(760px, 100%, calc(100vw - 2 * var(--kr-space-4)))');
     // 760 - 2 x (1px border + 4px padding) = 750px content box, at least the 748px threshold.
     // The palette's box rule is its second block (the first holds only the
     // container query's type).
@@ -271,6 +271,31 @@ describe('AgentSwitchPicker.css — the rules this lot adds stay on the tokens (
     const contentBox = 760 - 2 * (1 + 4);
     expect(contentBox).toBeGreaterThanOrEqual(748);
     expect(contentBox - 16 - 8 - (3 * 192 + 2 * 4)).toBe(142);
+  });
+
+  // KT-1994 review round 4: in a 768px window the 520px floor
+  // (`max(100%, 520px)`) pushed the palette 125px past `.disc-messages-col`
+  // (overflow hidden) and cut the « Avancé » column.
+  it('the @ menu is never wider than its anchor: every width expression is capped by 100% and holds no floor', () => {
+    const page = read('pages/DiscussionsPage.css');
+    const wide = page.match(/@media \(min-width: 768px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    const widths = [
+      declaration(rule(page, '.disc-mention-popover.kr-agent-switch-palette'), 'width'),
+      declaration(rule(wide, '.disc-mention-popover.kr-agent-switch-palette'), 'width'),
+    ];
+    expect(widths[0]).toBe('min(520px, 100%, calc(100vw - 2 * var(--kr-space-4)))');
+    for (const width of widths) {
+      // A top-level min() holding 100% among its terms, and no max()/clamp() floor.
+      expect(width).toMatch(/^min\((?:[^,]+,\s*)*100%(?:,\s*[^,]+)*\)$/);
+      expect(width).not.toMatch(/max\(|clamp\(|min-width/);
+    }
+    expect(declaration(rule(page, '.disc-mention-popover.kr-agent-switch-palette'), 'min-width')).toBeFalsy();
+    // `100%` is the anchor's width because both anchors are the palette's
+    // containing block and it starts at their left edge.
+    expect(declaration(rule(page, '.disc-mention-popover'), 'left')).toBe('0');
+    expect(declaration(rule(page, '.disc-mention-popover'), 'position')).toBe('absolute');
+    expect(declaration(rule(page, '.disc-composer'), 'position')).toBe('relative');
+    expect(declaration(rule(page, '.disc-new-prompt-wrap'), 'position')).toBe('relative');
   });
 
   // KT-1994 review, point 6.
