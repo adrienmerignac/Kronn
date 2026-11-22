@@ -443,9 +443,9 @@ for dots, borders and tinted surfaces. Text labels use `agentTextColor`; NVIDIA
 therefore keeps its `#76B900` brand accent while using a WCAG-AA companion green
 adapted to light and dark themes in aliases, message attribution, comparisons,
 workflow summaries and the shared agent selector.
-`[src: file: frontend/src/lib/constants.ts:190-206#agentTextColor]`
+`[src: file: frontend/src/lib/constants.ts:207-223#agentTextColor]`
 `[src: file: frontend/src/styles/tokens.css:82-84#kr-agent-nvidia-text]`
-`[src: file: frontend/src/styles/tokens.css:372-373#kr-agent-nvidia-text]`
+`[src: file: frontend/src/styles/tokens.css:386-387#kr-agent-nvidia-text]`
 
 **Quick Prompt Compare details:** a completed or live Compare opens a dedicated
 multi-column workspace whose columns can be reordered without losing their
