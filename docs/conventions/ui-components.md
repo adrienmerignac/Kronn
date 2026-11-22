@@ -298,8 +298,8 @@ Escape closes one layer, the innermost first
   the bottom and resumes following. The toolbar renders only the controls wired
   by the caller (`wrapToggle`, `copyable` via `CopyButton`, `onRefresh`,
   `onClear`, and the `note` slot).
-  `[src: file: frontend/src/components/ui/LogViewer.tsx:58#LogViewer]`
-  `[src: file: frontend/src/components/ui/logKinds.ts:34#stripAnsi]`
+  `[src: file: frontend/src/components/ui/LogViewer.tsx:60-64#LogViewer]`
+  `[src: file: frontend/src/components/ui/logKinds.ts:36-37#stripAnsi]`
 - **One diff model (`DiffViewer`, KT-2004).** `DiffViewer` takes a structured
   `DiffFileModel[]`, built either from a git patch with `parseUnifiedDiff` or
   from the positional row pairs of `qp-history-diff.ts` with `diffFileFromRows`
@@ -315,9 +315,9 @@ Escape closes one layer, the innermost first
   `DiffViewer.css`. When `selectable` is on, each content line renders a named
   toggle button with `aria-pressed`; shift-click extends the selected range up
   to `maxSelection` (default 50) in the same file.
-  `[src: file: frontend/src/components/ui/DiffViewer.tsx:77#DiffViewer]`
-  `[src: file: frontend/src/lib/diffModel.ts:74#parseUnifiedDiff]`
-  `[src: file: frontend/src/lib/diffModel.ts:220#diffFileFromRows]`
+  `[src: file: frontend/src/components/ui/DiffViewer.tsx:310-315#DiffViewer]`
+  `[src: file: frontend/src/lib/diffModel.ts:78-82#parseUnifiedDiff]`
+  `[src: file: frontend/src/lib/diffModel.ts:190-193#diffFileFromRows]`
 - **Variants** live in `dataKinds.ts` (`TABLE_DENSITIES`,
   `TABLE_MAX_HEIGHTS`, `TABLE_NARROW_FORMS`, `TABLE_ROW_TONES`,
   `KEY_VALUE_LAYOUTS`, `STAT_TILE_SIZES`, `PROGRESS_TONES`,
