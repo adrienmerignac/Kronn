@@ -30,13 +30,13 @@ alone does not establish a user-visible duration.
    key. [src: file: backend/src/db/sql/082_message_sequence.sql:14-15#idx_messages_discussion_sort_order_unique]
 4. The frontend polls `GET /api/discussions/{id}/poll` on active-discussion
    changes, immediately and then every five seconds.
-   [src: file: frontend/src/pages/DiscussionsPage.tsx:1233-1241#fetchActive]
-   [src: file: frontend/src/pages/DiscussionsPage.tsx:1063-1096#reloadDiscussion]
+   [src: file: frontend/src/pages/DiscussionsPage.tsx:1216-1224#fetchActive]
+   [src: file: frontend/src/pages/DiscussionsPage.tsx:1046-1079#reloadDiscussion]
    The server builds the complete detail on every poll and omits it only when
    its revision matches the one the client holds; a changed response replaces
    that discussion's cached detail object.
    [src: file: backend/src/api/discussions/crud.rs:195-225#poll]
-   [src: file: frontend/src/pages/DiscussionsPage.tsx:1030-1031#reconcileLoadedDiscussion]
+   [src: file: frontend/src/pages/DiscussionsPage.tsx:1013-1014#reconcileLoadedDiscussion]
 5. The detail response also queries all message targets belonging to the
    discussion and groups them in a map.
    [src: file: backend/src/db/discussions.rs:3097-3141#list_discussion_message_targets]
@@ -76,7 +76,7 @@ alone does not establish a user-visible duration.
    There is a per-message
    200,000-character fallback that avoids this Markdown path for very large
    individual messages; it does not cap the count of ordinary messages.
-   [src: file: frontend/src/components/MessageBubble.tsx:2012-2019#MAX_MARKDOWN_CHARS]
+   [src: file: frontend/src/components/MessageBubble.tsx:2013-2020#MAX_MARKDOWN_CHARS]
 5. The active-detail change also triggers an effect that filters the complete
    array to mark the discussion seen.
    [src: file: frontend/src/pages/DiscussionsPage.tsx:1991-2005#markDiscussionSeen]
@@ -93,14 +93,14 @@ alone does not establish a user-visible duration.
    [src: file: frontend/src/pages/DiscussionsPage.tsx:2131-2145#lastSettledDiscIdRef]
 2. For streaming content while stuck to the bottom, the page calls
    `scrollIntoView` no more often than once per 250 ms.
-   [src: file: frontend/src/pages/DiscussionsPage.tsx:2021-2036#lastScrollRef]
+   [src: file: frontend/src/pages/DiscussionsPage.tsx:2025-2040#lastScrollRef]
 3. Incoming stream chunks are buffered and flush at most once per animation
    frame into the discussion streaming map.
    [src: file: frontend/src/hooks/useRafBatchedStream.ts:20-49#useRafBatchedStream]
    The active streaming text is
    deferred before being passed to the streaming reply renderer.
-   [src: file: frontend/src/pages/DiscussionsPage.tsx:1585-1591#deferredStreamingText]
-   [src: file: frontend/src/pages/DiscussionsPage.tsx:1585-1593#deferredStreamingText]
+   [src: file: frontend/src/pages/DiscussionsPage.tsx:1589-1595#deferredStreamingText]
+   [src: file: frontend/src/pages/DiscussionsPage.tsx:1589-1597#deferredStreamingText]
 
 ## Findings and priorities
 

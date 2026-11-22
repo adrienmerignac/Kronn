@@ -18,8 +18,8 @@ component when that table changed. The arbitration card was below this
 component, so changing its identity remounted the form instead of updating props.
 The form's draft, selection and in-flight guard are local state/refs.
 [src: commit: 6503ecd14af145a5f668e1afd845b6f839abc7ef]
-`[src: file: frontend/src/pages/DiscussionsPage.tsx:1063-1078#reloadDiscussion]`
-`[src: file: frontend/src/pages/DiscussionsPage.tsx:1030-1031#reconcileLoadedDiscussion]`
+`[src: file: frontend/src/pages/DiscussionsPage.tsx:1046-1061#reloadDiscussion]`
+`[src: file: frontend/src/pages/DiscussionsPage.tsx:1013-1014#reconcileLoadedDiscussion]`
 `[src: file: frontend/src/components/MessageBubble.tsx:1204-1214#sources]`
 `[src: file: frontend/src/components/DiscussionQuestionCard.tsx:100-114]`
 

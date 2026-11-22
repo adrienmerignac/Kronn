@@ -488,10 +488,10 @@ modes are props, not copies: the trigger `variant` (`chip`, `compact`,
 (an agent and a model id, the catalogue's or one typed in the search, or
 « = principal », with the principal's own model greyed) and `customModel`
 (KT-1994: the full list of a discussion, see below).
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:487#variant]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:510#multiple]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:521#exactModel]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:529#customModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:475#variant]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:498#multiple]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:509#exactModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:517#customModel]`
 Its popover is in `<body>` on the popover layer, above every dialog, and opens
 on its search field. It is placed from its rendered size, measured on open,
 when the search or the catalogue changes it, and on resize: it stays inside
@@ -505,13 +505,13 @@ new discussion's prompt field: `100%` in its `min(...)`, no floor), so the
 column that clips it (`.disc-messages-col`, overflow hidden) never cuts a
 tier: in a narrow column it takes the anchor's width and the three tier
 columns hold down to 368 px.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:595#place]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:583#place]`
 Availability always goes through
 `AgentAvailabilityBadge` (`unavailable` and `disabled` block the choice,
 `needs-full-access` and `not-listed` only warn, `catalog` is the neutral
 « Détecté », « Cache à revérifier », « Configuration migrée »).
 `[src: file: frontend/src/lib/agentAvailability.ts:14#AgentAvailabilityState]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:132#AgentAvailabilityBadge]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:120#AgentAvailabilityBadge]`
 
 **The grouped list (disposition A, KT-1994)** is the popover of every picker
 that chooses a mode (the discussion header, the new-discussion form, workflow
@@ -547,7 +547,7 @@ listed, and when nothing matches one line says so. The fold controls are
 hidden while searching. The trigger writes the model id the configuration
 names (or the custom model), whether or not the catalogue is loaded: its text
 never changes when the list opens; the display name goes to its title.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:759#AgentModelList]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:747#AgentModelList]`
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:55-60#modeModelId]`
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:864]`
 
@@ -570,8 +570,8 @@ a custom choice as `model` and a mode as `tier` alone, which clears the model
 server-side (KT-1993, [discussion-agent-routing](../architecture/discussion-agent-routing.md));
 a refusal is shown next to the entry and the previous choice stays: the picker
 trims, it never re-validates.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:49-53#OTHER_MODELS_RENDER_LIMIT]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1327-1328#selectModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:50-54#OTHER_MODELS_RENDER_LIMIT]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:1314-1315#selectModel]`
 `[src: file: frontend/src/components/ChatHeader.tsx:334]`
 `[src: file: frontend/src/pages/DiscussionsPage.tsx:2469]`
 
@@ -600,9 +600,9 @@ their gaps (584 px), the row's gap and padding (24 px) and an agent column of
 at least 140 px; at 760 px that column gets 142 px. Narrower, the tiers go
 under the agent in three equal columns. The @ menu offers no other model and
 no exact model: nothing exists server-side for a one-off call.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:199#AgentPickerTierChoices]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:182#showModel]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:186-191#tierRowState]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:187#AgentPickerTierChoices]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:170#showModel]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:174-179#tierRowState]`
 `[src: file: frontend/src/lib/agentAvailability.ts:62#sharedTierState]`
 `[src: file: frontend/src/lib/agentAvailability.ts:82#rowAvailability]`
 
@@ -615,8 +615,8 @@ height is then measured from its anchored edge to that area's far edge, minus
 `--kr-space-2`, and it scrolls inside. The composer's boundary is the message
 list (`composerMentionBoundary`), so the menu never slides under the
 discussion header or a banner.
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:292-298#AgentPickerPalette]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:317#boundary]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:280-286#AgentPickerPalette]`
+`[src: file: frontend/src/components/AgentSwitchPicker.tsx:305#boundary]`
 `[src: file: frontend/src/lib/agentPickerPalette.ts:21#agentPaletteFieldAria]`
 `[src: file: frontend/src/lib/agentPickerPalette.ts:11#composerMentionBoundary]`
 The API assistants go through `AssistantAgentPicker` (installed agents,
