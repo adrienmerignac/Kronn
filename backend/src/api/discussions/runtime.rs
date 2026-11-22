@@ -1626,6 +1626,26 @@ async fn fail_dispatch_job_with_outcome_kind(
     state.agent_dispatch_notify.notify_waiters();
 }
 
+/// KT-2012 — the model a refusal card credits to the turn's agent: the
+/// discussion's exact model belongs to its own agent and connection only, never
+/// to a mention or a second participant.
+fn refused_turn_model(
+    discussion_model: Option<String>,
+    discussion_agent: &crate::models::AgentType,
+    discussion_connection_id: Option<&str>,
+    turn_agent: &crate::models::AgentType,
+    job: &crate::db::agent_dispatch::AgentDispatchJob,
+) -> Option<String> {
+    discussion_model.filter(|_| {
+        super::streaming::turn_runs_on_discussion_target(
+            discussion_agent,
+            discussion_connection_id,
+            turn_agent,
+            job.connection_id.as_deref(),
+        )
+    })
+}
+
 /// KT-1517 — the System card a quota-refused turn leaves in its own room: the
 /// provider's message, when it resets if it said, and the way out. It is linked to
 /// the dispatch, so the room's Retry runs the same turn again.
@@ -1647,13 +1667,14 @@ async fn record_quota_card(
                             discussion.tier,
                             discussion.model,
                             discussion.language,
+                            discussion.connection_id,
                         )
                     },
                 ),
             )
         })
         .await;
-    let (agent, tier, model, language) = match loaded {
+    let (room_agent, tier, model, language, room_connection) = match loaded {
         Ok(Some(loaded)) => loaded,
         Ok(None) => return,
         Err(db_error) => {
@@ -1661,7 +1682,11 @@ async fn record_quota_card(
             return;
         }
     };
-    let agent = job.agent_override.clone().unwrap_or(agent);
+    let agent = job
+        .agent_override
+        .clone()
+        .unwrap_or_else(|| room_agent.clone());
+    let model = refused_turn_model(model, &room_agent, room_connection.as_deref(), &agent, job);
     let message = error.strip_prefix("quota_exhausted: ").unwrap_or(error);
     let content = super::start_refusal::quota_exhausted_card(
         &language,
@@ -1718,13 +1743,14 @@ async fn ensure_failure_visible(
                             discussion.tier,
                             discussion.model,
                             discussion.language,
+                            discussion.connection_id,
                         )
                     },
                 ),
             )
         })
         .await;
-    let (agent, tier, model, language) = match loaded {
+    let (room_agent, tier, model, language, room_connection) = match loaded {
         Ok(Some(loaded)) => loaded,
         Ok(None) => return,
         Err(error) => {
@@ -1732,7 +1758,11 @@ async fn ensure_failure_visible(
             return;
         }
     };
-    let agent = job.agent_override.clone().unwrap_or(agent);
+    let agent = job
+        .agent_override
+        .clone()
+        .unwrap_or_else(|| room_agent.clone());
+    let model = refused_turn_model(model, &room_agent, room_connection.as_deref(), &agent, job);
     let content =
         super::start_refusal::unexplained_end_card(&language, reason, tier, Some(&job.id));
     super::start_refusal::record_refusal_card(
