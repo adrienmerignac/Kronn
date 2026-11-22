@@ -265,9 +265,8 @@ function DiffFile({ file, layout, highlight, highlightLimit, copyable, selectabl
   });
 
   // Each hunk's first line index is the count of the lines before it.
-  const starts = file.hunks.reduce<number[]>(
-    (acc, hunk, h) => [...acc, h === 0 ? 0 : acc[h - 1] + file.hunks[h - 1].lines.length], [],
-  );
+  const starts = file.hunks.map((_, h) =>
+    file.hunks.slice(0, h).reduce((sum, before) => sum + before.lines.length, 0));
   const hunks = file.hunks.map((hunk, h) => {
     const items = hunk.lines.map((line, j) => ({ line, index: starts[h] + j }));
     return (

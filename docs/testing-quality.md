@@ -56,7 +56,7 @@ Run from the repository root unless a working directory is shown.
 | Frontend ESLint | `cd frontend && pnpm lint` | Zero errors; CI's pinned warning budget must not increase |
 | Frontend fast lint | `cd frontend && pnpm lint:fast` | Zero warnings |
 | i18n | `cd frontend && pnpm lint:i18n` | `fr`, `en`, `es` and `zh` have matching, valid keys |
-| Theme tokens | `cd frontend && pnpm lint:theme` | Every text role meets its WCAG floor in every theme; no undefined `--kr-*`, literal white/black text on a token fill, or removed `:focus-visible` ring |
+| Theme tokens | `cd frontend && pnpm lint:theme` | Every text role and status colour meets its WCAG floor in every theme (light-theme status misses frozen in `src/styles/themeAuditBaseline.json`); no undefined `--kr-*`, literal white/black text on a token fill, removed `:focus-visible` ring, or off-scale stylesheet value beyond the baseline ([ui-lint-guards.md](conventions/ui-lint-guards.md)) |
 | Frontend unit/integration | `make test-frontend` | Entire Vitest suite passes |
 | Frontend production build | `cd frontend && pnpm build` | TypeScript and Vite build succeed |
 | Browser E2E | `make test-e2e` | Entire Playwright suite passes against the expected backend fixture |
@@ -404,8 +404,10 @@ It tests the rendered usage UI, not the `ccusage` process or private operator
 history; collector timeout behavior needs separate backend coverage.
 
 `pnpm lint:theme` measures tokens statically: in the dark themes every text
-role and status colour needs 4.5:1 on the surface ramp, text roles also on a
-hover chip over elevated; elsewhere faint/dim/ghost need 3:1. A fallback does
+role needs 4.5:1 on the surface ramp, also on a hover chip over elevated;
+elsewhere faint/dim/ghost need 3:1. Status colours need 4.5:1 in every theme
+(KT-1887); the light-theme cells that missed it are frozen in a baseline, see
+[ui-lint-guards.md](conventions/ui-lint-guards.md). A fallback does
 not excuse an undefined `--kr-*`; component-scoped properties drop the prefix.
 White or black text pinned on a `--kr-*` fill is refused in stylesheets and in
 inline `style={{ }}` objects alike.
