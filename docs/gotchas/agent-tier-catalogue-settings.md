@@ -116,7 +116,7 @@ CLI tiers. No embedded model list participates in the display helper anymore.
 [src: file: frontend/src/lib/constants.ts:60-75#modelForAgentTier]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:12-49#resolveCatalogTier]
 [src: file: frontend/src/lib/modelCatalogSelection.ts:77-88#catalogTierEntry]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:1149-1159#resolvedTier]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:1219-1229#resolvedTier]
 
 The shared picker keeps an unavailable configured entry disabled. A failed
 snapshot read reports the error and retains previous data as cached, not live.
@@ -149,8 +149,8 @@ refetches the catalogue. An unknown configured ID remains searchable, and a
 known unavailable choice remains disabled; accessible descriptions retain the
 model, provenance and unavailable state after filtering.
 [src: file: frontend/src/lib/modelCatalogSelection.ts:53-62#matchesCatalogSearch]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:1172-1178#visibleChoices]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:1122-1157#tierOptions]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:1250-1256#visibleChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:1192-1227#tierOptions]
 
 The search field is outside the menu, within a portalled non-modal dialog.
 Arrow keys move among enabled choices; Home/End retain their caret behavior in
@@ -158,11 +158,11 @@ search and navigate choices when an option has focus. Escape inside the picker
 does not propagate to its parent form. Closing with Escape or completing an
 asynchronous selection restores trigger focus. Reopening clears the query,
 an empty result is explicit, and the popup's height is bounded by the viewport.
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:1141-1166#navigateChoices]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:572-581#place]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:567-572#restoreFocusRef]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:1285-1292#setQuery]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:1302-1321#createPortal]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:1211-1236#navigateChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:591-600#place]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:586-591#restoreFocusRef]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:1363-1370#setQuery]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:1380-1399#createPortal]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.catalog.test.tsx:167-204#reports]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.catalog.test.tsx:228-255#closes]
 [src: file: frontend/src/components/__tests__/AgentSwitchPicker.accessibility.test.tsx:40-76#repositions]
@@ -183,8 +183,8 @@ accessible even when an alias is displayed. Failed reloads retain stale data
 and an explicit error; typing within an open palette does not refetch.
 [src: file: frontend/src/lib/modelCatalogSelection.ts:12-49#resolveCatalogTier]
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:32-93#useModelCatalogSnapshot]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:181-183#AgentPickerTierChoices]
-[src: file: frontend/src/components/AgentSwitchPicker.tsx:90#lastChecked]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:196-198#AgentPickerTierChoices]
+[src: file: frontend/src/components/AgentSwitchPicker.tsx:105#lastChecked]
 [src: file: frontend/src/components/ChatInput.tsx:518#useModelCatalogSnapshot]
 [src: file: frontend/src/components/ChatInput.tsx:741-751#mentionTierResolution]
 [src: file: frontend/src/components/NewDiscussionForm.tsx:205#useModelCatalogSnapshot]
