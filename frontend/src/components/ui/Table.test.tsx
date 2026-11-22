@@ -183,7 +183,27 @@ describe('Table', () => {
       await user.click(boxes[1]);
       expect(screen.getByTestId('selected')).toHaveTextContent('r2');
       expect(all).toBePartiallyChecked();
-      expect(screen.getAllByRole('row')[2]).toHaveAttribute('aria-selected', 'true');
+      // The checkbox is the only semantic of the selection: aria-selected
+      // belongs to a grid row, not to the row of a plain table. The row only
+      // carries a data attribute for its colour.
+      expect(screen.getAllByRole('row')[2]).toHaveAttribute('data-selected', 'true');
+      expect(screen.getAllByRole('row')[1]).not.toHaveAttribute('data-selected');
+      for (const row of screen.getAllByRole('row')) expect(row).not.toHaveAttribute('aria-selected');
+    });
+
+    it('colours a selected row with the accent selection tint, over its tone tint and keeping its tone border', () => {
+      expect(CSS).not.toContain('aria-selected');
+      expect(CSS).not.toContain('--kr-bg-selected');
+      // The token of the selected rows of the collection lists (CollectionShell.css).
+      const rule = CSS.match(/tbody tr\[data-selected="true"\]\s*\{([^}]*)\}/)?.[1] ?? '';
+      expect(rule).toMatch(/background-image:\s*linear-gradient\(var\(--kr-accent-bg\), var\(--kr-accent-bg\)\)/);
+      // An image over the colour: the danger / warning tint stays underneath,
+      // and nothing in the rule touches the tone border.
+      expect(rule).not.toMatch(/background-color|border/);
+      expect(CSS).toMatch(/tr\[data-tone="danger"\] > :first-child\s*\{[^}]*border-inline-start/);
+      const query = CSS.match(/@container ui-table \(width < 40rem\)\s*\{([\s\S]*)\}/)?.[1] ?? '';
+      expect(query).toMatch(/\[data-narrow="cards"\] tbody tr\[data-tone="danger"\]\s*\{[^}]*border-inline-start/);
+      expect(query).not.toContain('data-selected');
     });
 
     it('selects all, then none, from the header; the mixed state when some are selected', async () => {
@@ -329,6 +349,52 @@ describe('Table', () => {
       expect(query).toMatch(/\[data-narrow="cards"\] thead\s*\{[^}]*clip-path:\s*inset\(50%\)/);
       expect(query).toMatch(/\[data-narrow="cards"\] thead:focus-within\s*\{[^}]*clip-path:\s*none/);
       expect(CSS).toMatch(/\.ui-table-cell-label\s*\{[^}]*display:\s*none/);
+    });
+
+    it('writes the table roles out in cards form, so a value keeps its row, its cell and its column header', () => {
+      const { container } = render(
+        <Table
+          {...base}
+          narrow="cards"
+          selection={{ selected: ['r2'], onChange: () => {}, rowLabel: r => r.name }}
+          actions={r => <button type="button">{`Delete ${r.name}`}</button>}
+        />,
+      );
+      const table = container.querySelector('table')!;
+      expect(table).toHaveAttribute('role', 'table');
+      expect(screen.getByRole('table', { name: 'Workflow runs' })).toBe(table);
+      expect(container.querySelector('thead')).toHaveAttribute('role', 'rowgroup');
+      expect(container.querySelector('tbody')).toHaveAttribute('role', 'rowgroup');
+      for (const tr of container.querySelectorAll('tr')) expect(tr).toHaveAttribute('role', 'row');
+      for (const th of container.querySelectorAll('thead th')) expect(th).toHaveAttribute('role', 'columnheader');
+
+      // A row is found by its role, with its cells.
+      const row = screen.getByRole('row', { name: /Weekly audit/ });
+      expect(row).toHaveAttribute('data-selected', 'true');
+      expect(within(row).getByRole('rowheader')).toHaveTextContent('Weekly audit');
+      const cells = within(row).getAllByRole('cell');
+      expect(cells).toHaveLength(5); // checkbox, status, tokens, worktree, actions
+      for (const cell of cells) expect(cell).toHaveAttribute('role', 'cell');
+
+      // Each cell names its column header, whose name is the column's.
+      const headerOf = (cell: Element) => document.getElementById(cell.getAttribute('headers') ?? '')!;
+      const tokens = within(row).getByText('98,000').closest('td')!;
+      expect(headerOf(tokens)).toHaveAttribute('role', 'columnheader');
+      expect(headerOf(tokens)).toHaveAccessibleName('Tokens');
+      expect(headerOf(within(row).getByRole('rowheader'))).toHaveAccessibleName('Workflow');
+      expect(headerOf(cells[0])).toHaveAccessibleName('ui.table.selectAll');
+      expect(headerOf(cells[4])).toHaveAccessibleName('ui.table.actions');
+      // The same position too: the header at the cell's index is its column's.
+      const headerRow = screen.getAllByRole('row')[0];
+      expect(within(headerRow).getAllByRole('columnheader')[[...row.children].indexOf(tokens)]).toBe(headerOf(tokens));
+    });
+
+    it('leaves the native roles implicit in the wide form', () => {
+      const { container } = render(<Table {...base} />);
+      for (const el of container.querySelectorAll('table, thead, tbody, tr, th, td')) {
+        expect(el).not.toHaveAttribute('role');
+        expect(el).not.toHaveAttribute('headers');
+      }
     });
   });
 

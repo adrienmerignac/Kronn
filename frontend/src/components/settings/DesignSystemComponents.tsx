@@ -33,6 +33,7 @@ import { STATUS_TONES } from '../ui/statusTones';
 import type { OverlaySize } from '../ui/overlay';
 import { OVERLAY_WIDTHS } from '../../styles/designTokens';
 import { GALLERY_COMPONENTS, componentAnchor } from './designSystemGallery';
+import { useT } from '../../lib/I18nContext';
 import { AgentSwitchPicker, type AgentAvailability, type AgentSwitchTarget } from '../AgentSwitchPicker';
 import type { AgentType, ModelTier, ShadowAgent } from '../../types/generated';
 
@@ -709,22 +710,48 @@ function AgentSwitchPickerDemo({ t }: { t: T }) {
   );
 }
 
-/** KT-1886 — a data component in a wide and in a narrow container, side by
- *  side: the narrow form comes from the container's width (20rem), not from
- *  the window's, so both show on any screen. */
-function WideAndNarrow({ t, render }: { t: T; render: (form: 'wide' | 'narrow') => ReactNode }) {
+/** One narrow demo: what it shows, and the form it shows when there are
+ *  several (the Table's cards and sideways scroll). */
+interface NarrowDemo { id: string; form?: string; node: ReactNode }
+
+/** KT-1886 — a data component in a wide container on its own line, then its
+ *  narrow demos together on the next line, each in a 20rem container (they
+ *  wrap under each other in a narrow window): the narrow form comes from the
+ *  container's width, not from the window's, so both show on any screen. */
+function WideAndNarrow({ t, wide, narrow }: { t: T; wide: ReactNode; narrow: ReactNode | readonly NarrowDemo[] }) {
+  const demos: readonly NarrowDemo[] = Array.isArray(narrow) ? narrow : [{ id: 'narrow', node: narrow }];
   return (
     <div className="ds-demo-pair">
       <div className="ds-demo-container" data-form="wide">
         <span className="ds-demo-label">{t('designSystem.demo.data.wide')}</span>
-        {render('wide')}
+        {wide}
       </div>
-      <div className="ds-demo-container" data-form="narrow">
-        <span className="ds-demo-label">{t('designSystem.demo.data.narrow')}</span>
-        {render('narrow')}
+      <div className="ds-demo-narrow-line">
+        {demos.map(demo => (
+          <div key={demo.id} className="ds-demo-container" data-form="narrow">
+            <span className="ds-demo-label">
+              {t('designSystem.demo.data.narrow')}
+              {demo.form && ` · ${demo.form}`}
+            </span>
+            {demo.node}
+          </div>
+        ))}
       </div>
     </div>
   );
+}
+
+/** The demos' numbers, written in the interface's locale. */
+function useNumber() {
+  const { locale } = useT();
+  const integer = new Intl.NumberFormat(locale);
+  const decimal = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  const percent = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 });
+  return {
+    number: (n: number) => integer.format(n),
+    decimal: (n: number) => decimal.format(n),
+    percent: (n: number) => percent.format(n),
+  };
 }
 
 /** A clipboard that always refuses, to show the failure. */
@@ -732,6 +759,12 @@ const refusedCopy = (): string => { throw new Error('refused'); };
 
 function CopyButtonDemo({ t }: { t: T }) {
   const command = 'git worktree add .kronn/worktrees/task-kt-1886-4e41d02c kronn/task/kt-1886-4e41d02c';
+  const copyLine = (
+    <p className="ds-demo-copy-line">
+      <code>{command}</code>
+      <CopyButton size="sm" text={command} label={t('designSystem.demo.data.copyCommand')} />
+    </p>
+  );
   return (
     <>
       <Row label={t('designSystem.demo.data.iconForm')}>
@@ -744,12 +777,7 @@ function CopyButtonDemo({ t }: { t: T }) {
         <CopyButton getText={refusedCopy} label={t('designSystem.demo.data.copyBroken')} />
         <CopyButton form="text" getText={refusedCopy} label={t('designSystem.demo.data.copyBroken')} />
       </Row>
-      <WideAndNarrow t={t} render={() => (
-        <p className="ds-demo-copy-line">
-          <code>{command}</code>
-          <CopyButton size="sm" text={command} label={t('designSystem.demo.data.copyCommand')} />
-        </p>
-      )} />
+      <WideAndNarrow t={t} wide={copyLine} narrow={copyLine} />
     </>
   );
 }
@@ -773,9 +801,14 @@ const RUN_STATUS_KEYS = {
 
 const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
+/** The bounded table's rows: enough to scroll under its sticky header. */
+const BOUNDED_ROWS = 12;
+
 /** KT-1886 — a sortable, selectable table whose rows open, in its cards form
- *  in a wide and a narrow container; then the scroll form, empty and loading. */
+ *  in a wide container, then in a narrow one next to the sideways scroll
+ *  form; then a bounded table with a sticky header, empty and loading. */
 function TableDemo({ t }: { t: T }) {
+  const { number } = useNumber();
   const runNames: Record<string, string> = {
     run1: t('designSystem.demo.data.run1'),
     run2: t('designSystem.demo.data.run2'),
@@ -786,6 +819,10 @@ function TableDemo({ t }: { t: T }) {
   const [selected, setSelected] = useState<string[]>(['run2']);
   const [opened, setOpened] = useState<string | null>(null);
   const runs: DemoRun[] = DEMO_RUNS.map(run => ({ ...run, name: runNames[run.id] }));
+  const bounded: DemoRun[] = Array.from({ length: BOUNDED_ROWS }, (_, i) => {
+    const run = runs[i % runs.length];
+    return { ...run, id: `bounded${i + 1}`, name: `${run.name} ${number(i + 1)}`, tokens: run.tokens + i * 137, seconds: run.seconds + i * 11 };
+  });
   const sorted = sort ? [...runs].sort((a, b) => {
     const order = sort.column === 'name' ? a.name.localeCompare(b.name)
       : sort.column === 'duration' ? a.seconds - b.seconds
@@ -799,7 +836,7 @@ function TableDemo({ t }: { t: T }) {
       header: t('designSystem.demo.data.colStatus'),
       cell: r => <StatusBadge tone={RUN_TONES[r.status]}>{t(RUN_STATUS_KEYS[r.status])}</StatusBadge>,
     },
-    { id: 'tokens', header: t('designSystem.demo.data.colTokens'), cell: r => r.tokens.toLocaleString(), numeric: true, sortable: true },
+    { id: 'tokens', header: t('designSystem.demo.data.colTokens'), cell: r => number(r.tokens), numeric: true, sortable: true },
     { id: 'duration', header: t('designSystem.demo.data.colDuration'), cell: r => formatDuration(r.seconds), numeric: true, sortable: true },
     { id: 'worktree', header: t('designSystem.demo.data.colWorktree'), cell: r => r.worktree, truncate: 'ellipsis' },
   ];
@@ -825,15 +862,28 @@ function TableDemo({ t }: { t: T }) {
   };
   return (
     <>
-      <WideAndNarrow t={t} render={form => (
-        <Table {...common} narrow="cards" stickyHeader maxHeight={form === 'wide' ? 'md' : undefined} hideCaption={form === 'narrow'} />
-      )} />
+      <WideAndNarrow
+        t={t}
+        wide={<Table {...common} narrow="cards" stickyHeader maxHeight="md" />}
+        narrow={[
+          { id: 'cards', form: t('designSystem.demo.data.formCards'), node: <Table {...common} narrow="cards" stickyHeader hideCaption /> },
+          { id: 'scroll', form: t('designSystem.demo.data.formScroll'), node: <Table {...common} density="compact" hideCaption /> },
+        ]}
+      />
       <p className="ds-demo-note" aria-live="polite" data-testid="ds-table-opened">
         {opened ? t('designSystem.demo.data.opened', opened) : t('designSystem.demo.data.openedNone')}
       </p>
-      <Row label={t('designSystem.demo.data.scroll')}>
-        <div className="ds-demo-container" data-form="narrow">
-          <Table {...common} density="compact" hideCaption />
+      <Row label={t('designSystem.demo.data.bounded')}>
+        <div className="ds-demo-container" data-form="wide">
+          <Table
+            caption={t('designSystem.demo.data.boundedCaption')}
+            hideCaption
+            columns={columns.filter(c => c.id !== 'status')}
+            rows={bounded}
+            getRowId={r => r.id}
+            maxHeight="sm"
+            stickyHeader
+          />
         </div>
       </Row>
       <Row label={t('designSystem.demo.data.empty')}>
@@ -872,78 +922,96 @@ function TableDemo({ t }: { t: T }) {
 }
 
 function KeyValueListDemo({ t }: { t: T }) {
+  const { number } = useNumber();
   const items: KeyValueItem[] = [
     { label: t('designSystem.demo.data.kvBranch'), value: 'kronn/task/kt-1886-4e41d02c', mono: true, copyable: true },
     { label: t('designSystem.demo.agent'), value: 'Claude Code' },
     { label: t('designSystem.demo.data.kvStarted'), value: null },
     { label: t('designSystem.demo.data.colWorktree'), value: '/srv/kronn/.kronn/worktrees/task-kt-1886-4e41d02c', mono: true, truncate: true },
-    { label: t('designSystem.demo.data.colTokens'), value: (48_210).toLocaleString() },
+    { label: t('designSystem.demo.data.colTokens'), value: number(48_210) },
   ];
   return (
     <>
       <Row label={t('designSystem.demo.data.grid')}>
-        <WideAndNarrow t={t} render={() => <KeyValueList items={items} />} />
+        <WideAndNarrow t={t} wide={<KeyValueList items={items} />} narrow={<KeyValueList items={items} />} />
       </Row>
       <Row label={t('designSystem.demo.data.inline')}>
-        <WideAndNarrow t={t} render={() => <KeyValueList items={items} layout="inline" />} />
+        <WideAndNarrow
+          t={t}
+          wide={<KeyValueList items={items} layout="inline" />}
+          narrow={<KeyValueList items={items} layout="inline" />}
+        />
       </Row>
     </>
   );
 }
 
 function StatTileDemo({ t }: { t: T }) {
-  const [filtered, setFiltered] = useState(false);
+  const { number, decimal } = useNumber();
+  // Two filter tiles, one of them on: the pressed state shows in the gallery.
+  const [filter, setFilter] = useState<'failed' | 'running' | null>('running');
+  const toggle = (next: 'failed' | 'running') => () => setFilter(f => (f === next ? null : next));
   const tiles = (
     <StatGrid label={t('designSystem.demo.data.statWeek')}>
       <StatTile
         label={t('designSystem.demo.data.statRuns')}
-        value={42}
+        value={number(42)}
         icon={<Activity />}
         delta={{ text: t('designSystem.demo.data.deltaRuns'), direction: 'up', tone: 'success' }}
         hint={t('designSystem.demo.data.last7')}
       />
       <StatTile
         label={t('designSystem.demo.data.statFailed')}
-        value={3}
+        value={number(3)}
         icon={<TriangleAlert />}
         delta={{ text: t('designSystem.demo.data.deltaFailed'), direction: 'up', tone: 'danger' }}
         hint={t('designSystem.demo.data.filterHint')}
-        onClick={() => setFiltered(f => !f)}
-        selected={filtered}
+        onClick={toggle('failed')}
+        selected={filter === 'failed'}
+      />
+      <StatTile
+        label={t('designSystem.demo.data.statusRunning')}
+        value={number(1)}
+        icon={<RefreshCw />}
+        hint={t('designSystem.demo.data.filterHint')}
+        onClick={toggle('running')}
+        selected={filter === 'running'}
       />
       <StatTile label={t('designSystem.demo.data.kvCost')} value={null} unit="$" icon={<Coins />} unknownReason={t('designSystem.demo.data.costUnknown')} />
-      <StatTile label={t('designSystem.demo.data.colTokens')} value="96.4" unit="k" loading />
+      <StatTile label={t('designSystem.demo.data.colTokens')} value={decimal(96.4)} unit="k" loading />
     </StatGrid>
   );
   return (
     <>
-      <WideAndNarrow t={t} render={() => tiles} />
+      <WideAndNarrow t={t} wide={tiles} narrow={tiles} />
       <Row label={t('designSystem.demo.size.lg')}>
-        <StatTile size="lg" label={t('designSystem.demo.data.colTokens')} value="96.4" unit="k" delta={{ text: '0', direction: 'flat' }} />
+        <StatTile size="lg" label={t('designSystem.demo.data.colTokens')} value={decimal(96.4)} unit="k" delta={{ text: number(0), direction: 'flat' }} />
       </Row>
     </>
   );
 }
 
 function ProgressBarDemo({ t }: { t: T }) {
+  const { number, percent } = useNumber();
   const segments: ProgressSegment[] = [
     { id: 'done', label: t('designSystem.demo.data.segDone'), value: 14, tone: 'success' },
     { id: 'failed', label: t('designSystem.demo.data.segFailed'), value: 1, tone: 'danger' },
     { id: 'running', label: t('designSystem.demo.data.segRunning'), value: 4, tone: 'info' },
     { id: 'waiting', label: t('designSystem.demo.data.segWaiting'), value: 6, tone: 'warning' },
   ];
+  const bars = (
+    <div className="ds-demo-stack">
+      <ProgressBar label={t('designSystem.demo.data.stepsDone')} value={3} max={8} valueText={`${number(3)}/${number(8)}`} />
+      <ProgressBar label={t('designSystem.demo.data.tasks')} segments={segments} legend />
+    </div>
+  );
   const toneLabel = (tone: string) => (tone === 'accent' ? t('designSystem.demo.data.accent') : t(`designSystem.demo.tone.${tone}`));
   return (
     <>
-      <WideAndNarrow t={t} render={() => (
-        <div className="ds-demo-stack">
-          <ProgressBar label={t('designSystem.demo.data.stepsDone')} value={3} max={8} valueText="3/8" />
-          <ProgressBar label={t('designSystem.demo.data.tasks')} segments={segments} legend />
-        </div>
-      )} />
+      <WideAndNarrow t={t} wide={bars} narrow={bars} />
       <Row label={t('designSystem.demo.data.determinate')}>
         <div className="ds-demo-stack">
-          <ProgressBar label={t('designSystem.demo.data.diskUsed')} value={70} valueText="70 %" tone="warning" />
+          <ProgressBar label={t('designSystem.demo.data.diskUsed')} value={70} valueText={percent(0.7)} tone="warning" />
           <ProgressBar label={t('designSystem.demo.data.diskUsed')} value={70} tone="warning" size="sm" hideLabel />
         </div>
       </Row>
@@ -955,7 +1023,7 @@ function ProgressBarDemo({ t }: { t: T }) {
       </Row>
       <Row label={t('designSystem.demo.tones')}>
         <div className="ds-demo-stack">
-          {PROGRESS_TONES.map(tone => <ProgressBar key={tone} label={toneLabel(tone)} value={60} tone={tone} valueText="60 %" />)}
+          {PROGRESS_TONES.map(tone => <ProgressBar key={tone} label={toneLabel(tone)} value={60} tone={tone} valueText={percent(0.6)} />)}
         </div>
       </Row>
     </>

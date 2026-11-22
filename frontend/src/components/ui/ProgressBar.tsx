@@ -56,7 +56,10 @@ const width = (value: string) => ({ '--ui-progress-value': value }) as CSSProper
 
 /** KT-1886 — progress towards an end, or the parts of a whole. A single bar
  *  is a `progressbar` (no value: indeterminate); the stacked form is an
- *  image whose name lists every part and its share, so it is read whole. */
+ *  image whose name lists every part and its share, so it is read whole —
+ *  unless a legend is shown: the legend is then the readable list (named by
+ *  the label) and the image is named by the label alone, so the breakdown is
+ *  not heard twice. */
 export function ProgressBar(props: ProgressBarProps) {
   const { label, hideLabel = false, size = 'md', className } = props;
   const { locale } = useT();
@@ -72,7 +75,9 @@ export function ProgressBar(props: ProgressBarProps) {
       const ratio = total > 0 ? Math.max(0, value) / total : 0;
       return ratio > 0 && ratio < 0.005 ? `<${format.format(0.01)}` : format.format(ratio);
     };
-    const name = `${label}: ${segments.map(s => `${s.label} ${s.value} (${share(s.value)})`).join(', ')}`;
+    const name = legend
+      ? label
+      : `${label}: ${segments.map(s => `${s.label} ${s.value} (${share(s.value)})`).join(', ')}`;
     return (
       <div className={classes} data-size={size} data-stacked="true">
         {!hideLabel && (
@@ -86,7 +91,7 @@ export function ProgressBar(props: ProgressBarProps) {
           ))}
         </div>
         {legend && (
-          <ul className="ui-progress-legend">
+          <ul className="ui-progress-legend" aria-label={label}>
             {segments.map(s => (
               <li key={s.id}>
                 <span className="ui-progress-swatch" data-tone={s.tone} aria-hidden="true" />

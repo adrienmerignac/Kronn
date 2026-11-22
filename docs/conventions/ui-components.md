@@ -173,7 +173,7 @@ Escape closes one layer, the innermost first
   demos), passes `holdsBootScreen={false}`: mounted for good, md and lg would
   otherwise hold the cold-start screen and leave Settings behind it when it
   is the first page opened
-  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:493]`.
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:494]`.
 - **Variants** live in `feedbackKinds.ts` (`NOTICE_TONES`,
   `EMPTY_STATE_KINDS`, `LOADING_SIZES`, `SKELETON_KINDS`), so the component
   files export components only (fast refresh).
@@ -201,7 +201,7 @@ Escape closes one layer, the innermost first
   side panel turns into cards on a wide screen too; no `@media` width query.
   A container query cannot read a custom property, so the threshold is
   written in rem, the one length besides a 1 or 2 px line.
-  `[src: file: frontend/src/components/ui/Table.css:245]`
+  `[src: file: frontend/src/components/ui/Table.css:249]`
   `[src: file: frontend/src/components/ui/KeyValueList.css:91]`
   `StatGrid` needs no query: `repeat(auto-fill, minmax(min(100%, …), 1fr))`
   wraps its tiles by its own width, never a fixed column count.
@@ -210,7 +210,20 @@ Escape closes one layer, the innermost first
   makes each row a card in which every value follows its column header (a
   label hidden from assistive technology, which already has the header row);
   the header row is visually hidden and shows again when a control in it (a
-  sort button, the select-all) takes the focus.
+  sort button, the select-all) takes the focus. Engines differ on whether a
+  table keeps its roles once its display changes, so in cards form the roles
+  are written out (`table`, `rowgroup`, `row`, `columnheader`, `rowheader`,
+  `cell`: the native ones, so the wide rendering is unchanged), the table is
+  named by its caption with `aria-labelledby`, and each cell names its column
+  header in `headers`.
+  `[src: file: frontend/src/components/ui/Table.tsx:183]`
+- **A selected row is a checked checkbox.** The row's checkbox is the only
+  semantic of the selection: `aria-selected` belongs to a row of a `grid`,
+  not of a plain table. The row carries `data-selected="true"` for its colour,
+  the accent tint of the selected rows of the collection lists
+  (`--kr-accent-bg`), laid over the row as a background image so a toned row
+  keeps its tone tint and its inline-start border.
+  `[src: file: frontend/src/components/ui/Table.css:160]`
 - **A scroll area the keyboard reaches.** The wrapper becomes a `region`
   named by the caption, with `tabindex="0"`, when `maxHeight` bounds it or
   when its content is wider than it (measured with a `ResizeObserver`); a
@@ -244,11 +257,13 @@ Escape closes one layer, the innermost first
   only, the text stays `--kr-text-secondary`; an unknown value is "—" with
   its reason in a title and in hidden text; a missing key-value is "—" read
   as "No value".
-- **A stacked bar is read whole.** It is a `role="img"` whose name lists
-  every segment, its count and its share (percent in the UI locale, "<1 %"
-  for a share that would round to 0); each drawn segment keeps
+- **A stacked bar is read once.** Without a legend it is a `role="img"`
+  whose name lists every segment, its count and its share (percent in the UI
+  locale, "<1 %" for a share that would round to 0). With `legend`, the
+  legend is the readable list, named by `label`, and the image is named by
+  `label` alone, so the breakdown is not heard twice. Each drawn segment keeps
   `--kr-space-1` of width at least.
-  `[src: file: frontend/src/components/ui/ProgressBar.tsx:75]`
+  `[src: file: frontend/src/components/ui/ProgressBar.tsx:78]`
   A single bar with no `value` is indeterminate: it slides, and under
   `prefers-reduced-motion: reduce` it stands still, the whole track striped.
   `[src: file: frontend/src/components/ui/ProgressBar.css:130]`
@@ -256,11 +271,14 @@ Escape closes one layer, the innermost first
   `TABLE_MAX_HEIGHTS`, `TABLE_NARROW_FORMS`, `TABLE_ROW_TONES`,
   `KEY_VALUE_LAYOUTS`, `STAT_TILE_SIZES`, `PROGRESS_TONES`,
   `PROGRESS_SIZES`, `nextSort`, `COPY_FEEDBACK_MS`).
-- **In the gallery** each one is shown in a wide and a narrow container side
-  by side (`WideAndNarrow`: the narrow one is 20rem whatever the window, the
-  wide one at least 40rem, without padding), with sample data; the test is
-  `DesignSystemDataComponents.test.tsx`.
-  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:715#WideAndNarrow]`
+- **In the gallery** each one is shown in a wide container on its own line,
+  then its narrow demos together on the next line (`WideAndNarrow`: each
+  narrow container is 20rem whatever the window and they wrap under each
+  other in a narrow window; the Table shows its cards and its sideways
+  scroll there; no padding on the containers), with sample data whose
+  numbers are written with `Intl.NumberFormat` in the interface's locale;
+  the test is `DesignSystemDataComponents.test.tsx`.
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:721#WideAndNarrow]`
 
 ## Rules
 

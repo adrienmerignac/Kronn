@@ -1,6 +1,7 @@
 // KT-1886 — the gallery entries of the dense-data components: each one shows
-// its normal form and its narrow form side by side, the narrow one in a
-// narrow container (not a narrow window), with sample data; the demos work
+// its normal form in a wide container on its own line, then its narrow forms
+// together on the next line, each in a narrow container (not a narrow
+// window), with sample data written in the interface's locale; the demos work
 // and pass axe.
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
@@ -20,27 +21,51 @@ const ENTRIES = ['CopyButton', 'Table', 'KeyValueList', 'StatTile', 'ProgressBar
 afterEach(cleanup);
 
 const section = (name: string) => screen.getByRole('region', { name });
+/** A number as the demos write it (the test context's locale is fr). */
+const fr = (n: number) => new Intl.NumberFormat('fr').format(n);
 
 describe('DesignSystemPage — dense-data components (KT-1886)', () => {
-  it('shows each one in a wide and a narrow container, side by side', () => {
+  it('shows each one in a wide container on its own line, then its narrow containers together on the next line', () => {
     render(<DesignSystemPage t={t} tab="components" />);
     for (const name of ENTRIES) {
       const pairs = [...section(name).querySelectorAll('.ds-demo-pair')];
       expect(pairs.length, name).toBeGreaterThan(0);
       for (const pair of pairs) {
-        const forms = [...pair.querySelectorAll(':scope > .ds-demo-container')].map(c => c.getAttribute('data-form'));
-        expect(forms, name).toEqual(['wide', 'narrow']);
-        expect(within(pair as HTMLElement).getByText('designSystem.demo.data.narrow')).toBeInTheDocument();
+        const lines = [...pair.children];
+        expect(lines.map(l => l.className), name).toEqual(['ds-demo-container', 'ds-demo-narrow-line']);
+        expect(lines[0]).toHaveAttribute('data-form', 'wide');
+        expect(within(lines[0] as HTMLElement).getByText('designSystem.demo.data.wide')).toBeInTheDocument();
+        const narrow = [...lines[1].children];
+        expect(narrow.length, name).toBeGreaterThan(0);
+        for (const box of narrow) {
+          expect(box).toHaveClass('ds-demo-container');
+          expect(box).toHaveAttribute('data-form', 'narrow');
+          expect(box.querySelector('.ds-demo-label')?.textContent).toMatch(/^designSystem\.demo\.data\.narrow/);
+        }
       }
     }
   });
 
-  it('makes the narrow container 20rem wide whatever the window, and the wide one at least 40rem', () => {
+  it('puts the wide container on a line of its own and lets the 20rem narrow ones wrap under each other', () => {
     const css = readFileSync(join(SRC, 'components', 'settings', 'DesignSystemSection.css'), 'utf8');
+    expect(css).toMatch(/\.ds-demo-pair\s*\{[^}]*flex-direction:\s*column/);
+    expect(css).toMatch(/\.ds-demo-container\[data-form="wide"\]\s*\{[^}]*align-self:\s*stretch/);
+    expect(css).toMatch(/\.ds-demo-narrow-line\s*\{[^}]*display:\s*flex[^}]*flex-wrap:\s*wrap/);
     expect(css).toMatch(/\.ds-demo-container\[data-form="narrow"\]\s*\{[^}]*max-width:\s*20rem/);
-    expect(css).toMatch(/\.ds-demo-container\[data-form="wide"\]\s*\{[^}]*flex:\s*999 1 40rem/);
     // No padding on the container: it would take the wide Table under 40rem.
     expect(css.match(/\.ds-demo-container\s*\{([^}]*)\}/)?.[1] ?? '').not.toMatch(/padding/);
+  });
+
+  it('writes the sample numbers in the interface\'s locale, never with English separators', () => {
+    render(<DesignSystemPage t={t} tab="components" />);
+    const all = ENTRIES.map(name => section(name).textContent ?? '').join(' ');
+    for (const english of ['96,400', '48,210', '18,240', '4,310', '96.4']) expect(all, english).not.toContain(english);
+    // The raw text: a text query would fold the French narrow no-break space.
+    const text = (name: string) => section(name).textContent ?? '';
+    expect(text('Table')).toContain(fr(96_400));
+    expect(text('KeyValueList')).toContain(fr(48_210));
+    expect(text('StatTile')).toContain(new Intl.NumberFormat('fr').format(96.4));
+    expect(text('ProgressBar')).toContain(new Intl.NumberFormat('fr', { style: 'percent', maximumFractionDigits: 0 }).format(0.7));
   });
 
   it('labels every caption and demo string in the four locales', () => {
@@ -49,6 +74,8 @@ describe('DesignSystemPage — dense-data components (KT-1886)', () => {
       'ui.table.empty', 'ui.keyValue.missing', 'ui.keyValue.copy', 'ui.stat.unknown', 'ui.stat.up', 'ui.stat.down',
       'ui.stat.flat', 'designSystem.demo.data.statusFailed', 'designSystem.demo.data.statusDone',
       'designSystem.demo.data.statusRunning', 'designSystem.demo.data.statusCancelled',
+      'designSystem.demo.data.wide', 'designSystem.demo.data.narrow', 'designSystem.demo.data.formCards',
+      'designSystem.demo.data.formScroll', 'designSystem.demo.data.bounded', 'designSystem.demo.data.boundedCaption',
       ...['copyButton', 'table', 'keyValueList', 'statTile', 'progressBar'].map(id => `designSystem.caption.${id}`),
     ];
     for (const [locale, dict] of Object.entries(dictionaries)) {
@@ -68,14 +95,28 @@ describe('DesignSystemPage — dense-data components (KT-1886)', () => {
     expect(within(broken.closest('.ui-copy-button-wrap') as HTMLElement).getByRole('status')).toHaveTextContent('ui.copy.failed');
   });
 
-  it('shows a Table that sorts, selects and opens a row, its cards form, the scroll form, empty and loading', async () => {
+  it('shows a Table that sorts, selects and opens a row, its cards and scroll forms side by side, a bounded one, empty and loading', async () => {
     const user = userEvent.setup();
     render(<DesignSystemPage t={t} tab="components" />);
     const table = section('Table');
     const tables = [...table.querySelectorAll('.ui-table')];
-    expect(tables.map(tb => tb.getAttribute('data-narrow'))).toEqual(['cards', 'cards', 'scroll', 'scroll', 'scroll']);
+    expect(tables.map(tb => tb.getAttribute('data-narrow'))).toEqual(['cards', 'cards', 'scroll', 'scroll', 'scroll', 'scroll']);
+    // The two narrow forms sit together on the line under the wide table.
+    const narrowLine = table.querySelector('.ds-demo-narrow-line')!;
+    expect([...narrowLine.querySelectorAll('.ui-table')].map(tb => tb.getAttribute('data-narrow'))).toEqual(['cards', 'scroll']);
+    expect([...narrowLine.querySelectorAll('.ds-demo-label')].map(l => l.textContent)).toEqual([
+      'designSystem.demo.data.narrow · designSystem.demo.data.formCards',
+      'designSystem.demo.data.narrow · designSystem.demo.data.formScroll',
+    ]);
     // The wide one is a bounded region named by its caption.
     expect(within(table).getByRole('region', { name: 'designSystem.demo.data.runsCaption' })).toHaveAttribute('data-max-height', 'md');
+    // A bounded table, preset sm, with a sticky header and enough rows to
+    // scroll: a focusable region named by its caption.
+    const bounded = within(table).getByRole('region', { name: 'designSystem.demo.data.boundedCaption' });
+    expect(bounded).toHaveAttribute('data-max-height', 'sm');
+    expect(bounded).toHaveAttribute('tabindex', '0');
+    expect(bounded.closest('.ui-table')).toHaveAttribute('data-sticky-header', 'true');
+    expect(within(bounded).getAllByRole('row').length - 1).toBeGreaterThanOrEqual(10);
 
     const [wide] = within(table).getAllByRole('table');
     const tokens = within(wide).getByRole('columnheader', { name: 'designSystem.demo.data.colTokens' });
@@ -114,10 +155,13 @@ describe('DesignSystemPage — dense-data components (KT-1886)', () => {
     expect(stats.querySelector('.ui-stat-value[data-unknown="true"]')).toBeTruthy();
     expect(stats.querySelector('.ui-stat-tile[aria-busy="true"]')).toBeTruthy();
     expect(stats.querySelector('.ui-stat-tile[data-size="lg"]')).toBeTruthy();
-    const [toggle] = within(stats).getAllByRole('button');
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    await user.click(toggle);
-    expect(within(stats).getAllByRole('button').map(b => b.getAttribute('aria-pressed'))).toEqual(['true', 'true']);
+    // Two filter tiles in each grid, one of them pressed from the start so the
+    // selected state shows in the gallery.
+    const pressed = () => within(stats).getAllByRole('button').map(b => b.getAttribute('aria-pressed'));
+    expect(pressed()).toEqual(['false', 'true', 'false', 'true']);
+    expect(stats.querySelector('.ui-stat-tile[aria-pressed="true"]')).toHaveTextContent('designSystem.demo.data.statusRunning');
+    await user.click(within(stats).getAllByRole('button')[0]);
+    expect(pressed()).toEqual(['true', 'false', 'true', 'false']);
   });
 
   it('shows ProgressBar determinate, indeterminate, stacked with its legend, and its five tones', () => {

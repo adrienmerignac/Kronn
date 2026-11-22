@@ -176,19 +176,27 @@ export function Table<Row>({
 
   const classes = ['ui-table', className].filter(Boolean).join(' ');
   const label = (text: ReactNode) => cards ? <span className="ui-table-cell-label" aria-hidden="true">{text}</span> : null;
+  // The cards form changes the display of the table, its rows and cells, and
+  // engines differ on whether a table keeps its roles then: the roles are
+  // written out (they equal the native ones), and each cell names its column
+  // header by id, so a value is never read without its header.
+  const role = (r: 'table' | 'rowgroup' | 'row' | 'columnheader' | 'rowheader' | 'cell') => (cards ? r : undefined);
+  const headerId = (key: string) => `${captionId}-h-${key}`;
+  const headers = (key: string) => (cards ? headerId(key) : undefined);
+  const columnKeys = columns.map((_, i) => String(i));
 
   const body = () => {
     if (loading) {
       return (
-        <tr className="ui-table-state-row">
-          <td colSpan={span}><LoadingState size="sm" message={loadingLabel ?? t('ui.loading.label')} /></td>
+        <tr className="ui-table-state-row" role={role('row')}>
+          <td colSpan={span} role={role('cell')}><LoadingState size="sm" message={loadingLabel ?? t('ui.loading.label')} /></td>
         </tr>
       );
     }
     if (rows.length === 0) {
       return (
-        <tr className="ui-table-state-row">
-          <td colSpan={span}>{empty ?? <p className="ui-table-empty">{t('ui.table.empty')}</p>}</td>
+        <tr className="ui-table-state-row" role={role('row')}>
+          <td colSpan={span} role={role('cell')}>{empty ?? <p className="ui-table-empty">{t('ui.table.empty')}</p>}</td>
         </tr>
       );
     }
@@ -200,11 +208,12 @@ export function Table<Row>({
           key={id}
           data-tone={rowTone?.(row)}
           data-opens={onRowOpen ? 'true' : undefined}
-          aria-selected={selection ? isSelected : undefined}
+          data-selected={isSelected ? 'true' : undefined}
+          role={role('row')}
           onClick={onRowOpen ? rowClick(row) : undefined}
         >
           {selection && (
-            <td className="ui-table-select">
+            <td className="ui-table-select" role={role('cell')} headers={headers('select')}>
               <Checkbox
                 checked={isSelected}
                 onChange={() => toggleRow(id)}
@@ -212,7 +221,7 @@ export function Table<Row>({
               />
             </td>
           )}
-          {columns.map(col => {
+          {columns.map((col, i) => {
             const content = col.cell(row);
             const full = col.truncate === 'ellipsis'
               ? col.text?.(row) ?? (typeof content === 'string' || typeof content === 'number' ? String(content) : undefined)
@@ -227,12 +236,13 @@ export function Table<Row>({
               'data-align': col.numeric ? 'end' : col.align ?? 'start',
               'data-numeric': col.numeric ? 'true' : undefined,
               'data-truncate': col.truncate,
+              headers: headers(columnKeys[i]),
             };
             return col.rowHeader
-              ? <th key={col.id} scope="row" {...props}>{label(col.header)}{value}</th>
-              : <td key={col.id} {...props}>{label(col.header)}{value}</td>;
+              ? <th key={col.id} scope="row" role={role('rowheader')} {...props}>{label(col.header)}{value}</th>
+              : <td key={col.id} role={role('cell')} {...props}>{label(col.header)}{value}</td>;
           })}
-          {actions && <td className="ui-table-actions">{label(actionsName)}<span className="ui-table-actions-items">{actions(row)}</span></td>}
+          {actions && <td className="ui-table-actions" role={role('cell')} headers={headers('actions')}>{label(actionsName)}<span className="ui-table-actions-items">{actions(row)}</span></td>}
         </tr>
       );
     });
@@ -254,14 +264,14 @@ export function Table<Row>({
         aria-labelledby={region ? captionId : undefined}
         tabIndex={region ? 0 : undefined}
       >
-        <table aria-busy={loading || undefined}>
+        <table aria-busy={loading || undefined} role={role('table')} aria-labelledby={cards ? captionId : undefined}>
           <caption id={captionId} className={hideCaption ? 'ui-table-caption ui-visually-hidden' : 'ui-table-caption'}>
             {caption}
           </caption>
-          <thead>
-            <tr>
+          <thead role={role('rowgroup')}>
+            <tr role={role('row')}>
               {selection && (
-                <th scope="col" className="ui-table-select">
+                <th scope="col" className="ui-table-select" role={role('columnheader')} id={cards ? headerId('select') : undefined}>
                   <Checkbox
                     checked={allSelected}
                     indeterminate={selectedCount > 0 && !allSelected}
@@ -271,12 +281,14 @@ export function Table<Row>({
                   />
                 </th>
               )}
-              {columns.map(col => {
+              {columns.map((col, i) => {
                 const sorted = sort?.column === col.id ? sort.direction : undefined;
                 return (
                   <th
                     key={col.id}
                     scope="col"
+                    role={role('columnheader')}
+                    id={cards ? headerId(columnKeys[i]) : undefined}
                     aria-sort={sorted}
                     data-align={col.numeric ? 'end' : col.align ?? 'start'}
                     data-numeric={col.numeric ? 'true' : undefined}
@@ -293,11 +305,11 @@ export function Table<Row>({
                 );
               })}
               {actions && (
-                <th scope="col" className="ui-table-actions"><span className="ui-visually-hidden">{actionsName}</span></th>
+                <th scope="col" className="ui-table-actions" role={role('columnheader')} id={cards ? headerId('actions') : undefined}><span className="ui-visually-hidden">{actionsName}</span></th>
               )}
             </tr>
           </thead>
-          <tbody>{body()}</tbody>
+          <tbody role={role('rowgroup')}>{body()}</tbody>
         </table>
       </div>
       {footer && <div className="ui-table-footer">{footer}</div>}

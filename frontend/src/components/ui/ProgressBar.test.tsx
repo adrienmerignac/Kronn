@@ -123,6 +123,21 @@ describe('ProgressBar — stacked', () => {
     for (const swatch of legend.querySelectorAll('.ui-progress-swatch')) expect(swatch).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it('with a legend, reads the breakdown once: the legend is a list named by the label, the image is named by the label alone', () => {
+    render(<ProgressBar label="Tasks" segments={SEGMENTS} legend />);
+    expect(screen.getByRole('img')).toHaveAccessibleName('Tasks');
+    const list = screen.getByRole('list', { name: 'Tasks' });
+    expect(within(list).getAllByRole('listitem').map(li => li.textContent)).toEqual(['Done6', 'Failed1', 'Running3', 'Skipped0']);
+  });
+
+  it('without a legend, keeps the full breakdown in the image name and renders no list', () => {
+    render(<ProgressBar label="Tasks" segments={SEGMENTS} />);
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      `Tasks: Done 6 (${pct(0.6)}), Failed 1 (${pct(0.1)}), Running 3 (${pct(0.3)}), Skipped 0 (${pct(0)})`,
+    );
+    expect(screen.queryByRole('list')).toBeNull();
+  });
+
   it('passes axe in every form', async () => {
     render(
       <main>

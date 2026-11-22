@@ -149,13 +149,17 @@
   background-color: var(--kr-bg-hover);
 }
 
-.ui-table tbody tr[aria-selected="true"] {
-  background-color: var(--kr-bg-selected);
-}
-
 .ui-table tbody tr[data-tone="danger"] { background-color: rgba(var(--kr-danger-rgb), 0.08); }
 .ui-table tbody tr[data-tone="warning"] { background-color: rgba(var(--kr-warning-rgb), 0.1); }
 .ui-table tbody tr[data-tone="muted"] { color: var(--kr-text-muted); }
+
+/* A selected row takes the accent tint of the selected rows of the collection
+   lists (--kr-accent-bg), laid over the background as an image: a toned row
+   keeps its tone tint underneath and its inline-start border. The checkbox
+   carries the state; this is only its colour. */
+.ui-table tbody tr[data-selected="true"] {
+  background-image: linear-gradient(var(--kr-accent-bg), var(--kr-accent-bg));
+}
 
 .ui-table tbody tr[data-tone="danger"] > :first-child { border-inline-start: 2px solid var(--kr-status-danger); }
 .ui-table tbody tr[data-tone="warning"] > :first-child { border-inline-start: 2px solid var(--kr-status-warning); }

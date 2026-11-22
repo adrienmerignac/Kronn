@@ -358,15 +358,23 @@
   min-height: calc(var(--kr-space-8) * 5);
 }
 
-/* KT-1886 — a data component in a wide and a narrow container, side by side.
-   The narrow container is 20rem wide whatever the window: the components
-   take their narrow form from their container's width. The wide one is at
-   least 40rem (--kr-bp-sm), so a Table keeps its columns there; it has no
-   padding, which would take it under 40rem. When both do not fit on one line
-   the narrow one wraps under the wide one. */
+/* KT-1886 — a data component in a wide container on its own line, then its
+   narrow demos together on the next line. The narrow containers are 20rem
+   wide whatever the window: the components take their narrow form from their
+   container's width. The wide one takes the whole line (40rem, --kr-bp-sm,
+   and more on a desktop window, so a Table keeps its columns there); it has
+   no padding, which would take it under 40rem. In a narrow window the narrow
+   containers wrap under each other. */
 .ds-demo-pair {
   display: flex;
   flex: 1 1 100%;
+  flex-direction: column;
+  gap: var(--kr-space-4);
+  min-width: 0;
+}
+
+.ds-demo-narrow-line {
+  display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--kr-space-4);
@@ -381,7 +389,7 @@
 }
 
 .ds-demo-container[data-form="wide"] {
-  flex: 999 1 40rem;
+  align-self: stretch;
 }
 
 .ds-demo-container[data-form="narrow"] {
