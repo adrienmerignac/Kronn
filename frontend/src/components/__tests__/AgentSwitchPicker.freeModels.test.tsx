@@ -1,6 +1,7 @@
 // KT-2010 — the agent picker's list: each agent's header is a band of its own
 // that stays written at the top of the list while its rows scroll under it
-// (never over the focused row), and a free model (`:free` variant) carries a
+// (never over the focused row), and a free model (its id's last word is
+// `free`, as in `:free` or `-free`, or its display name's) carries a
 // « Gratuit » / "Free" badge on every row that shows it, in that row's
 // accessible name and in the search.
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -13,7 +14,7 @@ vi.mock('../../lib/api', () => buildApiMock({ modelCatalogApi: { list: list as n
 
 import { AgentSwitchPicker, type AgentSwitchTarget } from '../AgentSwitchPicker';
 import { AGENT_PICKER_RECENTS_KEY } from '../../lib/agentPickerRecents';
-import { FREE_MODEL_SUFFIX, isFreeModel } from '../../lib/freeModel';
+import { isFreeDisplayName, isFreeModel } from '../../lib/freeModel';
 import { I18nProvider } from '../../lib/I18nContext';
 import { loadLocale, setUILocale } from '../../lib/i18n';
 import fr from '../../lib/i18n/locales/fr';
@@ -36,6 +37,7 @@ function view(runtime: string, agent: CatalogModelEntry['agent_type'], models: C
 
 const OR = 'http:openrouter';
 const PROXY = 'http:my-proxy';
+const OC = 'agent:opencode';
 const CATALOG = {
   targets: [
     view('agent:claude-code', 'ClaudeCode', [
@@ -54,7 +56,23 @@ const CATALOG = {
       model(OR, 'vendor/held:free'),
     ]),
     // A proxy that lists the same kind of ids gets the badge too: the id decides, not the connection's name.
-    view(PROXY, 'Custom', [model(PROXY, 'meta/llama:free'), model(PROXY, 'meta/llama')]),
+    view(PROXY, 'Custom', [
+      model(PROXY, 'meta/llama:free'), model(PROXY, 'meta/llama'),
+      // Free by its display name only.
+      model(PROXY, 'meta/quiet', { display_name: 'Meta: Quiet (free)' }),
+    ]),
+    // OpenCode writes its free models `-free`, and one says it in its display name only.
+    view(OC, 'OpenCode', [
+      model(OC, 'opencode-go/beam-free', { agent_type: 'OpenCode', tier_assignment: 'economy', display_name: 'Beam Free' }),
+      model(OC, 'opencode/zen-paid', { agent_type: 'OpenCode', tier_assignment: 'default' }),
+      model(OC, 'opencode/union-alpha', {
+        agent_type: 'OpenCode', tier_assignment: 'reasoning', display_name: 'OpenCode Zen/Union Alpha Free',
+      }),
+      model(OC, 'opencode-go/cat-jam-free', { agent_type: 'OpenCode' }),
+      // `free` that is not the last word, in the id or in the name.
+      model(OC, 'opencode-go/model-free-preview', { agent_type: 'OpenCode', display_name: 'Model Free Preview' }),
+      model(OC, 'opencode/carefree', { agent_type: 'OpenCode', display_name: 'Carefree' }),
+    ]),
   ],
 };
 
@@ -66,7 +84,7 @@ const MY_PROXY: AgentSwitchTarget = {
   agent: 'Custom', connectionId: 'my-proxy', label: 'My proxy',
   modelTiers: { economy: 'meta/llama', default: 'meta/llama', reasoning: 'meta/llama' },
 };
-const TARGETS: AgentSwitchTarget[] = [{ agent: 'ClaudeCode' }, OPENROUTER, MY_PROXY];
+const TARGETS: AgentSwitchTarget[] = [{ agent: 'ClaudeCode' }, OPENROUTER, MY_PROXY, { agent: 'OpenCode' }];
 const TIER_LABELS: Record<ModelTier, string> = { economy: 'Éco', default: 'Standard', reasoning: 'Avancé' };
 
 function FullList({ model: held = null, currentAgent = 'ClaudeCode', currentConnectionId = null }: {
@@ -111,14 +129,41 @@ afterEach(() => {
   setUILocale('fr');
 });
 
-describe('isFreeModel: the `:free` variant suffix decides (KT-2010)', () => {
-  it('is true for an id that ends with the suffix, false otherwise', () => {
-    expect(FREE_MODEL_SUFFIX).toBe(':free');
-    expect(isFreeModel('meta-llama/llama-3.3-70b-instruct:free')).toBe(true);
-    expect(isFreeModel(' vendor/cheap:FREE ')).toBe(true);
-    for (const id of ['vendor/paid', 'vendor/freedom', 'free', ':free', 'vendor/x:free-preview', '', null, undefined]) {
-      expect(isFreeModel(id), String(id)).toBe(false);
-    }
+describe('isFreeModel: the id\'s last word, or the display name\'s, decides (KT-2010)', () => {
+  it.each([
+    'vendor/model:free', 'meta-llama/llama-3.3-70b-instruct:free', ' vendor/cheap:FREE ',
+    'opencode-go/beam-free', 'opencode-go/cat-jam-free', 'openrouter/free', 'x_free', 'free', 'FREE', ':free',
+  ])('%j is free', id => {
+    expect(isFreeModel(id)).toBe(true);
+  });
+
+  it.each([
+    'freedom-1', 'vendor/freeze', 'carefree', 'model-free-preview', 'vendor/x:free-preview', 'vendor/freedom',
+    'vendor/paid', 'opencode/union-alpha', 'free-model', 'vendor/free.1', '', '   ', null, undefined,
+  ])('%j is not free', id => {
+    expect(isFreeModel(id)).toBe(false);
+  });
+
+  it.each([
+    ['opencode/union-alpha', 'OpenCode Zen/Union Alpha Free'],
+    ['vendor/cheap', 'Vendor: Cheap (free)'],
+    ['vendor/cheap', '  Vendor: Cheap (FREE)  '],
+    ['vendor/model', 'Free'],
+  ])('%j is free by its display name %j', (id, name) => {
+    expect(isFreeDisplayName(name)).toBe(true);
+    expect(isFreeModel(id, name)).toBe(true);
+  });
+
+  it.each([
+    'Carefree', 'Model Free Preview', 'Freedom', 'Free tier (beta)', 'Union Alpha', '', null, undefined,
+  ])('the display name %j says nothing', name => {
+    expect(isFreeDisplayName(name)).toBe(false);
+    expect(isFreeModel('vendor/paid', name)).toBe(false);
+  });
+
+  it('a display name alone, with no id, names no model', () => {
+    expect(isFreeModel('', 'Alpha Free')).toBe(false);
+    expect(isFreeModel(null, 'Alpha Free')).toBe(false);
   });
 });
 
@@ -283,6 +328,86 @@ describe('a free model carries the « Free » badge on every row that shows it (
   });
 });
 
+describe('the other spellings of free: `-free` ids and a display name (KT-2010 round 2)', () => {
+  const oc = () => group('OpenCode');
+
+  it('a `-free` mode row and a mode free by its display name only: badge and accessible name; the paid mode has none', async () => {
+    render(<FullList />);
+    await open();
+    const eco = within(oc()).getByRole('menuitem', { name: 'OpenCode · Éco · agentPicker.freeBadge' });
+    expect(eco.querySelector('.kr-agent-switch-mode-model')).toHaveTextContent('opencode-go/beam-free');
+    expect(badgeOf(eco)).toHaveTextContent('agentPicker.freeBadge');
+    const advanced = within(oc()).getByRole('menuitem', { name: 'OpenCode · Avancé · agentPicker.freeBadge' });
+    expect(advanced.querySelector('.kr-agent-switch-mode-model')).toHaveTextContent('opencode/union-alpha');
+    expect(badgeOf(advanced)).not.toBeNull();
+    expect(badgeOf(within(oc()).getByRole('menuitem', { name: 'OpenCode · Standard' }))).toBeNull();
+  });
+
+  it('other models: `-free` is free, `free` that is not the last word is not', async () => {
+    render(<FullList />);
+    await open();
+    unfold('OpenCode');
+    expect(badgeOf(within(oc()).getByRole('menuitem', { name: 'OpenCode · opencode-go/cat-jam-free · agentPicker.freeBadge' })))
+      .not.toBeNull();
+    for (const id of ['opencode-go/model-free-preview', 'opencode/carefree']) {
+      expect(badgeOf(within(oc()).getByRole('menuitem', { name: `OpenCode · ${id}` })), id).toBeNull();
+    }
+  });
+
+  it('a recent row of `opencode-go/beam-free`, and a recent judged by its group\'s catalogue entry', async () => {
+    localStorage.setItem(AGENT_PICKER_RECENTS_KEY, JSON.stringify([
+      { agent: 'OpenCode', model: 'opencode-go/beam-free' },
+      { agent: 'OpenCode', model: 'opencode/union-alpha' },
+      { agent: 'OpenCode', model: 'opencode/zen-paid' },
+    ]));
+    render(<FullList />);
+    await open();
+    const recents = within(group('agentPicker.recent')).getAllByRole('menuitem');
+    expect(recents.map(row => row.getAttribute('aria-label'))).toEqual([
+      'agentPicker.recent: OpenCode · agentPicker.custom · opencode-go/beam-free · agentPicker.freeBadge',
+      'agentPicker.recent: OpenCode · agentPicker.custom · opencode/union-alpha · agentPicker.freeBadge',
+      'agentPicker.recent: OpenCode · agentPicker.custom · opencode/zen-paid',
+    ]);
+    expect(recents.map(row => Boolean(badgeOf(row)))).toEqual([true, true, false]);
+  });
+
+  it('the custom row: a `-free` id, and an id free by its catalogue entry\'s display name', async () => {
+    const { unmount } = render(<FullList currentAgent="OpenCode" model="opencode-go/cat-jam-free" />);
+    await open();
+    expect(badgeOf(within(oc()).getByRole('menuitem', {
+      name: 'OpenCode · agentPicker.custom · opencode-go/cat-jam-free · agentPicker.freeBadge',
+    }))).not.toBeNull();
+    unmount();
+    render(<FullList currentAgent="Custom" currentConnectionId="my-proxy" model="meta/quiet" />);
+    await open();
+    const custom = within(group('My proxy')).getByRole('menuitem', {
+      name: 'My proxy · agentPicker.custom · meta/quiet · agentPicker.freeBadge',
+    });
+    expect(custom).toHaveAttribute('data-kind', 'custom');
+    expect(badgeOf(custom)).not.toBeNull();
+  });
+
+  it('the badge word and `free` find them; Claude Code stays out', async () => {
+    await loadLocale('fr');
+    setUILocale('fr');
+    render(<I18nProvider><FullList /></I18nProvider>);
+    await open();
+    const search = screen.getByRole('searchbox');
+    fireEvent.change(search, { target: { value: 'gratuit' } });
+    const ids = () => within(oc()).getAllByRole('menuitem')
+      .map(item => `${item.dataset.kind}:${item.querySelector('.kr-agent-switch-mode-model')?.textContent ?? ''}`);
+    expect(ids()).toEqual(['mode:opencode-go/beam-free', 'mode:opencode/union-alpha', 'model:opencode-go/cat-jam-free']);
+    expect(within(oc()).getByRole('menuitem', { name: 'OpenCode · Éco · Gratuit' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Claude Code' })).toBeNull();
+    // `free` is a text search: the free ones, and the ids or names that hold the word.
+    fireEvent.change(search, { target: { value: 'free' } });
+    expect(ids()).toEqual([
+      'mode:opencode-go/beam-free', 'mode:opencode/union-alpha',
+      'model:opencode-go/cat-jam-free', 'model:opencode-go/model-free-preview', 'model:opencode/carefree',
+    ]);
+  });
+});
+
 describe('the search finds free models by the badge word (KT-2010)', () => {
   const kinds = (name: string) => within(group(name)).getAllByRole('menuitem')
     .map(item => `${item.dataset.kind}:${item.querySelector('.kr-agent-switch-mode-model')?.textContent ?? ''}`);
@@ -296,7 +421,8 @@ describe('the search finds free models by the badge word (KT-2010)', () => {
     for (const word of ['gratuit', 'Gratuit']) {
       fireEvent.change(search, { target: { value: word } });
       expect(kinds('OpenRouter'), word).toEqual(['mode:vendor/cheap:free', 'custom:vendor/held:free', 'model:vendor/other:free']);
-      expect(kinds('My proxy'), word).toEqual(['model:meta/llama:free']);
+      // `meta/quiet` by its display name « Meta: Quiet (free) ».
+      expect(kinds('My proxy'), word).toEqual(['model:meta/llama:free', 'model:meta/quiet']);
       expect(screen.queryByRole('group', { name: 'Claude Code' }), word).toBeNull();
     }
     // `free` is also any id that holds it (a text search): the free models, and `vendor/freedom`.
@@ -304,6 +430,6 @@ describe('the search finds free models by the badge word (KT-2010)', () => {
     expect(kinds('OpenRouter')).toEqual([
       'mode:vendor/cheap:free', 'custom:vendor/held:free', 'model:vendor/other:free', 'model:vendor/freedom',
     ]);
-    expect(kinds('My proxy')).toEqual(['model:meta/llama:free']);
+    expect(kinds('My proxy')).toEqual(['model:meta/llama:free', 'model:meta/quiet']);
   });
 });

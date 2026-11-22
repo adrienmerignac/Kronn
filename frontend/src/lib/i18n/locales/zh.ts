@@ -4096,7 +4096,7 @@ const zh: TranslationDict = {
   "designSystem.caption.sectionHeader": "详情、标签页或抽屉中一组内容的标题栏（h3）：名称、下方提示、一到两个操作。",
   "designSystem.caption.drawerHeader": "侧边面板或抽屉的标题栏（h2）：为该层命名，带状态徽章，并以唯一的关闭按钮结尾。",
   "designSystem.caption.cardHeader": "卡片的标题栏（h2）：名称、以状态徽章显示的状态、下方一行说明、一个操作或菜单。",
-  "designSystem.caption.agentSwitchPicker": "唯一的代理选择器：字段、紧凑标签、多选或精确模型。它在任何对话框之上打开，聚焦于搜索框，并在各处以相同方式显示可用性。列表中每个代理有一个标题（名称、类型、一个状态标记、模型数量），然后是三个模式及各自运行的模型，再是折叠起来的其他模型。模式之外的模型显示为“自定义”；最近的三个选择位于顶部的“最近”中。代理的标题是一条色带，在其行向下滚动时始终显示在列表顶部；免费模型（:free 变体）带有“免费”标记。",
+  "designSystem.caption.agentSwitchPicker": "唯一的代理选择器：字段、紧凑标签、多选或精确模型。它在任何对话框之上打开，聚焦于搜索框，并在各处以相同方式显示可用性。列表中每个代理有一个标题（名称、类型、一个状态标记、模型数量），然后是三个模式及各自运行的模型，再是折叠起来的其他模型。模式之外的模型显示为“自定义”；最近的三个选择位于顶部的“最近”中。代理的标题是一条色带，在其行向下滚动时始终显示在列表顶部；免费模型（其 ID 或显示名称以 free 一词结尾，如 :free 或 -free）带有“免费”标记。",
   "designSystem.demo.agentField": "字段",
   "designSystem.demo.agentChip": "紧凑标签",
   "designSystem.demo.agentMultiple": "多选",
