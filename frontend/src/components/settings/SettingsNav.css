@@ -100,16 +100,46 @@
   font-weight: 600;
 }
 
-/* The head of a sub-page: its name and sentence, then the links to its sections. */
+/* The head of a sub-page: its name and sentence. The links to its sections
+   follow it in their own band. */
 .set-subpage-head {
-  margin-bottom: var(--kr-space-4);
+  margin-bottom: var(--kr-space-1);
+}
+
+/* KT-2017 — the band of section links: a direct child of the sub-page's box,
+   so it sticks under the app's top bar from the top to the bottom of the
+   sub-page, at every width. One line, its height fixed (the anchor offset adds
+   it, SettingsPage.css); the links that do not fit scroll sideways inside it
+   (HeaderScrollLine), never the page. An opaque surface; a line under it once
+   stuck. Under the top bar (--kr-z-sticky) and under the menus an agent row
+   lifts to 40 while open; dialogs, popovers, toasts and the tour sit far above. */
+.set-subpage-band {
+  position: sticky;
+  top: var(--set-band-top);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  height: var(--set-band-height);
+  margin: 0 calc(-1 * var(--kr-space-1)) var(--kr-space-4);
+  padding: 0 var(--kr-space-1);
+  border-bottom: 1px solid transparent;
+  background: var(--kr-bg-sticky);
+}
+
+.set-subpage-band[data-stuck] {
+  border-bottom-color: var(--kr-border);
+  box-shadow: var(--kr-shadow-sm);
+}
+
+.set-subpage-band-line {
+  min-width: 0;
 }
 
 .set-subpage-links {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--kr-space-2);
-  margin: var(--kr-space-3) 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -123,6 +153,7 @@
   color: var(--kr-text-secondary);
   font-size: var(--kr-type-sm);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .set-subpage-links a:hover {
@@ -133,6 +164,17 @@
 .set-subpage-links a:focus-visible {
   outline: 2px solid var(--kr-accent);
   outline-offset: 1px;
+}
+
+/* The section being read: filled and underlined, so the mark does not rest
+   on colour alone (the underline keeps the link's width: nothing shifts). */
+.set-subpage-links a[aria-current='location'] {
+  border-color: var(--kr-accent-border);
+  background: var(--kr-accent-bg);
+  color: var(--kr-accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 /* A section the page brings into view takes the focus on its heading. */

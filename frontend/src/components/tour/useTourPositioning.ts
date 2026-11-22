@@ -89,10 +89,14 @@ export function useTourPositioning(
 
     // Scroll into view if needed
     let rect = el.getBoundingClientRect();
-    const targetFitsViewport = rect.height <= window.innerHeight;
-    const isOutsideViewport = rect.bottom <= 0 || rect.top >= window.innerHeight;
+    // KT-2017 — what the page keeps covered at the top over this target (the
+    // top bar, the band of a Settings sub-page): the scroll margin its page
+    // gives it. A target under that cover counts as clipped.
+    const coveredTop = parseFloat(window.getComputedStyle(el).scrollMarginTop) || 0;
+    const targetFitsViewport = rect.height <= window.innerHeight - coveredTop;
+    const isOutsideViewport = rect.bottom <= coveredTop || rect.top >= window.innerHeight;
     const isPartlyClipped = targetFitsViewport
-      && (rect.top < 0 || rect.bottom > window.innerHeight);
+      && (rect.top < coveredTop || rect.bottom > window.innerHeight);
     if (isOutsideViewport || isPartlyClipped) {
       // An instant scroll gives the spotlight and target one authoritative
       // rectangle. Smooth scrolling left the highlight hundreds of pixels

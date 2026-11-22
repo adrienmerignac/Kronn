@@ -315,6 +315,75 @@ describe('Guided Tour', () => {
     vi.useRealTimers();
   });
 
+  // KT-2017 — on a scrolled Settings sub-page the band of section links sticks
+  // under the top bar. The agents step's header could stand under it, in the
+  // viewport yet covered, and the spotlight sat on the band. The page gives
+  // its tour targets the scroll margin of what covers them: a target under it
+  // is brought into view below it.
+  it('brings a target the page keeps covered at the top into view below the cover', async () => {
+    vi.useFakeTimers();
+    const at = TOUR_STEPS.findIndex(step => step.id === 'agents-config');
+    const from = at - 1;
+    localStorage.setItem(TOUR_PROGRESS_KEYS.current, JSON.stringify({
+      schemaVersion: 1,
+      completedStepIds: TOUR_STEPS.slice(0, from).map(step => step.id),
+      currentStepId: TOUR_STEPS[from].id,
+      hasStarted: true,
+      skippedStepIds: [],
+    }));
+    renderTour();
+    fireEvent.click(screen.getByTestId('resume'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+
+    const target = document.querySelector<HTMLElement>('[data-tour-id="settings-agents"]')!;
+    target.style.setProperty('scroll-margin-top', '111px');
+    let top = 70; // under the top bar (51 px) and the band (44 px)
+    vi.spyOn(target, 'getBoundingClientRect').mockImplementation(() => (
+      { top, left: 40, width: 600, height: 48, bottom: top + 48, right: 640, x: 40, y: top, toJSON: () => ({}) } as DOMRect
+    ));
+    const scrollIntoView = vi.fn(() => { top = 420; });
+    target.scrollIntoView = scrollIntoView;
+    fireEvent.click(screen.getByTestId('next'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getByTestId('step').textContent).toBe(String(at));
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'center' });
+    expect(document.querySelector<HTMLElement>('.tour-spotlight')?.style.top).toBe(`${420 - 8}px`);
+    vi.useRealTimers();
+  });
+
+  it('leaves a target in place when nothing covers it there', async () => {
+    vi.useFakeTimers();
+    const at = TOUR_STEPS.findIndex(step => step.id === 'agents-config');
+    const from = at - 1;
+    localStorage.setItem(TOUR_PROGRESS_KEYS.current, JSON.stringify({
+      schemaVersion: 1,
+      completedStepIds: TOUR_STEPS.slice(0, from).map(step => step.id),
+      currentStepId: TOUR_STEPS[from].id,
+      hasStarted: true,
+      skippedStepIds: [],
+    }));
+    renderTour();
+    fireEvent.click(screen.getByTestId('resume'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+
+    const target = document.querySelector<HTMLElement>('[data-tour-id="settings-agents"]')!;
+    target.style.setProperty('scroll-margin-top', '111px');
+    vi.spyOn(target, 'getBoundingClientRect').mockImplementation(() => (
+      { top: 160, left: 40, width: 600, height: 48, bottom: 208, right: 640, x: 40, y: 160, toJSON: () => ({}) } as DOMRect
+    ));
+    const scrollIntoView = vi.fn();
+    target.scrollIntoView = scrollIntoView;
+    fireEvent.click(screen.getByTestId('next'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getByTestId('step').textContent).toBe(String(at));
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it('tour steps include pages beyond projects', () => {
     // Structural check: the step definitions span multiple pages
     const pages = new Set(TOUR_STEPS.map(s => s.page));

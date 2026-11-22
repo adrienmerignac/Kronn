@@ -388,10 +388,15 @@ describe('Settings sub-pages — the list, the folds and the state of an edit', 
     expect(onOpenDesignSystem).toHaveBeenCalledTimes(1);
 
     // Each sub-page opens on its name, its sentence and the links to its sections.
+    // KT-2017 — the links sit in their own band right after the head, a
+    // direct child of the sub-page's box, so the band sticks while it scrolls.
     const head = visibleSubPage().querySelector('.set-subpage-head')!;
     expect(head.querySelector('h2')?.textContent).toBe('Sécurité');
     expect(head.textContent).toContain('Ce qui protège vos secrets');
-    expect([...head.querySelectorAll('a')].map(link => link.getAttribute('href'))).toEqual(
+    const sectionLinks = screen.getByRole('navigation', { name: 'Sections de la page Sécurité' });
+    expect(sectionLinks).toBe(head.nextElementSibling);
+    expect(sectionLinks.parentElement).toBe(visibleSubPage());
+    expect([...sectionLinks.querySelectorAll('a')].map(link => link.getAttribute('href'))).toEqual(
       GROUPING.security.map(id => `/config/security#${id}`),
     );
   });

@@ -3,13 +3,21 @@
 /* ── Page frame ────────────────────────────────────────── */
 .settings-page {
   --set-nav-width: 220px;
-  /* The height of the fixed top bar, and a breath under it. */
-  --set-anchor-offset: 84px;
+  /* KT-2017 — the band of section links sticks right under the app's top bar,
+     whose height useAppBarHeight measures and publishes (51px until then). */
+  --set-band-top: var(--app-bar-h, 51px);
+  /* The band's own height: one line at every width (SettingsNav.css). */
+  --set-band-height: 44px;
+  /* Where an anchor stops: under the top bar and the band, plus a breath. */
+  --set-anchor-offset: calc(var(--set-band-top) + var(--set-band-height) + var(--kr-space-4));
 }
 
 /* KT-1923 — every anchor Settings can land on (a section, a group or a field
    inside it, a fold, an agent's row) stops below the fixed top bar, so the
-   heading that takes the focus is never covered: one rule, not one per card. */
+   heading that takes the focus is never covered: one rule, not one per card.
+   KT-2017 — below the band too; a target of the guided tour reads the same
+   margin to keep its spotlight out from under the band. */
+.settings-page [data-tour-id],
 .settings-page [id] {
   scroll-margin-top: var(--set-anchor-offset);
 }
@@ -6546,10 +6554,6 @@
     border-radius: var(--kr-r-xs) var(--kr-r-xs) 0 0;
   }
 
-  /* The list sits above the content: the top bar is taller here. */
-  .settings-page {
-    --set-anchor-offset: 112px;
-  }
 }
 
 @media (max-width: 700px) {

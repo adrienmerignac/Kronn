@@ -12,6 +12,7 @@ import { visibleSettingsSections, type SettingsSearchAgent } from '../lib/settin
 import { SettingsNav } from '../components/settings/SettingsNav';
 import { SettingsFoldContext, type SettingsFoldState } from '../components/settings/settingsFoldContext';
 import { SettingsListedSection, SettingsSubPageHead } from '../components/settings/SettingsSection';
+import { prefersReducedMotion } from '../components/settings/useSubPageBand';
 import { useKonamiCode } from '../hooks/useKonamiCode';
 import { version as appVersion } from '../../package.json';
 import { ApiCallLogsPage } from './ApiCallLogsPage';
@@ -398,7 +399,7 @@ export function SettingsPage({
   useEffect(() => {
     if (!jump) return undefined;
     const target = document.getElementById(jump.anchor);
-    target?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    target?.scrollIntoView?.({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
     return focusSectionHeadingWhenDrawn(jump.anchor);
   }, [jump]);
   const goTo = useCallback((anchor: string) => {
@@ -2244,7 +2245,7 @@ export function SettingsPage({
                 data-testid={`settings-subpage-content-${page}`}
                 hidden={page !== current}
               >
-                <SettingsSubPageHead page={page} sections={sections} onSection={goTo} />
+                <SettingsSubPageHead page={page} sections={sections} active={page === current} onSection={goTo} />
                 {sections.map(section => <Fragment key={section.id}>{sectionNodes[section.id]}</Fragment>)}
               </div>
             );

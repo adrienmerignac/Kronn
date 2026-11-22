@@ -430,7 +430,27 @@ A new section, a moved one or a new setting starts there.
   of links to its sections (`SettingsSubPageHead`). A section that used to
   sit inside another, or that folds, is a `SettingsListedSection` (a card
   with its anchor and a `SectionHeader`).
-  `[src: file: frontend/src/components/settings/SettingsSection.tsx:26#SettingsListedSection]`
+  `[src: file: frontend/src/components/settings/SettingsSection.tsx:29#SettingsListedSection]`
+- **The band of section links** (KT-2017) — the row of links is a sticky
+  band, a direct child of the sub-page's box (`.set-subpage-band`; a sticky
+  element only sticks inside its parent), right under the app's top bar
+  (`--set-band-top: var(--app-bar-h, 51px)`, the bar's height measured by
+  `useAppBarHeight`) from the top to the bottom of the sub-page, at every
+  width. It is one line of a fixed height (`--set-band-height`) that scrolls
+  sideways in a `HeaderScrollLine` when the links do not fit, on an opaque
+  `--kr-bg-sticky` surface, with a line and a shadow once stuck
+  (`data-stuck`); its layer (30) is under the top bar and under the agent row
+  an open model menu lifts to 40. The name and sentence scroll away.
+  `[src: file: frontend/src/components/settings/SettingsSection.tsx:66#SettingsSubPageHead]`
+- **The section being read** is the link with `aria-current="location"`
+  (filled and underlined, not colour alone): the last section whose top has
+  passed under the band, the last one at the bottom of the page; a click
+  marks its link at once, holds the mark while its scroll runs and brings the
+  link into view in the line. `useSubPageBand` listens only while its
+  sub-page is the visible one and reads the boxes once per frame at most. It
+  also moves a control the Tab key leaves under the stuck band below it
+  (WCAG 2.4.11), outside dialogs, menus and listboxes.
+  `[src: file: frontend/src/components/settings/useSubPageBand.ts:69#useSubPageBand]`
 - **Folds** (`SettingsFold`: `SectionHeader` + a ghost `Button` with
   `aria-expanded`) — the model catalogue, the usage, the API call log and the
   debug log viewer. The page holds which are open, so an arrival or a hit on
@@ -439,11 +459,14 @@ A new section, a moved one or a new setting starts there.
   `[src: file: frontend/src/components/settings/SettingsFold.tsx:28#SettingsFold]`
 - **After a jump** (a section link, a hit, an arrival), the focus goes to the
   heading of the section, without scrolling: the caller scrolls. Every
-  element with an id inside Settings stops below the fixed top bar through
-  one rule (`.settings-page [id]`, `scroll-margin-top:
-  var(--set-anchor-offset)`, 84 px, 112 px on a narrow window); no card
-  carries its own margin.
-  `[src: file: frontend/src/pages/SettingsPage.tsx:157#focusSectionHeading]`
+  element with an id inside Settings stops below the fixed top bar and the
+  band through one rule (`.settings-page [id]`, `scroll-margin-top:
+  var(--set-anchor-offset)`: the bar, the band and `--kr-space-4`, at every
+  width); no card carries its own margin. The targets of the guided tour
+  share the rule (`[data-tour-id]`), and the tour counts a target's scroll
+  margin as covered, so its spotlight never sits on the band.
+  `[src: file: frontend/src/pages/SettingsPage.tsx:158#focusSectionHeading]`
+  `[src: file: frontend/src/components/tour/useTourPositioning.ts:95]`
 - **A sub-page is drawn on its first visit and kept**, hidden while another
   is shown, so an edit in progress survives a visit elsewhere.
 - **No control is lost**: `SettingsPage.subpages.test.tsx` counts, per
