@@ -294,6 +294,15 @@ export function settingsSectionPath(sectionId: string): string {
   return settingsSubPagePath(section.page, SETTINGS_ANCHOR_ALIASES[sectionId] ?? sectionId);
 }
 
+/** The anchor a hash names (`#settings-usage` → `settings-usage`), or null for none or a malformed one. */
+export function anchorOfHash(hash: string): string | null {
+  try {
+    return decodeURIComponent(hash.slice(1)) || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Where a Settings address belongs, or null when it is already there
  * (KT-1923): `/config#settings-usage` and every other anchor of the single
@@ -303,8 +312,7 @@ export function settingsSectionPath(sectionId: string): string {
  * `segment` is the `:settingsSubPage` route segment, if any.
  */
 export function settingsRedirectPath(pathname: string, hash: string, segment: string | undefined): string | null {
-  let anchor: string | null = null;
-  try { anchor = decodeURIComponent(hash.slice(1)) || null; } catch { anchor = null; }
+  const anchor = anchorOfHash(hash);
   if (anchor && settingsSectionOf(anchor)) {
     const canonical = settingsSectionPath(anchor);
     return `${pathname.replace(/\/+$/, '')}${hash}` === canonical ? null : canonical;

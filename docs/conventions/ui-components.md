@@ -372,9 +372,11 @@ Escape closes one layer, the innermost first
 ## The gallery
 
 Settings → appearance → "Design system" opens a sub-page of its own
-(KT-1987): its page header (`ListHeader`, the page's one `h1`) with the way
-back to the appearance section of Settings (`/config#settings-appearance`,
-where the link sits), an index (the tokens, then one entry per component),
+(KT-1987), also linked apart at the foot of the Settings list, for
+contributors (KT-1923): its page header (`ListHeader`, the page's one `h1`)
+with the way back to the appearance section of Settings
+(`/config/you#settings-appearance`, where the link sits), an index (the
+tokens, then one entry per component),
 then two tabs. Under the `h1`, each tab's part is an `h2` (visually hidden:
 the tab says it), the token groups and the entries are `h3`. Tokens is
 `/config/design-system`; Components, `/config/design-system/components`,
@@ -383,8 +385,8 @@ the current theme. An entry's address is its tab plus the heading in the hash
 (`/config/design-system/components#ds-c-menu`). The old `/config#design-system`
 and the old `/config#ds-…` entry anchors still land on the right tab and entry:
 the table is `DESIGN_SYSTEM_ANCHOR_TABS`.
-`[src: file: frontend/src/lib/routes.ts:370-375#DESIGN_SYSTEM_ANCHOR_TABS]`
-`[src: file: frontend/src/lib/routes.ts:386-392#legacyDesignSystemLocation]`
+`[src: file: frontend/src/lib/routes.ts:383#DESIGN_SYSTEM_ANCHOR_TABS]`
+`[src: file: frontend/src/lib/routes.ts:400#legacyDesignSystemLocation]`
 The route is its own chunk, never preloaded, so Settings does not load the
 gallery.
 `[src: file: frontend/src/routes/lazyRoutes.ts:17#DesignSystemRoute]` Adding a component: add it to `UI_GALLERY_COMPONENTS`, a
@@ -394,6 +396,50 @@ missing. A shared component built on those controls (the agent picker,
 KT-1885) goes in `SHARED_GALLERY_COMPONENTS`, shown after them.
 `[src: file: frontend/src/components/settings/designSystemGallery.ts:19#UI_GALLERY_COMPONENTS]`
 `[src: file: frontend/src/components/settings/designSystemGallery.ts:56-58#SHARED_GALLERY_COMPONENTS]`
+
+## Settings: five sub-pages, a list and a search (KT-1923)
+
+Settings is five sub-pages — Vous, Agents et modèles, Travail, Sécurité,
+Système (`/config/you` … `/config/system`). One table, `SETTINGS_SECTIONS`
+in `lib/routes.ts`, says which sections each holds, in order, with the i18n
+key of each section's name, the keys of the labels of its settings, its
+folds and the anchors inside it: it is the single source of the list, the
+section links, the redirects of the old `/config#…` anchors and the search.
+A new section, a moved one or a new setting starts there.
+`[src: file: frontend/src/lib/routes.ts:161#SETTINGS_SECTIONS]`
+
+- **The list** (`SettingsNav`, a `nav` named « Pages des réglages ») —
+  `SearchField` on top, then the five sub-pages with their section count, the
+  current one `aria-current="page"`, then the design system apart. It is a
+  plain navigation over the existing `.set-nav` frame, so the shell of lot 2
+  can take its place without changing an address.
+  `[src: file: frontend/src/components/settings/SettingsNav.tsx:42#SettingsNav]`
+- **The search** (`searchSettings`) matches every word of the query in the
+  section names and the setting labels of the table, in the current locale,
+  accents ignored. The hits list their sub-page and section and announce
+  their count (`role="status"`); Down from the field goes to the first hit;
+  no hit is an `EmptyState` of kind `noResult`. A hit is a link to the
+  section's address.
+  `[src: file: frontend/src/lib/settingsSearch.ts:33#searchSettings]`
+- **A sub-page** opens on a `DetailHeader` (its name, its sentence) and a row
+  of links to its sections (`SettingsSubPageHead`). A section that used to
+  sit inside another, or that folds, is a `SettingsListedSection` (a card
+  with its anchor and a `SectionHeader`).
+  `[src: file: frontend/src/components/settings/SettingsSection.tsx:26#SettingsListedSection]`
+- **Folds** (`SettingsFold`: `SectionHeader` + a ghost `Button` with
+  `aria-expanded`) — the model catalogue, the usage, the API call log and the
+  debug log viewer. The page holds which are open, so an arrival or a hit on
+  a folded anchor opens it; the content mounts on the first opening and
+  stays mounted.
+  `[src: file: frontend/src/components/settings/SettingsFold.tsx:28#SettingsFold]`
+- **After a jump** (a section link, a hit, an arrival), the focus goes to the
+  heading of the section, without scrolling: the caller scrolls.
+  `[src: file: frontend/src/pages/SettingsPage.tsx:157#focusSectionHeading]`
+- **A sub-page is drawn on its first visit and kept**, hidden while another
+  is shown, so an edit in progress survives a visit elsewhere.
+- **No control is lost**: `SettingsPage.subpages.test.tsx` counts, per
+  section, the buttons, fields and links against the single page of the base
+  commit, and finds every former setting label through the search.
 
 ## AgentIdentity: an agent, its model and its role (KT-1936)
 

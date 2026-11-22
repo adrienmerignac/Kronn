@@ -26,6 +26,7 @@ for (const width of [1440, 390]) {
     const dashboard = new DashboardPage(page);
     await dashboard.goto();
     await dashboard.clickSettings();
+    await page.getByTestId('settings-subpage-agents').click();
     const heading = page.locator('.set-agent-row[data-agent-type="ClaudeCode"] .set-agent-title-row');
     await expect(heading).toContainText(error);
     const compression = page.locator('.set-compression').filter({ hasText: /ccusage.*20\.1\.0/i });

@@ -7,6 +7,7 @@ import { embedSettingsOrigin } from '../lib/live-page-navigation';
 import {
   DEFAULT_SETTINGS_SUB_PAGE,
   EMBED_SETTINGS_PATH,
+  anchorOfHash,
   designSystemPath,
   legacyDesignSystemLocation,
   settingsRedirectPath,
@@ -61,8 +62,7 @@ export function SettingsRoute() {
     }
   }
   const scrolledByPage = inPageMove !== null && (inPageMove.key === null || inPageMove.key === arrival);
-  let hashAnchor: string | null = null;
-  try { hashAnchor = decodeURIComponent(hash.slice(1)) || null; } catch { hashAnchor = null; }
+  const hashAnchor = anchorOfHash(hash);
   // KT-1987 — the design system left this page for its own sub-page: its old
   // address (`#design-system`) and the anchors of its entries land there, on
   // the tab and the entry they name.

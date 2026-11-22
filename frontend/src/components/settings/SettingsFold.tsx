@@ -1,21 +1,11 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useT } from '../../lib/I18nContext';
 import { Button } from '../ui/Button';
 import { SectionHeader } from '../ui/SectionHeader';
+import { SettingsFoldContext } from './settingsFoldContext';
 import '../ui/visuallyHidden.css';
 import './SettingsFold.css';
-
-/** Which folds of Settings are open: the page holds it, so an address or a
- *  search hit that lands on a fold can open it. */
-export interface SettingsFoldState {
-  isOpen: (id: string) => boolean;
-  setOpen: (id: string, open: boolean) => void;
-}
-
-const SettingsFoldContext = createContext<SettingsFoldState | null>(null);
-
-export const SettingsFoldProvider = SettingsFoldContext.Provider;
 
 interface SettingsFoldProps {
   /** Its anchor and the key of its open state (`settings-usage`, `settings-debug-logs`). */

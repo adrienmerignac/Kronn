@@ -23,7 +23,10 @@ for (const width of [1440, 390]) {
     }));
     await page.goto('/');
     await page.locator('[data-tour-id="nav-settings"]').click();
-    const row = page.getByTestId('model-catalog-row-agent:claude-code:default');
+    await page.getByTestId('settings-subpage-agents').click();
+    // KT-1923 — the catalogue is folded until opened.
+    await page.getByTestId('fold-settings-catalogue').click();
+    const row =page.getByTestId('model-catalog-row-agent:claude-code:default');
     const note = row.getByText('Défaut de la CLI — peut changer', { exact: true });
     await note.scrollIntoViewIfNeeded();
     await expect(note).toBeVisible();

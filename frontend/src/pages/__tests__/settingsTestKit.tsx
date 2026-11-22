@@ -41,10 +41,9 @@ export const settingsProps = {
 };
 
 /** Renders inside the providers the page reads, then lets the loads settle. */
-export async function renderSettings(ui: ReactElement) {
-  let result: ReturnType<typeof render>;
+export async function renderSettings(ui: ReactElement): Promise<void> {
   await act(async () => {
-    result = render(
+    render(
       <I18nProvider>
         <TourProvider setPage={noop}>{ui}</TourProvider>
       </I18nProvider>,
@@ -53,7 +52,6 @@ export async function renderSettings(ui: ReactElement) {
   for (let i = 0; i < 3; i += 1) {
     await act(async () => { await new Promise(r => setTimeout(r, 0)); });
   }
-  return result!;
 }
 
 /** The controls a reader can reach in one region: buttons, fields, links. */

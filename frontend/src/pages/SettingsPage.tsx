@@ -10,7 +10,7 @@ import {
 } from '../lib/routes';
 import { visibleSettingsSections } from '../lib/settingsSearch';
 import { SettingsNav } from '../components/settings/SettingsNav';
-import { SettingsFoldProvider, type SettingsFoldState } from '../components/settings/SettingsFold';
+import { SettingsFoldContext, type SettingsFoldState } from '../components/settings/settingsFoldContext';
 import { SettingsListedSection, SettingsSubPageHead } from '../components/settings/SettingsSection';
 import { useKonamiCode } from '../hooks/useKonamiCode';
 import { version as appVersion } from '../../package.json';
@@ -2160,7 +2160,7 @@ export function SettingsPage({
   };
 
   return (
-    <SettingsFoldProvider value={foldState}>
+    <SettingsFoldContext.Provider value={foldState}>
     <div className="settings-page">
       <header className="set-page-header">
         <div>
@@ -2230,6 +2230,6 @@ export function SettingsPage({
         <KronnVersionLinks sourceLabel={t('config.sourceCodeLicense')} supportLabel={t('config.supportKronn')} />
       </div>
     </div>
-    </SettingsFoldProvider>
+    </SettingsFoldContext.Provider>
   );
 }

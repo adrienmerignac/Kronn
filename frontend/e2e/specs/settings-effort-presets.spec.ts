@@ -39,6 +39,7 @@ for (const width of [1440, 390]) {
       const open = async () => {
         await page.goto('/');
         await page.locator('[data-tour-id="nav-settings"]').click();
+        await page.getByTestId('settings-subpage-agents').click();
         await settings.openAgentConfiguration(agent);
       };
       await open();
