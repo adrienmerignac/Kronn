@@ -59,9 +59,11 @@ See also [design-tokens.md](design-tokens.md) for the scales and
   empty; for a button, text or an expression among its children (an icon
   imported from `lucide-react`, or a component ending in `Icon`, is not text).
   For a field: a wrapping `<label>`, being the direct child of `Field`, a
-  `<label htmlFor>` with the same id in the file, or a `placeholder`. The
-  placeholder counts because HTML-AAM computes the name from it and axe's
-  `label` rule accepts it. Spread props, `hidden`, `aria-hidden="true"`,
+  `<label htmlFor>` with the same id in the file. A `placeholder` does not
+  count, although HTML-AAM computes a name from it and axe's `label` rule
+  accepts it: it disappears as soon as the user types, so it is not a label
+  (WCAG 3.3.2). New code names its fields; the placeholder-only fields that
+  exist are in the baseline. Spread props, `hidden`, `aria-hidden="true"`,
   `display: none` and the `hidden/submit/reset/button/image` input types are left
   alone.
 - **Ad-hoc dialog:** `<dialog>` or `aria-modal` that is not a literal `false`,
@@ -89,7 +91,7 @@ reports now that it blocks.
 | Guard | First run | Now (baselined) | False positives now |
 |---|---|---|---|
 | no-literal-ui-string | 355 in 65 files | 223 in 40 files | ≈13 (≈6 %): commands and values (`aws`, `cd`, `null`, `string`/`number`/`boolean` options, two `cloudwatch …` and one `install …` argument lists) |
-| control-has-name | 124 in 36 files | 34 in 16 files | 0 found (Field children, hidden file inputs, placeholders and one `aria-hidden` input were the first-run false positives) |
+| control-has-name | 124 in 36 files | 110 in 34 files: 32 unnamed controls and 78 fields named only by a placeholder (the placeholder stopped counting after review) | 0 found in a sample of 28 of the 110 (Field children, hidden file inputs and one `aria-hidden` input were the first-run false positives). The two close buttons of `QuickPromptForm` and `QuickApiForm` are fixed, not baselined |
 | no-adhoc-dialog | 109 in 59 files (one per attribute) | 40 elements in 37 files | 0: every hit is a hand-built modal (`aria-modal`); the non-modal popovers were removed from the rule |
 | no-foreign-page-stylesheet | 36 in 35 files | 36 in 35 files | 0: 14 `DiscussionsPage.css` (the ticket's 14), 16 `SettingsPage.css`, 3 `WorkflowsPage.css`, 2 `Dashboard.css`, 1 `StandaloneLivePageMosaic.css` |
 | no-off-scale-style | 138 in 27 files | 137 in 27 files | 0 found (a radius token with a px fallback was the one first-run false positive; computed template sizes are skipped) |
@@ -109,3 +111,22 @@ the seven routes and scans only the surface that opened (baseline key
 dialog holds the route's only data-independent form, so it covers both. On
 Planning and Settings, the dialog is the `?` help popover (`ContextHelp`,
 `role="dialog"`).
+
+Each state opens on a fresh backend, with no project, discussion or plugin (the
+state CI runs on). On Plugins, that is why the spec opens the import dialog:
+the export button only renders once a plugin is configured
+`[src: file: frontend/src/components/plugins/PluginToolbar.tsx:112]`.
+
+The principal measured the open surfaces on 2026-11-22 on a fresh sandbox
+backend (`scripts/e2e-sandbox-backend.sh`). Two hold existing serious debt,
+frozen in the baseline:
+
+| Surface | Rule | Nodes | Where | Leaves the baseline |
+|---|---|---|---|---|
+| Plugins › add plugin form | color-contrast | 12 | `.mcp-cat-pill-count` of the category pills, `.mcp-origin-badge.mcp-origin-official` of the registry cards, and others | the fix ticket the principal opens |
+| Plugins › add plugin form | scrollable-region-focusable | 1 | `.mcp-registry-grid` | the same ticket |
+| Workflows › quick prompt form | color-contrast | 1 | `.kr-agent-switch-name`: the agent picker trigger writes its name at 10 px (`--kr-fs-xs`) in the agent colour | KT-1936, which replaces that trigger markup |
+
+The same scan of the quick prompt form also reported button-name (critical) on
+the form's icon-only close button. It was fixed in the code instead
+(`aria-label={t('common.close')}`, also on `QuickApiForm`), not baselined.

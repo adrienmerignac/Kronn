@@ -6,7 +6,7 @@
   },
   "src/components/AiDocViewer.tsx": {
     "ui-guards/control-has-name": {
-      "count": 1
+      "count": 2
     },
     "ui-guards/no-adhoc-dialog": {
       "count": 1
@@ -72,6 +72,11 @@
       "count": 1
     }
   },
+  "src/components/CustomApiAiHelper.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
+    }
+  },
   "src/components/DetailHeaderShell.tsx": {
     "ui-guards/no-foreign-page-stylesheet": {
       "count": 1
@@ -92,6 +97,11 @@
       "count": 1
     }
   },
+  "src/components/DiscussionPlanPanel.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
+    }
+  },
   "src/components/DiscussionSettingsPanel.tsx": {
     "ui-guards/no-literal-ui-string": {
       "count": 1
@@ -100,6 +110,9 @@
   "src/components/DiscussionSidebar.tsx": {
     "no-restricted-globals": {
       "count": 4
+    },
+    "ui-guards/control-has-name": {
+      "count": 2
     },
     "ui-guards/no-foreign-page-stylesheet": {
       "count": 1
@@ -141,10 +154,15 @@
   },
   "src/components/GitPanel.tsx": {
     "ui-guards/control-has-name": {
-      "count": 1
+      "count": 5
     },
     "ui-guards/no-literal-ui-string": {
       "count": 4
+    }
+  },
+  "src/components/GlobalSearchPanel.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
     }
   },
   "src/components/HostSyncChip.tsx": {
@@ -213,6 +231,11 @@
       "count": 2
     }
   },
+  "src/components/PlanningProposalReview.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
+    }
+  },
   "src/components/PluginPortabilityModal.tsx": {
     "ui-guards/no-adhoc-dialog": {
       "count": 1
@@ -226,6 +249,9 @@
   "src/components/ProjectCard.tsx": {
     "no-restricted-properties": {
       "count": 2
+    },
+    "ui-guards/control-has-name": {
+      "count": 1
     },
     "ui-guards/no-foreign-page-stylesheet": {
       "count": 1
@@ -248,6 +274,9 @@
     "no-restricted-properties": {
       "count": 1
     },
+    "ui-guards/control-has-name": {
+      "count": 3
+    },
     "ui-guards/no-off-scale-style": {
       "count": 2
     }
@@ -266,6 +295,11 @@
     },
     "ui-guards/no-off-scale-style": {
       "count": 7
+    }
+  },
+  "src/components/RecoveryRestorePanel.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 2
     }
   },
   "src/components/RepositoryResourceModal.tsx": {
@@ -319,6 +353,11 @@
       "count": 2
     }
   },
+  "src/components/TerminalPanel.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
+    }
+  },
   "src/components/TestModeModal.tsx": {
     "ui-guards/no-adhoc-dialog": {
       "count": 1
@@ -346,7 +385,7 @@
   },
   "src/components/plugins/AddPluginModal.tsx": {
     "ui-guards/control-has-name": {
-      "count": 1
+      "count": 4
     },
     "ui-guards/no-adhoc-dialog": {
       "count": 1
@@ -357,7 +396,7 @@
   },
   "src/components/plugins/CustomApiForm.tsx": {
     "ui-guards/control-has-name": {
-      "count": 5
+      "count": 15
     },
     "ui-guards/no-literal-ui-string": {
       "count": 1
@@ -368,7 +407,7 @@
   },
   "src/components/plugins/PluginDetailPanel.tsx": {
     "ui-guards/control-has-name": {
-      "count": 2
+      "count": 3
     },
     "ui-guards/no-off-scale-style": {
       "count": 2
@@ -402,6 +441,9 @@
   "src/components/settings/AgentsSection.tsx": {
     "no-restricted-globals": {
       "count": 4
+    },
+    "ui-guards/control-has-name": {
+      "count": 2
     },
     "ui-guards/no-adhoc-dialog": {
       "count": 1
@@ -478,6 +520,9 @@
     }
   },
   "src/components/settings/IdentitySection.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
+    },
     "ui-guards/no-foreign-page-stylesheet": {
       "count": 1
     }
@@ -497,7 +542,7 @@
       "count": 1
     },
     "ui-guards/control-has-name": {
-      "count": 3
+      "count": 8
     },
     "ui-guards/no-foreign-page-stylesheet": {
       "count": 1
@@ -517,6 +562,9 @@
   "src/components/settings/RecoverySection.tsx": {
     "no-restricted-properties": {
       "count": 1
+    },
+    "ui-guards/control-has-name": {
+      "count": 3
     },
     "ui-guards/no-foreign-page-stylesheet": {
       "count": 1
@@ -552,9 +600,14 @@
       "count": 1
     }
   },
+  "src/components/workflows/ApiCallAiHelper.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
+    }
+  },
   "src/components/workflows/ApiCallStepCard.tsx": {
     "ui-guards/control-has-name": {
-      "count": 2
+      "count": 9
     },
     "ui-guards/no-literal-ui-string": {
       "count": 7
@@ -571,13 +624,16 @@
     }
   },
   "src/components/workflows/ExecutionLimitsCard.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 3
+    },
     "ui-guards/no-off-scale-style": {
       "count": 10
     }
   },
   "src/components/workflows/QuickApiForm.tsx": {
     "ui-guards/control-has-name": {
-      "count": 1
+      "count": 6
     },
     "ui-guards/no-off-scale-style": {
       "count": 3
@@ -590,7 +646,7 @@
   },
   "src/components/workflows/QuickPromptForm.tsx": {
     "ui-guards/control-has-name": {
-      "count": 1
+      "count": 7
     },
     "ui-guards/no-off-scale-style": {
       "count": 3
@@ -599,6 +655,9 @@
   "src/components/workflows/RunDetail.tsx": {
     "no-restricted-globals": {
       "count": 2
+    },
+    "ui-guards/control-has-name": {
+      "count": 1
     },
     "ui-guards/no-foreign-page-stylesheet": {
       "count": 1
@@ -609,6 +668,9 @@
   },
   "src/components/workflows/WorkflowDetail.tsx": {
     "no-restricted-globals": {
+      "count": 1
+    },
+    "ui-guards/control-has-name": {
       "count": 1
     },
     "ui-guards/no-foreign-page-stylesheet": {
@@ -655,7 +717,7 @@
   },
   "src/pages/Dashboard.tsx": {
     "ui-guards/control-has-name": {
-      "count": 2
+      "count": 3
     },
     "ui-guards/no-adhoc-dialog": {
       "count": 1
@@ -687,6 +749,9 @@
     }
   },
   "src/pages/McpPage.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
+    },
     "ui-guards/no-adhoc-dialog": {
       "count": 1
     }
@@ -707,7 +772,7 @@
       "count": 1
     },
     "ui-guards/control-has-name": {
-      "count": 7
+      "count": 11
     },
     "ui-guards/no-adhoc-dialog": {
       "count": 1
@@ -728,6 +793,9 @@
     }
   },
   "src/pages/SetupWizard.tsx": {
+    "ui-guards/control-has-name": {
+      "count": 1
+    },
     "ui-guards/no-literal-ui-string": {
       "count": 3
     }
@@ -742,7 +810,7 @@
       "count": 5
     },
     "ui-guards/control-has-name": {
-      "count": 4
+      "count": 6
     },
     "ui-guards/no-adhoc-dialog": {
       "count": 1

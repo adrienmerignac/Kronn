@@ -187,7 +187,7 @@ const controlHasName = {
     schema: [],
     messages: {
       button: `This icon-only <button> has no name: use IconButton (label=…), or give it aria-label. ${DOC}`,
-      field: `This <{{tag}}> has no name: wrap it in Field (label=…), or give it a <label htmlFor>, aria-label or aria-labelledby. ${DOC}`,
+      field: `This <{{tag}}> has no name: wrap it in Field (label=…), or give it a <label htmlFor>, aria-label, aria-labelledby or title (a placeholder is not a name). ${DOC}`,
     },
   },
   create(context) {
@@ -220,9 +220,9 @@ const controlHasName = {
           if (!node.children.some(c => carriesText(c, icons))) context.report({ node: opening, messageId: 'button' });
           return;
         }
-        // The accessible name falls back on the placeholder (HTML-AAM), as
-        // axe's `label` rule accepts it.
-        if (tag !== 'select' && names(findAttr(opening, 'placeholder'))) return;
+        // A placeholder does not name a field here, although HTML-AAM and
+        // axe fall back on it: it disappears as soon as the user types, so it
+        // is not a label (WCAG 3.3.2).
         if (tag === 'input') {
           const type = staticAttrValue(findAttr(opening, 'type'));
           if (type && UNNAMED_INPUT_TYPES.has(type)) return;

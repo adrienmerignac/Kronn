@@ -126,9 +126,12 @@ const ROUTES: PageRoute[] = [
       {
         // GlobalSearchPanel.tsx — Enter in the sidebar search opens the
         // message search and its filters (DiscussionSidebar onSearchSubmit).
+        // The sidebar replaces the shell's search field with its own
+        // `.disc-search-input` (DiscussionSidebar renderSearch), present
+        // with no discussion.
         name: 'message search form', kind: ['form'],
         open: async page => {
-          await page.locator('aside.collection-shell-sidebar .collection-shell-search-input').press('Enter');
+          await page.locator('aside.collection-shell-sidebar .disc-search-input').press('Enter');
           return opened(page, '[data-testid="global-search-panel"]');
         },
       },
@@ -152,12 +155,14 @@ const ROUTES: PageRoute[] = [
     name: 'Plugins', navTourId: 'nav-mcps', readySelector: 'aside.collection-shell-sidebar',
     states: [
       {
-        // The export dialog, as plugin-bundle-portability.spec.ts opens it.
-        name: 'export dialog', kind: ['dialog'],
+        // PluginPortabilityModal.tsx in import mode. Its toolbar button is
+        // always rendered (PluginToolbar.tsx); the export one only once a
+        // plugin is configured, which a fresh backend has not.
+        name: 'import dialog', kind: ['dialog'],
         open: async page => {
-          await page.getByRole('button', { name: 'Exporter', exact: true }).click();
-          await expect(page.getByRole('dialog', { name: 'Exporter des plugins' })).toBeVisible();
-          return '[role="dialog"]';
+          await page.locator('.mcp-collection-toolbar-actions').getByRole('button', { name: 'Importer', exact: true }).click();
+          await expect(page.getByRole('dialog', { name: 'Importer des plugins' })).toBeVisible();
+          return '.mcp-portability-modal[role="dialog"]';
         },
       },
       {

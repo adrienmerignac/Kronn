@@ -64,6 +64,8 @@ describe('ui-guards/control-has-name', () => {
     ['an input with a label beside it, not bound', wrap("<div><label>{t('a')}</label><input value=\"\" onChange={() => {}} /></div>")],
     ['a select with no name', wrap('<select value="a" onChange={() => {}}><option value="a">{t("a")}</option></select>')],
     ['a button named by an empty aria-label', wrap('<button aria-label=""><X /></button>', icons)],
+    ['an input named by its placeholder alone', wrap("<input placeholder={t('a.search')} value=\"\" onChange={() => {}} />")],
+    ['a textarea named by its placeholder alone', wrap("<textarea placeholder={t('a.note')} />")],
   ])('fails on %s', async (_name, code) => {
     expect(await guard(rule, code)).toEqual([2]);
   });
@@ -71,6 +73,7 @@ describe('ui-guards/control-has-name', () => {
   it.each([
     ['a button with text', wrap("<button><X />{t('a.close')}</button>", icons)],
     ['an icon button with aria-label', wrap("<button aria-label={t('a.close')}><X /></button>", icons)],
+    ['a placeholder beside an aria-label', wrap("<input placeholder={t('a.search')} aria-label={t('a.search')} />")],
     ['an input inside its label', wrap("<label>{t('a')}<input /></label>")],
     ['an input bound by htmlFor', wrap("<div><label htmlFor=\"name\">{t('a')}</label><input id=\"name\" /></div>")],
     ['the child of Field', wrap("<Field label={t('a')}><input type=\"text\" /></Field>", "import { Field } from './ui/Field';")],
