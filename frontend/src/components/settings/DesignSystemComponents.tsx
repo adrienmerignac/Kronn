@@ -9,6 +9,11 @@ import { ProgressBar, type ProgressSegment } from '../ui/ProgressBar';
 import { StatGrid, StatTile } from '../ui/StatTile';
 import { Table, type TableColumn } from '../ui/Table';
 import { PROGRESS_TONES, type TableSort } from '../ui/dataKinds';
+import { DiffViewer } from '../ui/DiffViewer';
+import { LogViewer } from '../ui/LogViewer';
+import type { LogLine } from '../ui/logKinds';
+import type { DiffFileModel, DiffSelection } from '../../lib/diffModel';
+import { highlightLine, languageForPath } from '../../lib/diff-syntax';
 import { DetailHeader } from '../ui/DetailHeader';
 import { Dialog } from '../ui/Dialog';
 import { Drawer } from '../ui/Drawer';
@@ -1030,6 +1035,126 @@ function ProgressBarDemo({ t }: { t: T }) {
   );
 }
 
+/** KT-2004 — a log that looks like a run still writing: commands, a warning
+ *  on stderr with its ANSI colour codes (removed on screen), a failed test
+ *  as an error, times of their own. */
+const DEMO_LOG: readonly LogLine[] = [
+  { text: '$ pnpm install --frozen-lockfile', time: '2026-11-22T09:14:02Z' },
+  { text: 'Lockfile is up to date, resolution step is skipped', time: '2026-11-22T09:14:03Z' },
+  { text: '\u001b[33mWARN\u001b[39m deprecated inflight@1.0.6: this module is not supported', stream: 'stderr', time: '2026-11-22T09:14:05Z' },
+  { text: 'Packages: +1284', time: '2026-11-22T09:14:11Z' },
+  { text: '$ pnpm test -- --run src/components/ui', time: '2026-11-22T09:14:12Z' },
+  { text: ' \u001b[32m✓\u001b[39m src/components/ui/Table.test.tsx (34 tests) 812ms', time: '2026-11-22T09:14:19Z' },
+  { text: ' ✗ src/components/ui/LogViewer.test.tsx > follow > resumes from the jump control', level: 'error', stream: 'stderr', time: '2026-11-22T09:14:20Z' },
+  { text: 'AssertionError: expected 800 to be 120', stream: 'stderr', time: '2026-11-22T09:14:20Z' },
+  { text: ' ✓ src/components/ui/DiffViewer.test.tsx (23 tests) 420ms', time: '2026-11-22T09:14:22Z' },
+  { text: 'Re-running the failed test…', level: 'info', time: '2026-11-22T09:14:23Z' },
+];
+
+const LONG_LOG_LINE = 'error[E0308]: mismatched types --> backend/src/workflows/runner.rs:412:27 | expected `Result<RunOutcome, RunError>`, found `Option<RunOutcome>`';
+
+function LogViewerDemo({ t }: { t: T }) {
+  const { number } = useNumber();
+  const [lines, setLines] = useState<readonly LogLine[]>(DEMO_LOG);
+  const label = t('designSystem.demo.log.label');
+  const common = {
+    label,
+    lines,
+    streaming: true,
+    copyable: true,
+    onRefresh: () => setLines(DEMO_LOG),
+    onClear: () => setLines([]),
+    note: t('designSystem.demo.log.note', number(200)),
+  };
+  return (
+    <>
+      <WideAndNarrow
+        t={t}
+        wide={<LogViewer {...common} lineNumbers />}
+        narrow={<LogViewer {...common} maxHeight="sm" />}
+      />
+      <Row label={t('designSystem.demo.log.sideways')}>
+        <div className="ds-demo-container" data-form="wide">
+          <LogViewer label={label} lines={[...DEMO_LOG.slice(0, 2), { text: LONG_LOG_LINE, level: 'error' }]} wrap={false} maxHeight="sm" />
+        </div>
+      </Row>
+      <Row label={t('designSystem.demo.data.empty')}>
+        <div className="ds-demo-container" data-form="wide">
+          <LogViewer label={label} lines={[]} empty={t('designSystem.demo.log.emptyText')} maxHeight="sm" />
+        </div>
+      </Row>
+    </>
+  );
+}
+
+/** KT-2004 — two files: a rename with a removed, an added and a changed line
+ *  and a meta line; a binary file. */
+const DEMO_DIFF: readonly DiffFileModel[] = [
+  {
+    path: 'src/lib/run.ts',
+    previousPath: 'src/lib/execution.ts',
+    status: 'renamed',
+    added: 3,
+    removed: 2,
+    hunks: [{
+      header: '@@ -12,6 +12,7 @@ export function startRun(task: Task) {',
+      lines: [
+        { kind: 'context', oldNumber: 12, newNumber: 12, text: '  const started = Date.now();' },
+        { kind: 'removed', oldNumber: 13, text: "  const label = 'execution';" },
+        { kind: 'added', newNumber: 13, text: "  const label = 'run';" },
+        { kind: 'changed', oldNumber: 14, newNumber: 14, text: '  log(label, task.id, started);', otherText: '  log(label, task.id);' },
+        { kind: 'context', oldNumber: 15, newNumber: 15, text: '  return dispatch(task);' },
+        { kind: 'added', newNumber: 16, text: '  // The worktree is kept for the review.' },
+        { kind: 'context', oldNumber: 16, newNumber: 17, text: '}' },
+        { kind: 'meta', text: '\\ No newline at end of file' },
+      ],
+    }],
+  },
+  { path: 'assets/logo.png', status: 'modified', binary: true, hunks: [] },
+];
+
+const highlightDemo = (text: string, path: string) => highlightLine(text, languageForPath(path));
+
+function DiffViewerDemo({ t }: { t: T }) {
+  const { number } = useNumber();
+  const [selection, setSelection] = useState<DiffSelection | null>({ path: 'src/lib/run.ts', start: 1, end: 3 });
+  const label = t('designSystem.demo.diff.label');
+  const count = selection ? selection.end - selection.start + 1 : 0;
+  return (
+    <>
+      <WideAndNarrow
+        t={t}
+        wide={(
+          <DiffViewer
+            files={DEMO_DIFF}
+            label={label}
+            layout="split"
+            highlight={highlightDemo}
+            selectable
+            selection={selection}
+            onSelectionChange={setSelection}
+            selectionToolbar={<Button size="sm">{t('designSystem.demo.diff.comment')}</Button>}
+          />
+        )}
+        narrow={<DiffViewer files={DEMO_DIFF} label={label} layout="split" highlight={highlightDemo} maxHeight="sm" />}
+      />
+      <p className="ds-demo-note" aria-live="polite" data-testid="ds-diff-selection">
+        {selection ? t('designSystem.demo.diff.selected', number(count)) : t('designSystem.demo.diff.selectedNone')}
+      </p>
+      <Row label={t('designSystem.demo.data.loading')}>
+        <div className="ds-demo-container" data-form="wide">
+          <DiffViewer files={[]} label={label} loading loadingLabel={t('designSystem.demo.diff.loadingDiff')} />
+        </div>
+      </Row>
+      <Row label={t('designSystem.demo.data.empty')}>
+        <div className="ds-demo-container" data-form="wide">
+          <DiffViewer files={[]} label={label} />
+        </div>
+      </Row>
+    </>
+  );
+}
+
 const DEMOS: Record<string, (props: { t: T }) => ReactNode> = {
   button: ButtonDemo,
   iconButton: IconButtonDemo,
@@ -1059,6 +1184,8 @@ const DEMOS: Record<string, (props: { t: T }) => ReactNode> = {
   keyValueList: KeyValueListDemo,
   statTile: StatTileDemo,
   progressBar: ProgressBarDemo,
+  logViewer: LogViewerDemo,
+  diffViewer: DiffViewerDemo,
   agentSwitchPicker: AgentSwitchPickerDemo,
 };
 

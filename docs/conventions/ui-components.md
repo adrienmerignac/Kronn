@@ -188,21 +188,38 @@ Escape closes one layer, the innermost first
   `[src: file: frontend/src/test/headerContract.tsx:32#describeHeaderContract]`.
 - **Variants** live in `headerKinds.ts` (`HEADER_LEVELS`, `HEADER_KINDS`).
 - **In the gallery** each kind shows its normal and compact form (the compact
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:499]`.
+- **Variants** live in `feedbackKinds.ts` (`NOTICE_TONES`,
+  `EMPTY_STATE_KINDS`, `LOADING_SIZES`, `SKELETON_KINDS`), so the component
+  files export components only (fast refresh).
+
+## Header kinds (KT-1884)
+
+- **One frame.** The six share `headerFrame.tsx` and `headerFrame.css`; each
+  kind's own stylesheet sets only its title sizes (from the text scale,
+  smaller when `compact`) and its padding. `describeHeaderContract` runs the
+  same checks on each (one heading at its level in both forms, slot order,
+  sizes, no `position` or `z-index`, axe)
+  `[src: file: frontend/src/test/headerContract.tsx:32#describeHeaderContract]`.
+- **Variants** live in `headerKinds.ts` (`HEADER_LEVELS`, `HEADER_KINDS`).
+- **In the gallery** each kind shows its normal and compact form (the compact
   one with a long title, to show it ellipsize). A demo renders its real
   heading, so the gallery's own `h3` after an `h1` or `h2` demo is the one
   `heading-order` jump its axe test allows.
 
-## Dense-data components (KT-1886)
+## Dense-data components (KT-1886, KT-2004)
 
-- **Narrow by the container, not the window.** `Table` and `KeyValueList`
-  are size containers (`container-type: inline-size`) and take their narrow
-  form under a width of their own: `@container ui-table (width < 40rem)`
-  (40rem is `--kr-bp-sm`), `@container ui-kv (width < 24rem)`. A table in a
-  side panel turns into cards on a wide screen too; no `@media` width query.
+- **Narrow by the container, not the window.** `Table`, `KeyValueList` and
+  `DiffViewer` are size containers (`container-type: inline-size`) and take
+  their narrow form under a width of their own: `@container ui-table (width < 40rem)`
+  (40rem is `--kr-bp-sm`), `@container ui-kv (width < 24rem)`,
+  `@container ui-diff (width < 40rem)`. A table or side-by-side diff in a
+  side panel turns into its narrow form on a wide screen too; no `@media` width query.
   A container query cannot read a custom property, so the threshold is
   written in rem, the one length besides a 1 or 2 px line.
   `[src: file: frontend/src/components/ui/Table.css:249]`
   `[src: file: frontend/src/components/ui/KeyValueList.css:91]`
+  `[src: file: frontend/src/components/ui/DiffViewer.css:281]`
   `StatGrid` needs no query: `repeat(auto-fill, minmax(min(100%, …), 1fr))`
   wraps its tiles by its own width, never a fixed column count.
 - **A table's narrow forms.** `narrow="scroll"` (default) keeps the columns
@@ -244,7 +261,8 @@ Escape closes one layer, the innermost first
   `empty` (an `EmptyState`, or "Nothing to show") or a `LoadingState` sm with
   the table `aria-busy`. The select-all is disabled when there is no row.
 - **12 px at least.** Both densities write `--kr-type-sm` or more; so do the
-  tile labels, the delta, the progress label and its legend.
+  tile labels, the delta, the progress label, its legend, and the log and
+  diff gutters and lines.
 - **A copy says what happened.** `CopyButton` keeps its name (focus does not
   re-announce), changes its icon, and writes "Copied" or "Copy failed" in a
   polite live region next to it, empty again after
@@ -256,7 +274,10 @@ Escape closes one layer, the innermost first
   technology ("Up", "Down", "No change") and its tone colours the arrow
   only, the text stays `--kr-text-secondary`; an unknown value is "—" with
   its reason in a title and in hidden text; a missing key-value is "—" read
-  as "No value".
+  as "No value". In `LogViewer`, `stderr` and `error` lines carry a visible
+  text marker (`ERR` / `WARN`) in addition to the status tint; in `DiffViewer`,
+  added, removed and changed lines write `+`, `-` and `~` in a text gutter
+  column alongside the `--kr-diff-*` tokens.
 - **A stacked bar is read once.** Without a legend it is a `role="img"`
   whose name lists every segment, its count and its share (percent in the UI
   locale, "<1 %" for a share that would round to 0). With `legend`, the
@@ -267,10 +288,43 @@ Escape closes one layer, the innermost first
   A single bar with no `value` is indeterminate: it slides, and under
   `prefers-reduced-motion: reduce` it stands still, the whole track striped.
   `[src: file: frontend/src/components/ui/ProgressBar.css:130]`
+- **One log region (`LogViewer`, KT-2004).** The scroll area is a focusable
+  `role="log"` named by its required `label` (`tabIndex={0}`, `aria-live="off"`
+  so a streaming log never floods assistive technology). Lines are strings or
+  `{ text, stream, level, time }`; ANSI CSI and OSC sequences are stripped by
+  `stripAnsi` before rendering or copying, and a timestamp sits in its own
+  `<time>` column. When `follow` is on, new lines scroll to the bottom; scrolling
+  up by hand pauses following and shows a "Jump to end" button that scrolls to
+  the bottom and resumes following. The toolbar renders only the controls wired
+  by the caller (`wrapToggle`, `copyable` via `CopyButton`, `onRefresh`,
+  `onClear`, and the `note` slot).
+  `[src: file: frontend/src/components/ui/LogViewer.tsx:58#LogViewer]`
+  `[src: file: frontend/src/components/ui/logKinds.ts:34#stripAnsi]`
+- **One diff model (`DiffViewer`, KT-2004).** `DiffViewer` takes a structured
+  `DiffFileModel[]`, built either from a git patch with `parseUnifiedDiff` or
+  from the positional row pairs of `qp-history-diff.ts` with `diffFileFromRows`
+  (where a `changed` line carries both `text` and `otherText`, rendered as a
+  `~` row in unified view and on the two sides in `side-by-side` view). Side by
+  side falls back to unified under `@container ui-diff (width < 40rem)` by a
+  `ResizeObserver` on the root plus CSS container rules. Per-file headers show
+  `previousPath → path` for renames, status badge, `+added` / `-removed` counts,
+  a per-file `CopyButton` (copying `newText(file)`), and replace the hunk body
+  with a notice for `binary` or `truncated` files. The caller's `highlight`
+  callback is skipped when a file's line count exceeds `highlightLimit`
+  (default 800), and its `.diff-hl-*` classes take `--kr-code-*` tokens inside
+  `DiffViewer.css`. When `selectable` is on, each content line renders a named
+  toggle button with `aria-pressed`; shift-click extends the selected range up
+  to `maxSelection` (default 50) in the same file.
+  `[src: file: frontend/src/components/ui/DiffViewer.tsx:77#DiffViewer]`
+  `[src: file: frontend/src/lib/diffModel.ts:74#parseUnifiedDiff]`
+  `[src: file: frontend/src/lib/diffModel.ts:220#diffFileFromRows]`
 - **Variants** live in `dataKinds.ts` (`TABLE_DENSITIES`,
   `TABLE_MAX_HEIGHTS`, `TABLE_NARROW_FORMS`, `TABLE_ROW_TONES`,
   `KEY_VALUE_LAYOUTS`, `STAT_TILE_SIZES`, `PROGRESS_TONES`,
-  `PROGRESS_SIZES`, `nextSort`, `COPY_FEEDBACK_MS`).
+  `PROGRESS_SIZES`, `nextSort`, `COPY_FEEDBACK_MS`), `logKinds.ts`
+  (`LOG_MAX_HEIGHTS`, `LOG_STREAMS`, `LOG_LEVELS`, `stripAnsi`), and
+  `diffKinds.ts` (`DIFF_LAYOUTS`, `DIFF_MAX_HEIGHTS`, `DIFF_FILE_STATUSES`,
+  `DIFF_LINE_KINDS`, `DEFAULT_HIGHLIGHT_LIMIT`, `DEFAULT_MAX_SELECTION`).
 - **In the gallery** each one is shown in a wide container on its own line,
   then its narrow demos together on the next line (`WideAndNarrow`: each
   narrow container is 20rem whatever the window and they wrap under each
@@ -278,9 +332,9 @@ Escape closes one layer, the innermost first
   scroll there; no padding on the containers), with sample data whose
   numbers are written with `Intl.NumberFormat` in the interface's locale;
   the test is `DesignSystemDataComponents.test.tsx`.
-  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:721#WideAndNarrow]`
+  `[src: file: frontend/src/components/settings/DesignSystemComponents.tsx:726#WideAndNarrow]`
 - **A size container needs a width of its own.** Inline-size containment
-  ignores the content, so a `Table` or `KeyValueList` placed as a flex item
+  ignores the content, so a `Table`, `KeyValueList` or `DiffViewer` placed as a flex item
   with no width or flex-basis collapses to 0 px and vanishes. In the gallery
   each one sits directly in a `.ds-demo-container` whose form sets a width
   (`wide`: `width: 100%`; `narrow`: `flex: 0 1 20rem`); the gallery test
@@ -334,21 +388,7 @@ the four locales; the gallery test fails if a component of the folder is
 missing. A shared component built on those controls (the agent picker,
 KT-1885) goes in `SHARED_GALLERY_COMPONENTS`, shown after them.
 `[src: file: frontend/src/components/settings/designSystemGallery.ts:19#UI_GALLERY_COMPONENTS]`
-`[src: file: frontend/src/components/settings/designSystemGallery.ts:53#SHARED_GALLERY_COMPONENTS]`
-
-## The one agent picker
-
-Every place that chooses an agent uses `AgentSwitchPicker` (KT-1885); its
-modes are props, not copies: the trigger `variant` (`chip`, `compact`,
-`field`), `multiple` (several targets, the list stays open) and `exactModel`
-(an agent and a model id, the catalogue's or one typed in the search, or
-« = principal », with the principal's own model greyed).
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:418#variant]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:441#multiple]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:452#exactModel]`
-Its popover is in `<body>` on the popover layer, above every dialog, and opens
-on its search field. It is placed from its rendered size, measured on open,
-when the search or the catalogue changes it, and on resize: it stays inside
+`[src: file: frontend/src/components/settings/designSystemGallery.ts:56#SHARED_GALLERY_COMPONENTS]`
 the window and never covers its trigger; opened above, its bottom is anchored
 to the trigger. Never place it from an estimated size. It is 480 px wide at
 most (580 px with four tracks, 520 px for the @ menu), never wider than the
