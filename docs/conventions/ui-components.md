@@ -548,7 +548,7 @@ hidden while searching. The trigger writes the model id the configuration
 names (or the custom model), whether or not the catalogue is loaded: its text
 never changes when the list opens; the display name goes to its title.
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:747#AgentModelList]`
-`[src: file: frontend/src/components/AgentSwitchPicker.tsx:55-60#modeModelId]`
+`[src: file: frontend/src/lib/modelCatalogSelection.ts:58-64#modeModelId]`
 `[src: file: frontend/src/components/AgentSwitchPicker.tsx:864]`
 
 With `customModel` (the discussion header and the new-discussion form) and in
