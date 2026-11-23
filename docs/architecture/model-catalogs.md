@@ -58,14 +58,14 @@ does not make a hidden hard-coded fallback reappear.
   `http:<connection-id>`. NVIDIA capability metadata is read from its model
   records. A saved media slot never invents a capability.
 [src: file: backend/src/core/model_catalog/acp_discovery.rs:80-109#discover_with_transport]
-[src: file: backend/src/core/model_catalog/codex_discovery.rs:95-121#discover]
-[src: file: backend/src/core/model_catalog/codex_discovery.rs:123-208#run_handshake_and_list]
+[src: file: backend/src/core/model_catalog/codex_discovery.rs:101-127#discover]
+[src: file: backend/src/core/model_catalog/codex_discovery.rs:129-214#run_handshake_and_list]
 [src: file: backend/src/api/external_api_connections.rs:287-454#probe_models]
 [src: file: backend/src/api/external_api_connections.rs:1389-1419#fetch_capability_catalogue]
 [src: file: backend/src/api/external_api_connections.rs:1417-1429#catalog_declares_modality]
 [src: file: backend/src/api/external_api_connections.rs:1435-1489#catalog_models_from_body]
 [src: file: backend/src/api/external_api_connections.rs:1491-1506#merge_catalog]
-[src: file: backend/src/core/model_catalog/mod.rs:820-835#reconcile_http_catalog]
+[src: file: backend/src/core/model_catalog/mod.rs:854-869#reconcile_http_catalog]
 
 ## Where OpenCode's models come from (KT-928)
 
@@ -110,7 +110,7 @@ the files are never opened; at most 16 projects). The results are merged:
 - a project whose discovery fails is left out and logged by reason only; it
   does not fail the refresh. A failure of the neutral discovery is returned as
   it is, whatever the projects answered.
-[src: file: backend/src/core/model_catalog/mod.rs:528-668#OPENCODE_PROJECT_CONFIGS]
+[src: file: backend/src/core/model_catalog/mod.rs:562-702#OPENCODE_PROJECT_CONFIGS]
 
 Known gaps: a model seen only through `OPENCODE_CONFIG` set in a user's shell,
 or through an `opencode.json` above the project directory, is not found, since
@@ -316,6 +316,6 @@ auto-detected or previously-confirmed assessment.
 [src: file: backend/src/db/model_catalog.rs:525-556#derive_opencode_zen_overlay]
 [src: file: backend/src/db/model_catalog.rs:384-451#update_manual]
 [src: file: backend/src/db/sql/164_model_catalog_cost_privacy.sql:1-7#cost_hint]
-[src: file: backend/src/models/model_catalog.rs:249-280#UpsertManualModelRequest]
+[src: file: backend/src/models/model_catalog.rs:266-297#UpsertManualModelRequest]
 [src: url: https://opencode.ai/docs/zen/]
 [src: url: https://opencode.ai/zen/v1/models]

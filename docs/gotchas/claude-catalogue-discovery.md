@@ -6,8 +6,8 @@ control request. It reads the response's `models`, the same catalogue exposed
 by `supportedModels()` / `initializationResult().models`. It sends no user
 prompt, model selection, permission approval or inference request.
 [src: file: backend/src/core/model_catalog/mod.rs:420-431#discover_inner]
-[src: file: backend/src/core/model_catalog/claude_discovery.rs:88-106#discovery_args]
-[src: file: backend/src/core/model_catalog/claude_discovery.rs:214-270#initialize]
+[src: file: backend/src/core/model_catalog/claude_discovery.rs:97-115#discovery_args]
+[src: file: backend/src/core/model_catalog/claude_discovery.rs:221-277#initialize]
 [src: url: https://code.claude.com/docs/en/agent-sdk/typescript]
 
 The process uses safe mode, an empty strict MCP configuration, no tools,
@@ -18,9 +18,9 @@ explicitly; Kronn does not retry with weaker isolation, install an SDK, require
 an additional API key, or change the configured execution transport. The
 initialization is bounded to 18 seconds inside the common 20-second discovery
 budget, with bounded output and owned-child shutdown.
-[src: file: backend/src/core/model_catalog/claude_discovery.rs:88-106#discovery_args]
-[src: file: backend/src/core/model_catalog/claude_discovery.rs:108-112#provider_error]
-[src: file: backend/src/core/model_catalog/claude_discovery.rs:132-186#discover]
+[src: file: backend/src/core/model_catalog/claude_discovery.rs:97-115#discovery_args]
+[src: file: backend/src/core/model_catalog/claude_discovery.rs:117-121#provider_error]
+[src: file: backend/src/core/model_catalog/claude_discovery.rs:139-193#discover]
 [src: file: backend/src/core/model_catalog/mod.rs:43-44#DISCOVERY_TIMEOUT]
 
 The catalogue preserves `ModelInfo.value` exactly, including aliases and
@@ -31,7 +31,7 @@ remain separate from model tiers; a missing effort list stays empty and no
 default effort is invented. Shape, bounds and identity uniqueness are checked
 on discovery output, not on free-form user model settings.
 [src: file: backend/src/core/model_catalog/claude_discovery.rs:18-29#ModelInfo]
-[src: file: backend/src/core/model_catalog/claude_discovery.rs:39-86#parse_models]
+[src: file: backend/src/core/model_catalog/claude_discovery.rs:48-95#parse_models]
 [src: file: backend/src/db/model_catalog.rs:27-30#canonical_id]
 
 Listing is not proof that an account can execute a model. The UI says that
@@ -55,7 +55,7 @@ ten-minute retry TTL. HTTP and Ollama are excluded from this automatic CLI
 refresh; their existing explicit boundaries remain unchanged.
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:6-30#refreshTarget]
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:32-93#useModelCatalogSnapshot]
-[src: file: backend/src/core/model_catalog/mod.rs:1108-1150#refresh_if_stale]
+[src: file: backend/src/core/model_catalog/mod.rs:1142-1184#refresh_if_stale]
 [src: file: backend/src/core/model_catalog/mod.rs:37-41#LIVE_CATALOG_TTL]
 [src: file: backend/src/db/mod.rs:330-342#lock_catalog_refresh]
 
@@ -81,8 +81,8 @@ concurrent refreshes, failure cooldown, disappearance/reappearance, late UI
 results and explicit Fable selection. Tests use isolated database/protocol
 fixtures and mocked UI APIs; they do not assert an authorized billable call.
 [src: file: backend/src/core/model_catalog/claude_discovery.rs:272-427#tests]
-[src: file: backend/src/core/model_catalog/mod.rs:1747-1785#overlapping_forced_refreshes_share_one_attempt_but_an_explicit_later_recheck_runs]
-[src: file: backend/src/core/model_catalog/mod.rs:1787-1917#claude_refresh_preserves_manual_tiers_http_namespace_and_last_good_on_failure]
+[src: file: backend/src/core/model_catalog/mod.rs:1781-1819#overlapping_forced_refreshes_share_one_attempt_but_an_explicit_later_recheck_runs]
+[src: file: backend/src/core/model_catalog/mod.rs:1821-1951#claude_refresh_preserves_manual_tiers_http_namespace_and_last_good_on_failure]
 [src: file: backend/src/db/model_catalog.rs:1323-1349#disappearance_downgrades_to_cached_never_deletes]
 [src: file: backend/src/db/model_catalog.rs:1388-1411#mark_unavailable_then_reappear_reactivates]
 [src: file: frontend/src/hooks/__tests__/useModelCatalogSnapshot.test.tsx:25-107#refreshes]

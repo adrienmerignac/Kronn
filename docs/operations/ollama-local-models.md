@@ -314,8 +314,8 @@ another model or a CLI default. Explicit operator settings still take priority;
 failed assignment reads refuse launch. A target with no selected or assigned
 identity keeps the existing no-model preflight behavior; this change does not
 introduce new discovery for unconfigured runtimes.
-[src: file: backend/src/core/model_catalog/mod.rs:1198-1227#requested_model]
-[src: file: backend/src/core/model_catalog/mod.rs:1437-1470#requested_launch_model]
+[src: file: backend/src/core/model_catalog/mod.rs:1232-1261#requested_model]
+[src: file: backend/src/core/model_catalog/mod.rs:1471-1504#requested_launch_model]
 
 The production integration fixture links the library without `cfg(test)` and
 uses isolated SQLite plus explicit loopback endpoints. It actually creates,
@@ -840,8 +840,8 @@ without `completion`. [src: url: https://docs.ollama.com/capabilities/decision]
   `400 image generation models are not currently supported`. Kronn keeps such
   a model out of the chat pickers.
   [src: url: https://github.com/ollama/ollama/pull/16615]
-  [src: file: backend/src/core/model_catalog/ollama_discovery.rs:137-152#catalog_capabilities]
-  [src: file: backend/src/core/model_catalog/mod.rs:773-815#ollama_capabilities]
+  [src: file: backend/src/core/model_catalog/ollama_discovery.rs:147-162#catalog_capabilities]
+  [src: file: backend/src/core/model_catalog/mod.rs:807-849#ollama_capabilities]
 - A catalogue entry without `chat` is refused by the chat preflight, and the
   pickers leave it out; a saved choice stays visible, disabled, saying it is a
   decision model. An entry with no capability list stays usable.
