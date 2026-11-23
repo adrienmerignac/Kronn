@@ -184,13 +184,59 @@ describe('KT-1996 — the impact sentence wraps inside the card', () => {
         expect(getComputedStyle(row).flexWrap).toBe('wrap');
         expect(getComputedStyle(row).minWidth).toBe('0');
         if (surface.name === 'workflow card') {
-          // The actions take a full line of the footer while the impact shows…
-          expect(getComputedStyle(row).flexBasis).toBe('100%');
+          // The footer may wrap, so the actions go under the run summary only
+          // when they do not fit beside it.
           expect(getComputedStyle(row.parentElement!).flexWrap).toBe('wrap');
         }
       });
     }
   }
+
+  for (const width of [1440, 400]) {
+    it(`workflow card at ${width} px: the armed actions keep their natural width, no forced row of their own`, () => {
+      // Review of KT-1996: `flex: 1 1 100%` sent the actions under the summary
+      // at every width, so at 1440 px the card grew 127 -> 150 px although the
+      // sentence fitted on the footer row. They keep their natural basis
+      // (on the summary's row while they fit) and may shrink once alone.
+      setViewport(width);
+      const button = renderOnCard(LONG_IMPACT);
+      fireEvent.click(button);
+      const actions = getComputedStyle(document.querySelector('.wf-card-actions')!);
+      expect(actions.flexBasis).not.toBe('100%');
+      expect(['', 'auto']).toContain(actions.flexBasis);
+      expect(actions.flexGrow).toBe('0');
+      expect(actions.flexShrink).toBe('1');
+    });
+  }
+
+  it('workflow card: "Lancer" and the armed button share a row, the sentence wraps as its own item', () => {
+    // At 400 px the control's own box went to a row of its own under "Lancer",
+    // then broke into "Confirmer" and the sentence: three rows. Its box is
+    // dissolved into the actions, so the button stays beside "Lancer" (69 +
+    // 66 px of 354) and only the sentence, too wide for that row, wraps below.
+    setViewport(400);
+    const button = renderOnCard(LONG_IMPACT);
+    fireEvent.click(button);
+    const control = button.parentElement!;
+    expect(control).toHaveClass('kr-confirm-delete');
+    expect(getComputedStyle(control).display).toBe('contents');
+    const impact = screen.getByTestId('del-impact');
+    expect(impact.parentElement).toBe(control);
+    // Both are flex items of the wrapping actions row, after "Lancer".
+    const actions = control.parentElement!;
+    expect(actions).toHaveClass('wf-card-actions');
+    expect(actions.firstElementChild).toHaveClass('wf-card-run-btn');
+    expect(getComputedStyle(actions).flexWrap).toBe('wrap');
+    expect(getComputedStyle(button).flexShrink).toBe('0');
+    expect(getComputedStyle(impact).flexGrow).toBe('1');
+    expect(getComputedStyle(impact).minWidth).toBe('0');
+  });
+
+  it('skill sheet keeps the control as one box (no dissolve outside the workflow card)', () => {
+    const button = renderInSkillSheet(LONG_IMPACT);
+    fireEvent.click(button);
+    expect(getComputedStyle(button.parentElement!).display).toBe('inline-flex');
+  });
 
   it('leaves the card footer as it was while nothing is armed', () => {
     renderOnCard(LONG_IMPACT);
