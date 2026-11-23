@@ -1282,6 +1282,53 @@ describe('McpPage', () => {
     expect(document.body.textContent).toContain('A test server');
   });
 
+  it('makes every registry card a keyboard stop that Enter or Space opens (KT-2006)', () => {
+    const overview: McpOverview = { servers: [], configs: [], customized_contexts: [], incompatibilities: [], incomplete_configs: [], access_policies: [] };
+    const registry: McpDefinition[] = [
+      { id: 'test-mcp', name: 'Test MCP', description: 'A test server', transport: { Stdio: { command: 'node', args: [] } }, env_keys: [], tags: ['core'], token_url: null, token_help: null, publisher: 'Anthropic', official: true },
+      { id: 'other-mcp', name: 'Other MCP', description: 'Another server', transport: { Stdio: { command: 'node', args: [] } }, env_keys: [], tags: ['core'], token_url: null, token_help: null, publisher: 'Someone', official: false },
+    ];
+    wrap(<McpPage projects={[]} mcpOverview={overview} mcpRegistry={registry} refetchMcps={noop} />);
+    fireEvent.click(getAddPluginButton());
+
+    const grid = document.querySelector<HTMLElement>('.mcp-registry-grid');
+    if (!grid) throw new Error('registry grid not found');
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>('.mcp-registry-card'));
+    expect(cards.length).toBeGreaterThanOrEqual(2);
+    for (const card of cards) {
+      expect(card).toHaveAttribute('role', 'button');
+      expect(card).toHaveAttribute('tabindex', '0');
+    }
+
+    // A key from a card's content is not the card's own: nothing opens.
+    const testCard = cards.find(card => card.textContent?.includes('Test MCP'));
+    if (!testCard) throw new Error('Test MCP card not found');
+    fireEvent.keyDown(testCard.querySelector('.mcp-registry-card-name')!, { key: 'Enter' });
+    expect(document.querySelector('.mcp-registry-grid')).not.toBeNull();
+
+    testCard.focus();
+    expect(testCard).toHaveFocus();
+    fireEvent.keyDown(testCard, { key: 'Enter' });
+    expect(document.querySelector('.mcp-registry-grid')).toBeNull();
+    expect(screen.getByDisplayValue('Test MCP')).toBeInTheDocument();
+  });
+
+  it('opens a registry card with Space as well (KT-2006)', () => {
+    const overview: McpOverview = { servers: [], configs: [], customized_contexts: [], incompatibilities: [], incomplete_configs: [], access_policies: [] };
+    const registry: McpDefinition[] = [
+      { id: 'test-mcp', name: 'Test MCP', description: 'A test server', transport: { Stdio: { command: 'node', args: [] } }, env_keys: [], tags: ['core'], token_url: null, token_help: null, publisher: 'Anthropic', official: true },
+    ];
+    wrap(<McpPage projects={[]} mcpOverview={overview} mcpRegistry={registry} refetchMcps={noop} />);
+    fireEvent.click(getAddPluginButton());
+
+    const card = Array.from(document.querySelectorAll<HTMLElement>('.mcp-registry-card'))
+      .find(c => c.textContent?.includes('Test MCP'));
+    if (!card) throw new Error('Test MCP card not found');
+    fireEvent.keyDown(card, { key: ' ' });
+    expect(document.querySelector('.mcp-registry-grid')).toBeNull();
+    expect(screen.getByDisplayValue('Test MCP')).toBeInTheDocument();
+  });
+
   it('shows the read-only built-in kronn-internal entry as a standard plugin card', () => {
     // kronn-internal is auto-injected into every project — surfaced as a
     // read-only system card on the MAIN Plugins view (not behind "Ajouter"),

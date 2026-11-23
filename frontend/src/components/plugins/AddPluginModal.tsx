@@ -2,6 +2,7 @@ import {
   Puzzle, Plus, Check, X, Key, ExternalLink, Plug, Globe, Download,
   Terminal, Eye,
 } from 'lucide-react';
+import { onActivationKey } from '../../lib/keyboardActivation';
 import { pluginKind } from '../../lib/pluginKind';
 import { pluginCredentialKeys, pluginCredentialKind } from '../../lib/pluginCredentials';
 import { CustomApiForm } from './CustomApiForm';
@@ -225,6 +226,15 @@ export function AddPluginModal({ state }: { state: McpPageState }) {
               bucket.push(m);
             }
             const catsWithItems = categoryOrder.filter(cat => grouped.has(cat));
+            // KT-2006 — every card is a keyboard stop (Tab, then Enter or
+            // Space), so the scrolling grid can be reached and scrolled
+            // without a mouse.
+            const cardActivation = (activate: () => void) => ({
+              role: 'button' as const,
+              tabIndex: 0,
+              onClick: activate,
+              onKeyDown: onActivationKey<HTMLDivElement>(activate),
+            });
             return (
               <>
                 <div className="mcp-cat-pills">
@@ -249,10 +259,10 @@ export function AddPluginModal({ state }: { state: McpPageState }) {
                     <div
                       key="api-import"
                       className="mcp-registry-card mcp-registry-card-custom"
-                      onClick={() => {
+                      {...cardActivation(() => {
                         resetAddMcp();
                         setPortabilityMode('import');
-                      }}
+                      })}
                       data-testid="mcp-import-bundle-tile"
                     >
                       <div className="mcp-registry-card-top">
@@ -279,10 +289,10 @@ export function AddPluginModal({ state }: { state: McpPageState }) {
                     <div
                       key="custom-api"
                       className="mcp-registry-card mcp-registry-card-custom"
-                      onClick={() => {
+                      {...cardActivation(() => {
                         setAddMcpSelected('api-custom');
                         setAddMcpLabel('');
-                      }}
+                      })}
                       data-tour-id="custom-api-tile"
                     >
                       <div className="mcp-registry-card-top">
@@ -321,13 +331,13 @@ export function AddPluginModal({ state }: { state: McpPageState }) {
                           <div
                             key={m.id}
                             className={`mcp-registry-card${alreadyAdded ? ' mcp-registry-card-installed' : ''}`}
-                            onClick={() => {
+                            {...cardActivation(() => {
                               setAddMcpSelected(m.id);
                               setAddMcpLabel(alreadyAdded ? `${m.name} (${configs.filter(c => c.server_name === m.name).length + 1})` : m.name);
                               const envInit: Record<string, string> = {};
                               pluginCredentialKeys(m).forEach(k => { envInit[k] = ''; });
                               setAddMcpEnv(envInit);
-                            }}
+                            })}
                           >
                             <div className="mcp-registry-card-top">
                               <div className="mcp-registry-card-icon">
