@@ -46,7 +46,7 @@ the same final route. Only a final `/v1` path segment is removed: `/v1beta`,
    endpoint and credential have passed that test. Changing the endpoint, key or
    preset invalidates the prior result; previous mappings stay visible but
    cannot be changed until the new connection state succeeds.
-   [src: file: frontend/src/components/settings/ExternalApiSection.tsx:247#modelsUnlocked]
+   [src: file: frontend/src/components/settings/ExternalApiSection.tsx:248#modelsUnlocked]
    [src: file: frontend/src/components/settings/ExternalApiSection.tsx:678-684#changeConnection]
 
 The model tiers remain optional: leaving one blank stores no per-connection
