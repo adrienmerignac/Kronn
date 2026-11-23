@@ -748,7 +748,7 @@ export function GitPanel({
                 onKeyDown={e => e.key === 'Enter' && handleCreateBranch()}
                 autoFocus
               />
-              <button className="git-action-btn" onClick={handleCreateBranch} disabled={branchLoading}>
+              <button className="git-action-btn" onClick={handleCreateBranch} disabled={branchLoading} aria-label={t('git.createBranch')}>
                 {branchLoading ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={12} />}
               </button>
               <button className="git-icon-btn" onClick={() => setShowBranch(false)} aria-label="Cancel branch creation"><X size={12} /></button>
