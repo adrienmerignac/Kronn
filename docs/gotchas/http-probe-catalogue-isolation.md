@@ -28,9 +28,9 @@ Successful empty discovery marks previously live models as disappeared without
 deleting them. A failed saved probe preserves availability and last-seen values,
 but marks live provenance cached and records its normalized failure. Operator
 aliases, tier assignments, cost and privacy overlays survive reconciliation.
-[src: file: backend/src/db/model_catalog.rs:556-583#reconcile_live]
+[src: file: backend/src/db/model_catalog.rs:569-596#reconcile_live]
 [src: file: backend/src/db/model_catalog.rs:670-694#LiveSnapshot]
-[src: file: backend/src/db/model_catalog.rs:732-761#record_refresh_failure]
+[src: file: backend/src/db/model_catalog.rs:745-774#record_refresh_failure]
 [src: file: backend/tests/http_probe_catalog.rs:253-289#saved_failure_preserves_availability_and_last_seen_with_a_normalized_diagnostic]
 [src: file: backend/tests/http_probe_catalog.rs:291-343#empty_then_reappearing_catalogue_preserves_operator_overlays]
 

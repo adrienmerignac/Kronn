@@ -75,7 +75,7 @@ an unassigned tier in the exact runtime namespace; it does not overwrite a
 manual/live row or compete with an unavailable existing assignment.
 [src: file: backend/src/core/model_catalog/mod.rs:200-320#migrate_hardcoded_catalog_once]
 [src: file: backend/src/core/model_catalog/mod.rs:322-345#seed_configured_tiers]
-[src: file: backend/src/db/model_catalog.rs:942-990#insert_migrated_seed_for_target]
+[src: file: backend/src/db/model_catalog.rs:955-1003#insert_migrated_seed_for_target]
 
 Bootstrap records its durable marker in the same database operation. Reopening
 the database and invoking bootstrap again leaves rows and timestamps unchanged,

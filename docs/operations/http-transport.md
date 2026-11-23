@@ -219,7 +219,7 @@ behaviour is the same as for a joined CLI; see
   immediately before each launch. A future
   centralized guard can make this invariant structural once the agent runner
   is available for that refactor.
-  [src: file: backend/src/core/model_catalog/mod.rs:1380-1387#preflight_resolve]
+  [src: file: backend/src/core/model_catalog/mod.rs:1482-1489#preflight_resolve]
   [src: file: backend/src/api/discussions/orchestration.rs:66-132#checked_launch_connection]
   [src: file: backend/src/api/discussions/orchestration.rs:748-756#checked_launch_connection]
   [src: file: backend/src/api/discussions/orchestration.rs:644-652#checked_launch_connection]

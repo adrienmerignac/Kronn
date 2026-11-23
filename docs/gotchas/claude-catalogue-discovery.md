@@ -42,7 +42,7 @@ catalogue. CLI aliases can change their resolution; the special `default`
 choice is labelled accordingly and is never automatically assigned to a tier.
 The same warning is shown in the Settings catalogue table, not just in pickers.
 [src: file: frontend/src/lib/modelCatalogSelection.ts:123-186#catalogModelOptions]
-[src: file: backend/src/db/model_catalog.rs:585-730#reconcile_listing]
+[src: file: backend/src/db/model_catalog.rs:598-743#reconcile_listing]
 [src: file: frontend/src/components/settings/ModelCatalogSection.tsx:447-449#cliDefault]
 
 Opening a selector serves its saved snapshot first, then refreshes stale CLI
@@ -55,7 +55,7 @@ ten-minute retry TTL. HTTP and Ollama are excluded from this automatic CLI
 refresh; their existing explicit boundaries remain unchanged.
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:6-30#refreshTarget]
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:32-93#useModelCatalogSnapshot]
-[src: file: backend/src/core/model_catalog/mod.rs:1048-1090#refresh_if_stale]
+[src: file: backend/src/core/model_catalog/mod.rs:1108-1150#refresh_if_stale]
 [src: file: backend/src/core/model_catalog/mod.rs:37-41#LIVE_CATALOG_TTL]
 [src: file: backend/src/db/mod.rs:330-342#lock_catalog_refresh]
 
@@ -64,8 +64,8 @@ error. A successful empty catalogue marks previous live entries unavailable;
 their return restores availability. Manual/migrated aliases and existing
 tiers are not removed merely because the CLI lists a different spelling.
 Refresh does not choose a replacement or write configuration.
-[src: file: backend/src/db/model_catalog.rs:585-730#reconcile_listing]
-[src: file: backend/src/db/model_catalog.rs:732-761#record_refresh_failure]
+[src: file: backend/src/db/model_catalog.rs:598-743#reconcile_listing]
+[src: file: backend/src/db/model_catalog.rs:745-774#record_refresh_failure]
 
 Retaining a catalogue and allowing a launch are distinct decisions. Claude
 preflight tolerates a discovery `Timeout`/`ProviderError` only when the exact
@@ -73,7 +73,7 @@ selected model is still `Available`. It keeps cached provenance and the error
 visible and leaves authentication to the execution boundary. `AuthRequired`,
 `CliMissing`, absent identities and positively unavailable models remain blocked
 when accompanied by a blocking refresh error. Other runtimes are unchanged.
-[src: file: backend/src/core/model_catalog/mod.rs:1191-1222#retained_claude_model]
+[src: file: backend/src/core/model_catalog/mod.rs:1254-1290#retained_claude_model]
 
 Regression coverage includes the initialization-only protocol, malformed and
 oversized responses, stderr EOF, namespace separation, missing effort levels,
@@ -81,10 +81,10 @@ concurrent refreshes, failure cooldown, disappearance/reappearance, late UI
 results and explicit Fable selection. Tests use isolated database/protocol
 fixtures and mocked UI APIs; they do not assert an authorized billable call.
 [src: file: backend/src/core/model_catalog/claude_discovery.rs:272-427#tests]
-[src: file: backend/src/core/model_catalog/mod.rs:1635-1673#overlapping_forced_refreshes_share_one_attempt_but_an_explicit_later_recheck_runs]
-[src: file: backend/src/core/model_catalog/mod.rs:1675-1805#claude_refresh_preserves_manual_tiers_http_namespace_and_last_good_on_failure]
-[src: file: backend/src/db/model_catalog.rs:1310-1336#disappearance_downgrades_to_cached_never_deletes]
-[src: file: backend/src/db/model_catalog.rs:1375-1398#mark_unavailable_then_reappear_reactivates]
+[src: file: backend/src/core/model_catalog/mod.rs:1747-1785#overlapping_forced_refreshes_share_one_attempt_but_an_explicit_later_recheck_runs]
+[src: file: backend/src/core/model_catalog/mod.rs:1787-1917#claude_refresh_preserves_manual_tiers_http_namespace_and_last_good_on_failure]
+[src: file: backend/src/db/model_catalog.rs:1323-1349#disappearance_downgrades_to_cached_never_deletes]
+[src: file: backend/src/db/model_catalog.rs:1388-1411#mark_unavailable_then_reappear_reactivates]
 [src: file: frontend/src/hooks/__tests__/useModelCatalogSnapshot.test.tsx:25-107#refreshes]
 [src: file: frontend/src/components/settings/__tests__/AgentsSection.catalog.test.tsx:77-100#Fable]
 

@@ -32,8 +32,8 @@ Failed refreshes keep every last-known row intact, downgrade `live` provenance
 to visibly stale `cached`, and record a normalized target-level error. A
 provider failure does not claim that an individual model disappeared.
 [src: file: backend/src/models/model_catalog.rs:1-8#Resolution]
-[src: file: backend/src/db/model_catalog.rs:556-730#reconcile_live]
-[src: file: backend/src/db/model_catalog.rs:732-761#record_refresh_failure]
+[src: file: backend/src/db/model_catalog.rs:569-743#reconcile_live]
+[src: file: backend/src/db/model_catalog.rs:745-774#record_refresh_failure]
 
 The former runtime literals are inserted once during startup and the runner's
 hot-path tier lookup is then projected from catalog rows. Editing the manual
@@ -65,7 +65,7 @@ does not make a hidden hard-coded fallback reappear.
 [src: file: backend/src/api/external_api_connections.rs:1417-1429#catalog_declares_modality]
 [src: file: backend/src/api/external_api_connections.rs:1435-1489#catalog_models_from_body]
 [src: file: backend/src/api/external_api_connections.rs:1491-1506#merge_catalog]
-[src: file: backend/src/core/model_catalog/mod.rs:762-777#reconcile_http_catalog]
+[src: file: backend/src/core/model_catalog/mod.rs:820-835#reconcile_http_catalog]
 
 ## Where OpenCode's models come from (KT-928)
 
@@ -110,7 +110,7 @@ the files are never opened; at most 16 projects). The results are merged:
 - a project whose discovery fails is left out and logged by reason only; it
   does not fail the refresh. A failure of the neutral discovery is returned as
   it is, whatever the projects answered.
-[src: file: backend/src/core/model_catalog/mod.rs:473-613#OPENCODE_PROJECT_CONFIGS]
+[src: file: backend/src/core/model_catalog/mod.rs:528-668#OPENCODE_PROJECT_CONFIGS]
 
 Known gaps: a model seen only through `OPENCODE_CONFIG` set in a user's shell,
 or through an `opencode.json` above the project directory, is not found, since
@@ -147,7 +147,7 @@ model still recorded `Available`. The cached provenance and error remain visible
 this is permission to attempt execution, not proof of account access. Missing CLI,
 authentication failures and unavailable/unknown identities are not covered by
 that exception, and other runtimes keep their existing failure policy.
-[src: file: backend/src/core/model_catalog/mod.rs:1191-1222#retained_claude_model]
+[src: file: backend/src/core/model_catalog/mod.rs:1254-1290#retained_claude_model]
 [src: file: backend/src/api/discussions/streaming.rs:4299-4345#preflight_resolve]
 [src: file: backend/src/workflows/runner.rs:2165-2250#preflight_resolve]
 [src: file: backend/src/workflows/steps.rs:1222-1275#preflight_workflow_launch]
@@ -290,10 +290,10 @@ capability isolation and same-model isolation across HTTP connections.
 Generated TypeScript remains owned by `make typegen`.
 [src: file: backend/src/db/migrations.rs:2088-2122#model_catalog_upgrades_from_its_immediate_predecessor]
 [src: file: backend/src/db/sql/162_model_catalog.sql:32-42#model_catalog_refresh_log]
-[src: file: backend/src/db/model_catalog.rs:1088-1134#reconcile_live_promotes_manual_entry_preserving_overrides]
-[src: file: backend/src/db/model_catalog.rs:1136-1158#reconcile_live_is_idempotent]
-[src: file: backend/src/db/model_catalog.rs:1310-1398#disappearance_downgrades_to_cached_never_deletes]
-[src: file: backend/src/db/model_catalog.rs:1503-1522#identical_http_model_ids_are_isolated_by_connection]
+[src: file: backend/src/db/model_catalog.rs:1101-1147#reconcile_live_promotes_manual_entry_preserving_overrides]
+[src: file: backend/src/db/model_catalog.rs:1149-1171#reconcile_live_is_idempotent]
+[src: file: backend/src/db/model_catalog.rs:1323-1411#disappearance_downgrades_to_cached_never_deletes]
+[src: file: backend/src/db/model_catalog.rs:1517-1536#identical_http_model_ids_are_isolated_by_connection]
 [src: file: docs/testing-quality.md:15-16#typegen]
 
 ## OpenCode Zen: cost hint and privacy note (KT-543)
@@ -313,9 +313,9 @@ operator-overridable through the same manual-entry path as
 `UpsertManualModelRequest` preserves the existing value (COALESCE) instead
 of clearing it, so an unrelated edit (e.g. a rename) cannot silently wipe an
 auto-detected or previously-confirmed assessment.
-[src: file: backend/src/db/model_catalog.rs:512-543#derive_opencode_zen_overlay]
-[src: file: backend/src/db/model_catalog.rs:371-438#update_manual]
+[src: file: backend/src/db/model_catalog.rs:525-556#derive_opencode_zen_overlay]
+[src: file: backend/src/db/model_catalog.rs:384-451#update_manual]
 [src: file: backend/src/db/sql/164_model_catalog_cost_privacy.sql:1-7#cost_hint]
-[src: file: backend/src/models/model_catalog.rs:195-226#UpsertManualModelRequest]
+[src: file: backend/src/models/model_catalog.rs:249-280#UpsertManualModelRequest]
 [src: url: https://opencode.ai/docs/zen/]
 [src: url: https://opencode.ai/zen/v1/models]
