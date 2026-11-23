@@ -1437,8 +1437,8 @@ pub async fn delete_message(
 }
 
 #[cfg(all(test, feature = "full-tests"))]
-#[path = "crud_first_turn_tests.rs"]
-mod first_turn_tests;
+#[path = "crud_exact_model_first_turn_tests.rs"]
+mod exact_model_first_turn_tests;
 
 #[cfg(all(test, feature = "full-tests"))]
 mod tests {
