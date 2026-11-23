@@ -95,6 +95,23 @@ pub enum CatalogReasonCode {
     CatalogLookupFailed { detail: String },
     /// Model discovery did not complete within its bound.
     DiscoveryTimeout,
+    /// The agent's CLI is not installed or cannot be started. `agent` is the
+    /// agent's name as Settings › Agents shows it (as for every `agent` below).
+    AgentCliMissing { agent: String },
+    /// The agent's CLI must be signed in before it lists its models.
+    AgentAuthRequired { agent: String },
+    /// The model list the agent returned cannot be read (wrong shape, an
+    /// invalid model identifier).
+    CatalogInvalid { agent: String },
+    /// The model list the agent returned is larger than Kronn reads.
+    CatalogTooLarge { agent: String },
+    /// Model discovery failed before an answer could be read.
+    DiscoveryFailed { agent: String },
+    /// The CLI's model discovery failed: its sign-in and its safe-mode support
+    /// are what to check.
+    CliDiscoveryFailed { agent: String },
+    /// The model list endpoint answered with an HTTP error status.
+    CatalogHttpError { agent: String, status: u16 },
     /// The runtime has no live model discovery.
     DiscoveryUnsupported,
     /// The model is absent from the latest successful live catalogue.

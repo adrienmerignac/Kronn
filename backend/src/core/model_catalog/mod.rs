@@ -478,8 +478,42 @@ pub fn refresh_error_code(agent_type: &AgentType, detail: &str) -> Option<Catalo
     match detail {
         DISCOVERY_TIMEOUT_DETAIL => Some(CatalogReasonCode::DiscoveryTimeout),
         DISCOVERY_UNSUPPORTED_DETAIL => Some(CatalogReasonCode::DiscoveryUnsupported),
-        _ => None,
+        _ => discovery_error_code(
+            crate::agents::runner::agent_settings_label(agent_type).to_string(),
+            detail,
+        ),
     }
+}
+
+/// KT-2003 — the code of a fixed sentence a discovery module writes (CLI
+/// missing, sign-in needed, unreadable catalogue, failed discovery), by kind.
+/// A sentence that embeds a value Kronn did not write (an OS error, a CLI's
+/// stderr, an ACP transport detail) is not among them and keeps its quote.
+fn discovery_error_code(agent: String, detail: &str) -> Option<CatalogReasonCode> {
+    use claude_discovery as claude;
+    use codex_discovery as codex;
+    use ollama_discovery as ollama;
+    Some(match detail {
+        claude::CLI_NOT_INSTALLED | claude::CLI_UNAVAILABLE => {
+            CatalogReasonCode::AgentCliMissing { agent }
+        }
+        claude::AUTH_REQUIRED => CatalogReasonCode::AgentAuthRequired { agent },
+        claude::INVALID_CATALOG | ollama::SCHEMA_INVALID | ollama::INVALID_MODEL_ID => {
+            CatalogReasonCode::CatalogInvalid { agent }
+        }
+        ollama::RESPONSE_TOO_LARGE => CatalogReasonCode::CatalogTooLarge { agent },
+        claude::DISCOVERY_FAILED => CatalogReasonCode::CliDiscoveryFailed { agent },
+        ollama::HTTP_CLIENT_FAILED
+        | ollama::REQUEST_FAILED
+        | ollama::RESPONSE_UNREADABLE
+        | codex::STDIN_UNAVAILABLE
+        | codex::STDOUT_UNAVAILABLE
+        | codex::STDOUT_CLOSED => CatalogReasonCode::DiscoveryFailed { agent },
+        _ => {
+            let status = ollama::http_error_status(detail)?;
+            CatalogReasonCode::CatalogHttpError { agent, status }
+        }
+    })
 }
 
 /// KT-2003 — the code of an entry's `unavailable_detail` when Kronn wrote it

@@ -379,3 +379,245 @@ fn catalog_reason_code_serializes_as_a_tagged_code_with_its_parameters() {
         serde_json::json!({"code": "catalog_not_refreshed"})
     );
 }
+
+/// What a discovery failure stores in the refresh log, read back as the view's code.
+async fn code_after_discovery(
+    agent: AgentType,
+    outcome: DiscoveryOutcome,
+) -> Option<CatalogReasonCode> {
+    let (reason, detail) = reason_for(&outcome).expect("a failure is recorded");
+    view_after_refresh_failure(agent, reason, detail)
+        .await
+        .last_error_code
+}
+
+#[tokio::test]
+async fn catalog_reason_code_of_a_missing_cli_names_the_agent() {
+    for detail in [
+        claude_discovery::CLI_NOT_INSTALLED,
+        claude_discovery::CLI_UNAVAILABLE,
+    ] {
+        assert_eq!(
+            code_after_discovery(
+                AgentType::ClaudeCode,
+                DiscoveryOutcome::CliMissing(detail.into())
+            )
+            .await,
+            Some(CatalogReasonCode::AgentCliMissing {
+                agent: "Claude Code".into()
+            }),
+            "{detail}"
+        );
+    }
+    // The OS's own error text, as Codex's spawn returns it, is not Kronn's.
+    assert_eq!(
+        code_after_discovery(
+            AgentType::Codex,
+            DiscoveryOutcome::CliMissing("No such file or directory (os error 2)".into())
+        )
+        .await,
+        None
+    );
+}
+
+#[tokio::test]
+async fn catalog_reason_code_of_a_sign_in_needed_keeps_the_english_refusal() {
+    let view = view_after_refresh_failure(
+        AgentType::ClaudeCode,
+        ModelUnavailableReason::AuthRequired,
+        claude_discovery::AUTH_REQUIRED.into(),
+    )
+    .await;
+    let expected = CatalogReasonCode::AgentAuthRequired {
+        agent: "Claude Code".into(),
+    };
+    assert_eq!(view.last_error_code.as_ref(), Some(&expected));
+    let failure = decide_model(
+        &AgentType::ClaudeCode,
+        ModelTier::Default,
+        &view.runtime_target_id,
+        "sonnet".into(),
+        None,
+        &view.models,
+        Some(&view),
+    )
+    .expect_err("an auth failure still blocks");
+    assert_eq!(failure.reason, ModelUnavailableReason::AuthRequired);
+    assert_eq!(failure.detail, claude_discovery::AUTH_REQUIRED);
+    assert_eq!(failure.detail_code, Some(expected));
+    assert_eq!(
+        serde_json::to_value(&failure).unwrap()["detail_code"],
+        serde_json::json!({"code": "agent_auth_required", "agent": "Claude Code"})
+    );
+}
+
+#[test]
+fn catalog_reason_code_of_an_unreadable_catalogue() {
+    assert_eq!(
+        refresh_error_code(&AgentType::ClaudeCode, claude_discovery::INVALID_CATALOG),
+        Some(CatalogReasonCode::CatalogInvalid {
+            agent: "Claude Code".into()
+        })
+    );
+    for detail in [
+        ollama_discovery::SCHEMA_INVALID,
+        ollama_discovery::INVALID_MODEL_ID,
+    ] {
+        assert_eq!(
+            refresh_error_code(&AgentType::Ollama, detail),
+            Some(CatalogReasonCode::CatalogInvalid {
+                agent: "Ollama".into()
+            }),
+            "{detail}"
+        );
+    }
+    assert_eq!(
+        refresh_error_code(&AgentType::Ollama, ollama_discovery::RESPONSE_TOO_LARGE),
+        Some(CatalogReasonCode::CatalogTooLarge {
+            agent: "Ollama".into()
+        })
+    );
+    // A shape error that embeds the parser's own message keeps its quote.
+    assert_eq!(
+        refresh_error_code(
+            &AgentType::Codex,
+            "codex app-server model/list response did not match the expected shape: missing field `data`"
+        ),
+        None
+    );
+}
+
+#[test]
+fn catalog_reason_code_of_a_failed_discovery() {
+    for (agent, label, detail) in [
+        (
+            AgentType::Ollama,
+            "Ollama",
+            ollama_discovery::HTTP_CLIENT_FAILED,
+        ),
+        (
+            AgentType::Ollama,
+            "Ollama",
+            ollama_discovery::REQUEST_FAILED,
+        ),
+        (
+            AgentType::Ollama,
+            "Ollama",
+            ollama_discovery::RESPONSE_UNREADABLE,
+        ),
+        (
+            AgentType::Codex,
+            "Codex",
+            codex_discovery::STDIN_UNAVAILABLE,
+        ),
+        (
+            AgentType::Codex,
+            "Codex",
+            codex_discovery::STDOUT_UNAVAILABLE,
+        ),
+        (AgentType::Codex, "Codex", codex_discovery::STDOUT_CLOSED),
+    ] {
+        assert_eq!(
+            refresh_error_code(&agent, detail),
+            Some(CatalogReasonCode::DiscoveryFailed {
+                agent: label.into()
+            }),
+            "{detail}"
+        );
+    }
+    assert_eq!(
+        refresh_error_code(&AgentType::ClaudeCode, claude_discovery::DISCOVERY_FAILED),
+        Some(CatalogReasonCode::CliDiscoveryFailed {
+            agent: "Claude Code".into()
+        })
+    );
+    // Texts that embed an error Kronn did not write keep their quote.
+    for detail in [
+        "spawn codex app-server: Permission denied (os error 13)",
+        "read codex app-server response: connection reset",
+        r#"{"code":-32000,"message":"rate limited"}"#,
+    ] {
+        assert_eq!(
+            refresh_error_code(&AgentType::Codex, detail),
+            None,
+            "{detail}"
+        );
+    }
+}
+
+#[test]
+fn catalog_reason_code_of_an_ollama_http_error_carries_its_status() {
+    let detail = ollama_discovery::http_error_detail(503);
+    assert_eq!(
+        detail, "Ollama catalogue returned HTTP 503",
+        "English unchanged"
+    );
+    assert_eq!(
+        refresh_error_code(&AgentType::Ollama, &detail),
+        Some(CatalogReasonCode::CatalogHttpError {
+            agent: "Ollama".into(),
+            status: 503
+        })
+    );
+    for other in [
+        "Ollama catalogue returned HTTP 0503",
+        "Ollama catalogue returned HTTP 503: overloaded",
+        "Ollama catalogue returned HTTP",
+    ] {
+        assert_eq!(
+            refresh_error_code(&AgentType::Ollama, other),
+            None,
+            "{other}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn catalog_reason_code_reaches_the_view_from_a_real_ollama_refresh() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    // A server that answers every request with 503.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let busy = format!("http://{}", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        while let Ok((mut socket, _)) = listener.accept().await {
+            let mut request = [0u8; 4096];
+            let _ = socket.read(&mut request).await;
+            let _ = socket
+                .write_all(b"HTTP/1.1 503 Service Unavailable\r\ncontent-length: 0\r\nconnection: close\r\n\r\n")
+                .await;
+        }
+    });
+    let database = test_db();
+    let (view, outcome) = refresh_ollama_catalog_at(&database, &busy).await.unwrap();
+    server.abort();
+    assert!(outcome.is_err());
+    assert_eq!(
+        view.last_error_detail.as_deref(),
+        Some("Ollama catalogue returned HTTP 503")
+    );
+    assert_eq!(
+        view.last_error_code,
+        Some(CatalogReasonCode::CatalogHttpError {
+            agent: "Ollama".into(),
+            status: 503
+        })
+    );
+
+    // Nothing listens on a port just released: the request itself fails.
+    let closed = {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        format!("http://{}", listener.local_addr().unwrap())
+    };
+    let (view, _) = refresh_ollama_catalog_at(&database, &closed).await.unwrap();
+    assert_eq!(
+        view.last_error_detail.as_deref(),
+        Some(ollama_discovery::REQUEST_FAILED)
+    );
+    assert_eq!(
+        view.last_error_code,
+        Some(CatalogReasonCode::DiscoveryFailed {
+            agent: "Ollama".into()
+        })
+    );
+}
