@@ -138,9 +138,11 @@ describe('AgentSwitchPicker.css — triggers and popovers (KT-1885 review)', () 
       .toBe('var(--kr-space-6)');
   });
 
-  it('the exact-model popover is 320 px wide, within the window, and its placeholder is short enough for it', () => {
-    expect(declaration(rule(PICKER, ".kr-agent-switch-popover[data-mode='exact-model']"), 'width'))
-      .toBe('min(320px, calc(100vw - 2 * var(--kr-space-2)))');
+  // KT-1994 — the exact-model mode and the tier mode are one grouped list, one width.
+  it('the grouped list is 440 px wide, within the window, and the model search placeholder is short enough for it', () => {
+    expect(declaration(rule(PICKER, '.kr-agent-switch-popover:has(.kr-agent-switch-mode)'), 'width'))
+      .toBe('min(440px, calc(100vw - 2 * var(--kr-space-2)))');
+    expect(PICKER).not.toMatch(/\.kr-agent-switch-popover\[data-mode='exact-model'\]\s*\{/);
     for (const dictionary of [fr, en, es, zh]) {
       expect((dictionary as Record<string, string>)['agentPicker.searchModel'].length).toBeLessThanOrEqual(32);
     }
@@ -185,6 +187,15 @@ describe('AgentSwitchPicker.css — the rules this lot adds stay on the tokens (
     ['components/AgentSwitchPicker.css', '.kr-agent-switch-tier-agent'],
     ['components/AgentSwitchPicker.css', '.kr-agent-switch-tier-choices'],
     ['components/AgentSwitchPicker.css', ".kr-agent-switch-badge[data-state='catalog']"],
+    // KT-1994 — the grouped list's rows.
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-group-header'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-mode'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-mode-label'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-mode-value'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-more-toggle'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-recent-choice'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-custom'],
+    ['components/AgentSwitchPicker.css', '.kr-agent-switch-tier-model'],
     ['components/aiHelper.css', '.wf-apicall-ai-agent-selector .kr-agent-switch-btn'],
     ['pages/DiscussionsPage.css', '.disc-mention-popover.kr-agent-switch-palette'],
   ];
@@ -199,7 +210,153 @@ describe('AgentSwitchPicker.css — the rules this lot adds stay on the tokens (
     }
   });
 
+  it('the model id is written in the code face, whole, at the 12 px floor', () => {
+    const body = rule(PICKER, '.kr-agent-switch-mode-model');
+    expect(declaration(body, 'font-family')).toBe('var(--kr-font-mono)');
+    expect(declaration(body, 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(body, 'overflow-wrap')).toBe('anywhere');
+    expect(body).not.toMatch(/text-overflow|white-space\s*:\s*nowrap/);
+  });
+
+  // KT-1994 review, point 5 — the @ menu's cell never breaks inside a token:
+  // only between the id's parts (a <wbr> after `/` and `:`), two lines at most.
+  it('the @ menu cell breaks an id only between its parts, on two lines at most', () => {
+    const cell = rule(PICKER, '.kr-agent-switch-tier-model');
+    expect(cell).not.toMatch(/overflow-wrap|word-break/);
+    expect(declaration(cell, 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(cell, '-webkit-line-clamp')).toBe('2');
+    expect(declaration(cell, 'overflow')).toBe('hidden');
+    expect(declaration(rule(PICKER, 'code.kr-agent-switch-tier-model'), 'font-family')).toBe('var(--kr-font-mono)');
+    const part = rule(PICKER, '.kr-agent-switch-id-part');
+    expect(declaration(part, 'white-space')).toBe('nowrap');
+    expect(declaration(part, 'text-overflow')).toBe('ellipsis');
+  });
+
+  // KT-1994 review round 3: measured in the browser, the 12px mono face is
+  // 7.22px a character, so a 25-character id needs a 180.5px text box.
+  it('from a 748px palette content box the tiers sit in 192px tracks (182px text box, a 25-character id on one line); narrower, three equal columns', () => {
+    expect(declaration(rule(PICKER, '.kr-agent-switch-palette'), 'container-type')).toBe('inline-size');
+    expect(declaration(rule(PICKER, ".kr-agent-switch-tier-choices[data-models='true']"), 'grid-template-columns'))
+      .toBe('repeat(var(--agent-switch-tier-count, 3), minmax(0, 1fr))');
+    const wide = PICKER.match(/@container \(min-width: 748px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    const tracks = rule(wide, ".kr-agent-switch-tier-choices[data-models='true']");
+    expect(declaration(tracks, '--agent-switch-tier-track')).toBe('192px');
+    expect(declaration(tracks, 'grid-template-columns'))
+      .toBe('repeat(var(--agent-switch-tier-count, 3), var(--agent-switch-tier-track))');
+    // The cell takes 2 x (4px padding + 1px border) from its track: 192 - 10 = 182px.
+    const cell = rule(PICKER, '.kr-agent-switch-tier-option');
+    expect(declaration(cell, 'padding')).toBe('0 var(--kr-space-1)');
+    expect(declaration(cell, 'border')).toBe('1px solid var(--kr-border-ghost)');
+    const textBox = 192 - 2 * (4 + 1);
+    expect(textBox).toBeGreaterThanOrEqual(182);
+    expect(25 * 7.22).toBeLessThanOrEqual(textBox);
+    // Threshold: 3 tracks + 2 gaps of 4px, the row's 8px gap and 16px padding,
+    // and an agent column of at least 140px.
+    expect(declaration(rule(PICKER, '.kr-agent-switch-tier-choices'), 'gap')).toBe('var(--kr-space-1)');
+    expect(3 * 192 + 2 * 4 + 8 + 16 + 140).toBe(748);
+  });
+
+  it('from a 768px window the @ menu takes up to 760px when its anchor allows, so the agent column keeps 142px', () => {
+    const page = read('pages/DiscussionsPage.css');
+    const wide = page.match(/@media \(min-width: 768px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    expect(declaration(rule(wide, '.disc-mention-popover.kr-agent-switch-palette'), 'width'))
+      .toBe('min(760px, 100%, calc(100vw - 2 * var(--kr-space-4)))');
+    // 760 - 2 x (1px border + 4px padding) = 750px content box, at least the 748px threshold.
+    // The palette's box rule is its second block (the first holds only the
+    // container query's type).
+    const first = PICKER.indexOf('\n.kr-agent-switch-palette {');
+    const palette = rule(PICKER.slice(first + 1).replace(/^\.kr-agent-switch-palette \{[^}]*\}/, ''), '.kr-agent-switch-palette');
+    expect(declaration(palette, 'padding')).toBe('var(--kr-space-1)');
+    expect(declaration(palette, 'border')).toBe('1px solid var(--kr-border)');
+    const contentBox = 760 - 2 * (1 + 4);
+    expect(contentBox).toBeGreaterThanOrEqual(748);
+    expect(contentBox - 16 - 8 - (3 * 192 + 2 * 4)).toBe(142);
+  });
+
+  // KT-1994 review round 4: in a 768px window the 520px floor
+  // (`max(100%, 520px)`) pushed the palette 125px past `.disc-messages-col`
+  // (overflow hidden) and cut the « Avancé » column.
+  it('the @ menu is never wider than its anchor: every width expression is capped by 100% and holds no floor', () => {
+    const page = read('pages/DiscussionsPage.css');
+    const wide = page.match(/@media \(min-width: 768px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    const widths = [
+      declaration(rule(page, '.disc-mention-popover.kr-agent-switch-palette'), 'width'),
+      declaration(rule(wide, '.disc-mention-popover.kr-agent-switch-palette'), 'width'),
+    ];
+    expect(widths[0]).toBe('min(520px, 100%, calc(100vw - 2 * var(--kr-space-4)))');
+    for (const width of widths) {
+      // A top-level min() holding 100% among its terms, and no max()/clamp() floor.
+      expect(width).toMatch(/^min\((?:[^,]+,\s*)*100%(?:,\s*[^,]+)*\)$/);
+      expect(width).not.toMatch(/max\(|clamp\(|min-width/);
+    }
+    expect(declaration(rule(page, '.disc-mention-popover.kr-agent-switch-palette'), 'min-width')).toBeFalsy();
+    // `100%` is the anchor's width because both anchors are the palette's
+    // containing block and it starts at their left edge.
+    expect(declaration(rule(page, '.disc-mention-popover'), 'left')).toBe('0');
+    expect(declaration(rule(page, '.disc-mention-popover'), 'position')).toBe('absolute');
+    expect(declaration(rule(page, '.disc-composer'), 'position')).toBe('relative');
+    expect(declaration(rule(page, '.disc-new-prompt-wrap'), 'position')).toBe('relative');
+  });
+
+  // KT-1994 review, point 6.
+  it('the status line, the blocked reason and a recent agent read at the 12 px floor; a recent agent stays on one line', () => {
+    expect(declaration(rule(PICKER, '.kr-agent-switch-status'), 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(rule(PICKER, '.kr-agent-switch-reason'), 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(rule(PICKER, '.kr-agent-switch-recent .kr-agent-switch-tier-name'), 'white-space')).toBe('nowrap');
+    expect(declaration(rule(PICKER, '.kr-agent-switch-recent'), 'grid-template-columns'))
+      .toBe('max-content minmax(0, 1fr) var(--kr-space-3)');
+  });
+
   it('the availability badge reads at the 12 px floor', () => {
     expect(declaration(rule(PICKER, '.kr-agent-switch-badge'), 'font-size')).toBe('var(--kr-type-sm)');
+  });
+});
+
+// KT-2010 — the agent header is a band that stays at the top of the list
+// while its rows scroll, and a free model carries a small badge.
+describe('AgentSwitchPicker.css — the agent band and the « Free » badge (KT-2010)', () => {
+  it('the header is a band on its own opaque surface that sticks to the top of the list, over its rows', () => {
+    const body = rule(PICKER, '.kr-agent-switch-group-header');
+    expect(declaration(body, 'position')).toBe('sticky');
+    expect(declaration(body, 'top')).toBe('0');
+    // A local layer over the rows that scroll under it (no global --kr-z-* layer needed).
+    expect(declaration(body, 'z-index')).toBe('1');
+    // Opaque: the rows that scroll under it never show through.
+    expect(declaration(body, 'background')).toBe('var(--kr-bg-raised)');
+    expect(declaration(body, 'color')).toBe('var(--kr-text-tertiary)');
+    // The rows' own padding: the dot lines up with them, no extra indent.
+    expect(declaration(body, 'padding')).toBe('var(--kr-space-1) var(--kr-space-2)');
+    expect(declaration(rule(PICKER, '.kr-agent-switch-mode'), 'padding')).toBe('var(--kr-space-1) var(--kr-space-2)');
+    // The band separates two agents: no thin rule above each block any more.
+    expect(declaration(rule(PICKER, '.kr-agent-switch-group-block'), 'border-top')).toBeUndefined();
+  });
+
+  it('the name is the primary role, one step larger than the rows and semibold; the kind and count stay tertiary at 12 px', () => {
+    const name = rule(PICKER, '.kr-agent-switch-group-block .kr-agent-switch-group-name');
+    expect(declaration(name, 'color')).toBe('var(--kr-text-primary)');
+    expect(declaration(name, 'font-size')).toBe('var(--kr-type-md)');
+    expect(declaration(name, 'font-weight')).toBe('600');
+    expect(declaration(rule(PICKER, '.kr-agent-switch-mode'), 'font-size')).toBe('var(--kr-type-sm)');
+    const meta = rule(PICKER, '.kr-agent-switch-kind,\n.kr-agent-switch-model-count');
+    expect(declaration(meta, 'color')).toBe('var(--kr-text-tertiary)');
+    expect(declaration(meta, 'font-size')).toBe('var(--kr-type-sm)');
+  });
+
+  it('on the band a state badge keeps the panel under its tint, so it reads as on any other row', () => {
+    expect(declaration(rule(PICKER, '.kr-agent-switch-group-header > .kr-agent-switch-badge'), 'background'))
+      .toBe('linear-gradient(var(--kr-warning-bg), var(--kr-warning-bg)), var(--kr-bg-elevated)');
+    expect(declaration(rule(PICKER, ".kr-agent-switch-group-header > .kr-agent-switch-badge[data-state='catalog']"), 'background'))
+      .toBe('linear-gradient(var(--kr-bg-subtle), var(--kr-bg-subtle)), var(--kr-bg-elevated)');
+  });
+
+  it('the « Free » badge is a 12 px chip on the tokens: a green tint, the secondary text role, never wrapped', () => {
+    const body = rule(PICKER, '.kr-agent-switch-free-badge');
+    expect(declaration(body, 'font-size')).toBe('var(--kr-type-sm)');
+    expect(declaration(body, 'background')).toBe('var(--kr-success-bg)');
+    expect(declaration(body, 'color')).toBe('var(--kr-text-secondary)');
+    expect(declaration(body, 'white-space')).toBe('nowrap');
+    expect(declaration(body, 'flex')).toBe('0 0 auto');
+    // Upright on the italic typed-id row too.
+    expect(declaration(body, 'font-style')).toBe('normal');
   });
 });

@@ -53,7 +53,7 @@ const MODES = {
 } as const;
 
 async function open() {
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Agent' })); });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Agent( — |$)/ })); });
   return screen.getByRole('dialog', { name: 'Agent' });
 }
 
@@ -72,7 +72,7 @@ describe('AgentSwitchPicker — above any dialog, on its search field (KT-1885)'
     fireEvent.keyDown(within(popover).getByRole('searchbox'), { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: 'Agent' })).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Agent' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: /^Agent( — |$)/ })).toHaveFocus();
   });
 
   it('stacks its popover on the popover layer, above every overlay layer', () => {
@@ -135,7 +135,7 @@ describe('AgentSwitchPicker — the modes (KT-1885)', () => {
         multiple={{ selected: [{ agent: 'ClaudeCode' }], onToggle, summary: selected => `${selected.length} chosen` }}
         title="Agent" ariaLabel="Agent" />,
     );
-    expect(screen.getByRole('button', { name: 'Agent' })).toHaveTextContent('1 chosen');
+    expect(screen.getByRole('button', { name: /^Agent( — |$)/ })).toHaveTextContent('1 chosen');
     const popover = await open();
     expect(within(popover).getByRole('menuitemcheckbox', { name: /Claude Code/ })).toHaveAttribute('aria-checked', 'true');
     fireEvent.click(within(popover).getByRole('menuitemcheckbox', { name: /Codex/ }));
@@ -153,7 +153,10 @@ describe('AgentSwitchPicker — the modes (KT-1885)', () => {
     const main = within(within(popover).getByRole('group', { name: 'Claude Code' })).getAllByRole('menuitem')[0];
     expect(main).toBeDisabled();
     fireEvent.change(within(popover).getByRole('searchbox'), { target: { value: 'gpt-5.5-mini' } });
-    fireEvent.click(within(popover).getByRole('menuitem', { name: /^Codex · .*gpt-5\.5-mini/ }));
+    // KT-1994 review — one typed id, for the chosen agent.
+    const free = popover.querySelectorAll<HTMLElement>('[data-kind="free"]');
+    expect(free).toHaveLength(1);
+    fireEvent.click(free[0]);
     expect(onChange).toHaveBeenCalledWith({ agent: 'Codex', model: 'gpt-5.5-mini' });
   });
 });
@@ -173,24 +176,29 @@ describe('AgentSwitchPicker — review fixes (KT-1885)', () => {
           multiple={{ selected, onToggle: vi.fn() }} title="Agent" ariaLabel="Agent" />
       </I18nProvider>,
     );
-    expect(screen.getByRole('button', { name: 'Agent' })).toHaveTextContent(new RegExp(`^${text}$`));
+    expect(screen.getByRole('button', { name: /^Agent( — |$)/ })).toHaveTextContent(new RegExp(`^${text}$`));
   });
 
-  it('exact model: the typed id stays usable on the agents the search hides', async () => {
+  // KT-1994 review, point 1a — the typed id is one entry at the end of the
+  // list, for the step's own agent when none is chosen; no « Autres agents ».
+  it('exact model: the typed id is one entry at the end of the list, for the step’s own agent', async () => {
     const onChange = vi.fn();
     render(
       <AgentSwitchPicker currentAgent="ClaudeCode" availableAgents={[]} availableTargets={TARGETS} title="Agent" ariaLabel="Agent"
         exactModel={{ value: undefined, onChange, main: { agent: 'ClaudeCode' }, testId: 'exact' }} />,
     );
     const popover = await open();
-    // « codex » matches one agent's name: the others leave its groups, not its free id.
+    // « codex » matches one agent's name: the others leave the list.
     fireEvent.change(within(popover).getByRole('searchbox'), { target: { value: 'codex' } });
     expect(within(popover).getByRole('group', { name: 'Codex' })).toBeInTheDocument();
-    const gemini = within(popover).getByRole('group', { name: 'Gemini CLI' });
-    expect(within(gemini).getAllByRole('menuitem')).toHaveLength(1);
-    expect(within(popover).getByText('agentPicker.otherTargets')).toBeInTheDocument();
-    fireEvent.click(within(gemini).getByRole('menuitem', { name: /^Gemini CLI · codex/ }));
-    expect(onChange).toHaveBeenCalledWith({ agent: 'GeminiCli', model: 'codex' });
+    expect(within(popover).queryByRole('group', { name: 'Gemini CLI' })).toBeNull();
+    expect(within(popover).queryByRole('group', { name: 'Claude Code' })).toBeNull();
+    const items = within(popover).getAllByRole('menuitem');
+    const free = popover.querySelectorAll<HTMLElement>('[data-kind="free"]');
+    expect(free).toHaveLength(1);
+    expect(items[items.length - 1]).toBe(free[0]);
+    fireEvent.click(free[0]);
+    expect(onChange).toHaveBeenCalledWith({ agent: 'ClaudeCode', model: 'codex' });
   });
 
   it('an outside click closes it without sending the focus back to the trigger later', async () => {

@@ -167,9 +167,9 @@ on the root turn, or no marker), computed from `message_targets`.
 [src: file: backend/src/api/discussions/crud.rs:608-620#initial_participants]
 [src: file: backend/src/api/discussions/messaging.rs:115-158#enqueue_dispatches_for_trigger]
 [src: file: backend/src/api/discussions/crud.rs:1057-1061#attach_discussion_participants]
-[src: file: backend/src/api/discussions/streaming.rs:2290-2402#independent_sibling_notice]
-[src: file: backend/src/api/discussions/streaming.rs:2183-2238#discussion_at_dispatch_trigger]
-[src: file: backend/src/api/discussions/streaming.rs:2191-2226#thread_under_trigger]
+[src: file: backend/src/api/discussions/streaming.rs:2332-2444#independent_sibling_notice]
+[src: file: backend/src/api/discussions/streaming.rs:2225-2280#discussion_at_dispatch_trigger]
+[src: file: backend/src/api/discussions/streaming.rs:2287-2322#thread_under_trigger]
 [src: file: backend/src/db/discussions.rs:2042-2066#already_scheduled]
 
 ## Joined agent turn (MCP)

@@ -117,8 +117,8 @@ the same job.
   See [native ACP continuity](../gotchas/native-acp-resume-continuity.md) for the
   negotiated `session/resume` contract and exact proof boundaries.
   [src: file: backend/src/agents/runner.rs:2872-2932#load_completed_checkpoint]
-  [src: file: backend/src/api/discussions/streaming.rs:2647-2778#resume_with_delta_if_possible]
-  [src: file: backend/src/api/discussions/streaming.rs:8971-9292#two_turns_through_the_real_decision_and_spawn_chain_survive_a_db_reopen]
+  [src: file: backend/src/api/discussions/streaming.rs:2689-2820#resume_with_delta_if_possible]
+  [src: file: backend/src/api/discussions/streaming.rs:9017-9338#two_turns_through_the_real_decision_and_spawn_chain_survive_a_db_reopen]
 - **Kronn does not yet normalize ACP's optional session cost.** The current
   upstream v1 schema supports `usage_update.cost` as a cumulative amount with
   an explicit currency; this is not a per-turn USD price. Kronn's native ACP
@@ -189,9 +189,9 @@ read; opening a selector additionally refreshes stale CLI targets in the
 background, preserving visible options and configuration. Claude's
 initialization-only SDK catalogue is independent of the ACP execution toggle.
 See [Claude discovery and freshness](../gotchas/claude-catalogue-discovery.md).
-[src: file: frontend/src/components/settings/AgentsSection.tsx:206-207#useModelCatalogSnapshot]
-[src: file: frontend/src/components/settings/AgentsSection.tsx:891-903#SearchableSelect]
-[src: file: frontend/src/lib/modelCatalogSelection.ts:110-172#catalogModelOptions]
+[src: file: frontend/src/components/settings/AgentsSection.tsx:235-236#useModelCatalogSnapshot]
+[src: file: frontend/src/components/settings/AgentsSection.tsx:920-932#SearchableSelect]
+[src: file: frontend/src/lib/modelCatalogSelection.ts:123-185#catalogModelOptions]
 [src: file: frontend/src/hooks/useModelCatalogSnapshot.ts:32-74#useModelCatalogSnapshot]
 [src: file: backend/src/core/model_catalog/mod.rs:420-430#discover_inner]
 

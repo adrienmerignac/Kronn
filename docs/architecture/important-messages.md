@@ -100,7 +100,7 @@ is selected without moving the transcript. A page reload starts navigation
 fresh. Publication invalidations during a pending GET coalesce into a fresh
 follow-up read rather than accepting the old snapshot as the final state.
 [src: file: frontend/src/components/ImportantMessageCard.tsx:194-264#goTo]
-[src: file: frontend/src/pages/DiscussionsPage.tsx:4630-4634#ImportantMessagesBar]
+[src: file: frontend/src/pages/DiscussionsPage.tsx:4673-4677#ImportantMessagesBar]
 [src: file: frontend/src/components/ImportantMessageCard.tsx:151-180#selections]
 [src: file: frontend/src/lib/importantMessages.ts:50-75#load]
 [src: file: frontend/src/lib/importantMessages.ts:84-90#refreshImportantMessages]
@@ -114,16 +114,16 @@ card is rendered beside the folded report, visible without opening its details.
 Only a matching row with `source_kind: orchestration` enables that path; an
 orchestrator display label or ordinary notification alone renders no card and
 no false refusal notice.
-[src: file: frontend/src/components/MessageBubble.tsx:2127-2134#ImportantMessageCard]
+[src: file: frontend/src/components/MessageBubble.tsx:2132-2139#ImportantMessageCard]
 [src: file: frontend/src/components/ImportantMessageCard.tsx:36-130#ImportantMessageCard]
-[src: file: frontend/src/components/MessageBubble.tsx:1138-1148#serverEventOnly]
+[src: file: frontend/src/components/MessageBubble.tsx:1149-1159#serverEventOnly]
 
 The bar re-fetches when the transcript's newest durable message id changes
 (`messageRevision`, the same idiom `DiscussionQuestionBanner` uses) — one
 fetch per arrival, not one per render or per bubble, and never stuck on the
 first GET while a new card lands.
 [src: file: frontend/src/components/ImportantMessageCard.tsx:182-192#messageRevision]
-[src: file: frontend/src/pages/DiscussionsPage.tsx:4630-4634#ImportantMessagesBar]
+[src: file: frontend/src/pages/DiscussionsPage.tsx:4673-4677#ImportantMessagesBar]
 
 ## Human form (0.13.0, KT-643)
 
@@ -133,9 +133,9 @@ select an existing task from this discussion's plan. This does not create,
 complete or otherwise modify a task. The card's task link resolves a fresh plan
 and opens that exact task; a removed link or unavailable plan is explained
 instead of selecting an unrelated task.
-[src: file: frontend/src/pages/DiscussionsPage.tsx:5541-5565#ImportantMessageForm]
+[src: file: frontend/src/pages/DiscussionsPage.tsx:5577-5601#ImportantMessageForm]
 [src: file: frontend/src/components/ImportantMessageForm.tsx:90-104#taskRef]
-[src: file: frontend/src/pages/DiscussionsPage.tsx:1376-1406#openPlan]
+[src: file: frontend/src/pages/DiscussionsPage.tsx:1415-1445#openPlan]
 [src: file: frontend/src/components/DiscussionPlanPanel.tsx:90-93#initialTaskId]
 
 The publication-key field appears only inside the open form. It uses the

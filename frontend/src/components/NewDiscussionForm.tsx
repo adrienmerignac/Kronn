@@ -92,6 +92,8 @@ export interface NewDiscConfig {
   directiveIds: string[];
   workspaceMode: 'Direct' | 'Isolated';
   tier: 'economy' | 'default' | 'reasoning';
+  /** KT-1994 — an exact model chosen outside the modes (« Personnalisé »); it wins over the tier. */
+  model?: string | null;
   branchName: string;
   baseBranch: string;
   pendingFiles?: File[];
@@ -182,6 +184,8 @@ export function NewDiscussionForm({
   // with the user's `ServerConfig.default_model_tier` on mount (0.8.6 phase 4).
   // Strict semantic — only applied at form-open time, never retroactively.
   const [newDiscTier, setNewDiscTier] = useState<'economy' | 'default' | 'reasoning'>('default');
+  // KT-1994 — an exact model from the picker's other models; a mode clears it.
+  const [newDiscModel, setNewDiscModel] = useState<string | null>(null);
   const [promptAgentTiers, setPromptAgentTiers] = useState<DraftRoutingTiers>(() => initialDraft?.routingTiers ?? {});
   const [agentHandoffsEnabled, setAgentHandoffsEnabled] = useState<boolean | null>(null);
   // 0.8.6 phase 2 — disc-first refactor. When `false`, the disc is
@@ -680,6 +684,7 @@ export function NewDiscussionForm({
         directiveIds: newDiscDirectiveIds,
         workspaceMode: newDiscWorkspaceMode,
         tier: agentLaunchMode === 'prompt' ? primaryTier : newDiscTier,
+        ...(agentLaunchMode === 'selected' && newDiscModel ? { model: newDiscModel } : {}),
         branchName: newDiscBranchName,
         baseBranch: newDiscBaseBranch,
         pendingFiles: pendingFiles.length > 0 ? pendingFiles : undefined,
@@ -1264,6 +1269,16 @@ export function NewDiscussionForm({
                       setNewDiscAgent(target.agent);
                       setNewDiscConnectionId(target.connectionId ?? null);
                       setNewDiscTier(tier);
+                      setNewDiscModel(null);
+                    }}
+                    customModel={{
+                      model: newDiscModel,
+                      onSelect: async (target, model) => {
+                        setAgentLaunchMode('selected');
+                        setNewDiscAgent(target.agent);
+                        setNewDiscConnectionId(target.connectionId ?? null);
+                        setNewDiscModel(model);
+                      },
                     }}
                   />
                 ) : (

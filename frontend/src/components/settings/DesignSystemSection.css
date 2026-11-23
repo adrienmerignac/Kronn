@@ -268,6 +268,17 @@
   max-width: calc(var(--kr-space-8) * 8);
 }
 
+/* KT-1936 — a participants strip narrower than its chips: it scrolls
+   sideways, its right edge fades and « +N » opens the full list. */
+.ds-demo-identity-strip {
+  display: flex;
+  position: relative;
+  width: min(100%, calc(var(--kr-space-8) * 10));
+  padding: var(--kr-space-1);
+  border: 1px dashed var(--kr-border);
+  border-radius: var(--kr-radius-control);
+}
+
 /* KT-1881 — the content of the Dialog and Drawer demos. */
 .ds-demo-field {
   display: flex;
@@ -356,6 +367,75 @@
 .ds-demo-frame > .ui-loading-state[data-size="md"],
 .ds-demo-frame > .ui-loading-state[data-size="lg"] {
   min-height: calc(var(--kr-space-8) * 5);
+}
+
+/* KT-1886 — a data component in a wide container on its own line, then its
+   narrow demos together on the next line. The narrow containers are 20rem
+   wide whatever the window: the components take their narrow form from their
+   container's width. The wide one takes the whole line (40rem, --kr-bp-sm,
+   and more on a desktop window, so a Table keeps its columns there); it has
+   no padding, which would take it under 40rem. In a narrow window the narrow
+   containers wrap under each other. */
+.ds-demo-pair {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: var(--kr-space-4);
+  min-width: 0;
+}
+
+.ds-demo-narrow-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--kr-space-4);
+  min-width: 0;
+}
+
+.ds-demo-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kr-space-2);
+  min-width: 0;
+}
+
+/* A demo container holds a size container (ui-table, ui-kv), whose
+   intrinsic width is zero: inline-size containment ignores its content. So
+   each container has a width of its own; as a flex item of a labelled row,
+   with no width, it would collapse to 0 px and its demo vanish. */
+.ds-demo-container[data-form="wide"] {
+  align-self: stretch;
+  width: 100%;
+}
+
+.ds-demo-container[data-form="narrow"] {
+  flex: 0 1 20rem;
+  max-width: 20rem;
+  outline: 1px dashed var(--kr-border-medium);
+  outline-offset: var(--kr-space-1);
+}
+
+.ds-demo-copy-line {
+  display: flex;
+  align-items: center;
+  gap: var(--kr-space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.ds-demo-copy-line code {
+  min-width: 0;
+  font-size: var(--kr-type-sm);
+  overflow-wrap: anywhere;
+}
+
+.ds-demo-stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--kr-space-3);
+  min-width: 0;
+  max-width: calc(var(--kr-space-8) * 8);
 }
 
 /* Narrower than --kr-bp-md (768px): a custom property cannot be read in @media.
