@@ -259,7 +259,7 @@ when it was not. QPs with no effort or only whitespace keep the old behavior.
 [src: file: backend/src/db/discussion_effort.rs:9-54#UnresolvedQuickPromptEffort]
 [src: file: backend/src/db/sql/176_discussion_effort_snapshots.sql:1-8#discussion_effort_snapshots]
 [src: file: backend/src/api/discussions/crud.rs:665-687#capture]
-[src: file: backend/src/api/discussions/crud.rs:833-841#UnresolvedQuickPromptEffort]
+[src: file: backend/src/api/discussions/crud.rs:843-851#UnresolvedQuickPromptEffort]
 [src: file: backend/src/api/discussions/streaming.rs:4257-4310#for_run]
 [src: file: backend/src/db/discussion_effort.rs:56-76#for_run]
 

@@ -164,9 +164,9 @@ mention that launched nobody is annotated with its reason (already scheduled
 on the root turn, or no marker), computed from `message_targets`.
 [src: file: frontend/src/lib/agentDelegation.ts:62-149#detectDelegation]
 [src: file: backend/src/db/discussions.rs:1789-1833#native_agents_scheduled_for_root_turn]
-[src: file: backend/src/api/discussions/crud.rs:608-620#initial_participants]
+[src: file: backend/src/api/discussions/crud.rs:618-630#initial_participants]
 [src: file: backend/src/api/discussions/messaging.rs:115-158#enqueue_dispatches_for_trigger]
-[src: file: backend/src/api/discussions/crud.rs:1057-1061#attach_discussion_participants]
+[src: file: backend/src/api/discussions/crud.rs:1094-1098#attach_discussion_participants]
 [src: file: backend/src/api/discussions/streaming.rs:2332-2444#independent_sibling_notice]
 [src: file: backend/src/api/discussions/streaming.rs:2225-2280#discussion_at_dispatch_trigger]
 [src: file: backend/src/api/discussions/streaming.rs:2287-2322#thread_under_trigger]
@@ -330,7 +330,7 @@ the model its tier maps to.
   New-discussion `@alias` routing is persisted on the initial user message
   before its independent dispatches start, so every responder resolves its own tier;
   targets without an override inherit the discussion tier.
-  [src: file: backend/src/api/discussions/crud.rs:685-732#replace_message_targets]
+  [src: file: backend/src/api/discussions/crud.rs:695-742#replace_message_targets]
   [src: file: backend/src/api/discussions/runtime.rs:790-809#dispatch_target_tier]
 - `message_cli_authors` records the exact local CLI author for verified live MCP
   appends, enabling deterministic `reply_to` routing across same-provider peers.
