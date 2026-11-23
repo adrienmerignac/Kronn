@@ -252,4 +252,52 @@ describe('Menu', () => {
     fireEvent.keyDown(screen.getByRole('button', { name: 'Row actions' }), { key: 'Escape' });
     expect(onKeyDown).toHaveBeenCalledWith('Escape');
   });
+
+  // KT-2014 — with the default icon trigger: the tooltip of a trigger the
+  // user activated hides, so it costs no Escape on the way out.
+  it('with its icon trigger in a dialog and no enabled item: Enter opens, one Escape closes the menu, the next the dialog', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Task">
+        <Menu label="Row actions" items={[{ id: 'a', label: 'Open', onSelect: vi.fn(), disabled: true }]} />
+      </Dialog>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    // The user brings the focus back onto the trigger: its tooltip is theirs.
+    await user.tab();
+    await user.tab({ shift: true });
+    expect(trigger).toHaveFocus();
+    expect(document.querySelector('[role="tooltip"]')).not.toBeNull();
+    await user.keyboard('{Enter}');
+    expect(menu()).not.toBeNull();
+    await user.keyboard('{Escape}');
+    expect(menu()).toBeNull();
+    expect(trigger).toHaveFocus();
+    expect(onClose).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('with its icon trigger in a dialog: Escape closes the menu, the next Escape closes the dialog', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} title="Task">
+        <Menu label="Row actions" items={[{ id: 'a', label: 'Open', onSelect: vi.fn() }]} />
+      </Dialog>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    await user.tab();
+    await user.tab({ shift: true });
+    expect(trigger).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('menuitem', { name: 'Open' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(menu()).toBeNull();
+    expect(trigger).toHaveFocus();
+    expect(onClose).not.toHaveBeenCalled();
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

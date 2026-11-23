@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { useAnchoredLayer } from './useAnchoredLayer';
 import { Tooltip } from './Tooltip';
 import { Menu } from './Menu';
+import { IconButton } from './IconButton';
 
 function Layer({ name, onClose, children }: { name: string; onClose?: () => void; children?: ReactNode }) {
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -112,5 +113,46 @@ describe('useAnchoredLayer (KT-2014)', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(layer('list')).toBeNull();
     expect(screen.getByRole('button', { name: 'open list' })).toHaveFocus();
+  });
+
+  it('closed with Escape, it gives focus back to an IconButton anchor whose tooltip does not take the next Escape', async () => {
+    const user = userEvent.setup();
+    function IconLayer({ onClose }: { onClose: () => void }) {
+      const anchorRef = useRef<HTMLButtonElement>(null);
+      const [open, setOpen] = useState(false);
+      const close = () => { onClose(); setOpen(false); };
+      const { ref: layerRef, style } = useAnchoredLayer<HTMLDivElement>({ anchorRef, open, placement: 'bottom', align: 'start', onClose: close });
+      return (
+        <>
+          <IconButton ref={anchorRef} label="Participants" icon={<span />} onClick={() => setOpen(o => !o)} />
+          {open && createPortal(
+            <div ref={layerRef} role="dialog" aria-label="participants" style={style}><button type="button">Ada</button></div>,
+            document.body,
+          )}
+        </>
+      );
+    }
+    const onClose = vi.fn();
+    const page = vi.fn();
+    const onPageKey = (e: KeyboardEvent) => { if (e.key === 'Escape') page(); };
+    document.addEventListener('keydown', onPageKey);
+    try {
+      render(<IconLayer onClose={onClose} />);
+      const anchor = screen.getByRole('button', { name: 'Participants' });
+      await user.tab();
+      expect(anchor).toHaveFocus();
+      await user.keyboard('{Enter}');
+      expect(screen.getByRole('button', { name: 'Ada' })).toHaveFocus();
+      await user.keyboard('{Escape}');
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(layer('participants')).toBeNull();
+      expect(anchor).toHaveFocus();
+      expect(page).not.toHaveBeenCalled();
+      await user.keyboard('{Escape}');
+      expect(page).toHaveBeenCalledTimes(1);
+      expect(tip()).toBeNull();
+    } finally {
+      document.removeEventListener('keydown', onPageKey);
+    }
   });
 });

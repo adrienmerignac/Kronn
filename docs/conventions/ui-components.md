@@ -28,7 +28,7 @@ fails if a component lacks one of the three.
 | `StatusBadge` | `tone` success / warning / danger / info / neutral (the `--kr-status-*` colours on the dot, border and tint; the label stays `--kr-text-primary` for 4.5:1), the status always written. | — |
 | `Tabs` | `tablist` / `tab` / `tabpanel` roles, `label` names the list; with no `panel` the tabs only report the choice. | ← → move and select, Home / End, a disabled tab is skipped |
 | `SearchField` | `type="search"` with a required `label` (hidden unless `showLabel`) and a clear button. | Escape clears a non-empty field and stops there |
-| `Tooltip` | Wraps one focusable element; `describe` wires it as `aria-describedby`. | opens on hover and keyboard focus, Escape closes it first (a Dialog, a Drawer or an anchored layer around it stays open until the next Escape), hoverable (WCAG 1.4.13) |
+| `Tooltip` | Wraps one focusable element; `describe` wires it as `aria-describedby`. | opens on hover and keyboard focus, hoverable (WCAG 1.4.13); every open tooltip hides on Escape. A tooltip the user put there (pointer, or a focus the user moved with Tab or the arrows) with no layer above it takes that Escape: a Dialog, a Drawer or an anchored layer around it stays open until the next one. A tooltip shown by a focus a layer placed (initial focus, focus given back on close) still shows, hides on the Escape and lets it through to the layer. Activating the anchor (Enter, Space, a press) hides it |
 | `Dialog` | Modal layer, centred. `title` (its name, an `h2`), optional `description`, `footer` for the actions, `size` sm / md / lg (480 / 640 / 960 px), `role` dialog / alertdialog. | focus on the first control of the body (or `initialFocus`), Tab kept inside, Escape / the cross / the scrim close it, focus back to the opener |
 | `Drawer` | The same props and keyboard as `Dialog`, as a side panel the full height of the window at its end edge. | as `Dialog` |
 | `ConfirmDialog` | In place of `window.confirm`: an alertdialog, `title` is the question, `message` what happens, `confirmLabel` the verb and the object ("Delete 3 projects", never "OK"), `tone` danger (default) or primary. `useConfirm()` gives it as a promise. | focus on Cancel (Enter at once answers no); Escape, the cross and the scrim cancel |
@@ -68,10 +68,20 @@ its heading, `aria-describedby` on its description, and one cross (an
 every dialog and drawer
 `[src: file: frontend/src/components/ui/overlay.tsx:47#OverlayFrame]`.
 Focus, Tab trap, Escape and focus return come from `useDialogFocus`: one
-Escape closes one layer, the innermost first, an open `Tooltip` before the
-dialog around it; when the focus is lost to `body` (its control was removed)
-the top layer of the stack answers, modal or not
-`[src: file: frontend/src/hooks/useDialogFocus.ts:67#useDialogFocus]`.
+Escape closes one layer, the innermost first; when the focus is lost to
+`body` (its control was removed) the top layer of the stack answers, modal or
+not `[src: file: frontend/src/hooks/useDialogFocus.ts:98#useDialogFocus]`.
+A `Tooltip` costs an Escape only when the user put it there: opened by the
+pointer, or by a focus the user moved (Tab, the arrows), and with no layer
+opened above the one holding its anchor. That Escape hides it and stops, the
+dialog around stays open. A focus a layer places — its initial focus, the
+focus it gives back on close, `Menu` back on its trigger, an anchored layer
+back on its anchor — goes through `placeFocus`; the tooltip it shows stays
+visible but owns no Escape: it hides on it and the key goes on to the layer
+`[src: file: frontend/src/hooks/useDialogFocus.ts:67#placeFocus]`. Every open
+tooltip hides on the same Escape, and activating its anchor (Enter, Space, a
+press) hides it, so a menu trigger's tooltip costs no press on the way out
+`[src: file: frontend/src/components/ui/Tooltip.tsx:33#Tooltip]`.
 
 - **Layers.** A `Drawer` sits on `--kr-z-drawer`, a `Dialog` on
   `--kr-z-modal`, a `ConfirmDialog` on `--kr-z-modal-nested`, so a

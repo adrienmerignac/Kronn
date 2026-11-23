@@ -4,7 +4,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
-import { registerLayer } from '../../hooks/useDialogFocus';
+import { placeFocus, registerLayer } from '../../hooks/useDialogFocus';
 import { useAnchoredStyle } from './anchor';
 import { Button, type ButtonSize, type ButtonVariant } from './Button';
 import { IconButton, type NonEmptyLabel } from './IconButton';
@@ -68,7 +68,8 @@ export function Menu<L extends string>({
   };
   const close = useCallback((returnFocus: boolean) => {
     setOpen(false);
-    if (returnFocus) triggerRef.current?.focus();
+    // Placed, not moved by the user: the trigger's tooltip costs no Escape.
+    if (returnFocus) placeFocus(triggerRef.current);
   }, []);
 
   // Focus the asked item once the menu is placed: before that it is hidden to

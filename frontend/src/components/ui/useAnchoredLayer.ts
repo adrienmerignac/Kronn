@@ -11,7 +11,7 @@
 //   the press lands; a press inside a layer opened from it (a Menu, a picker,
 //   a confirmation, each a portal in document.body) is not outside (KT-2014).
 import { useCallback, useEffect, useRef, type RefCallback, type RefObject } from 'react';
-import { insideLayerAbove, useDialogFocus } from '../../hooks/useDialogFocus';
+import { insideLayerAbove, placeFocus, useDialogFocus } from '../../hooks/useDialogFocus';
 import { useAnchoredStyle, type Align, type Anchored, type Placement } from './anchor';
 
 export interface AnchoredLayerOptions {
@@ -46,8 +46,9 @@ export function useAnchoredLayer<T extends HTMLElement>({
     onEscape: () => {
       latestClose.current();
       // Back to the anchor, whatever had focus when the layer opened (a row
-      // of another list that is gone, for instance).
-      anchorRef.current?.focus();
+      // of another list that is gone, for instance). Placed: the anchor's
+      // tooltip costs no Escape.
+      placeFocus(anchorRef.current);
     },
   });
 
