@@ -81,7 +81,9 @@ vi.mock('react-markdown', () => ({
 }));
 
 import type { ComponentProps } from 'react';
+import userEvent from '@testing-library/user-event';
 import { GitPanel } from '../GitPanel';
+import { SidePanelHeaderContext } from '../sidePanelHeaderContext';
 
 type GitPanelProps = ComponentProps<typeof GitPanel>;
 
@@ -652,6 +654,107 @@ describe('GitPanel — diff', () => {
     await waitFor(() => expect(screen.getByText('src/feature.rs')).toBeDefined());
     fireEvent.click(screen.getByText('src/feature.rs'));
     await waitFor(() => expect(projectsApi.gitDiff).toHaveBeenCalledWith('p1', 'src/feature.rs', true));
+  });
+});
+
+// ─── KT-1989: keyboard focus across list ⇄ diff ──────────────────────────────
+
+describe('GitPanel — focus between the list and a diff (KT-1989)', () => {
+  // Enter on a focused button: the browser fires `click` on it.
+  async function pressEnterOn(button: HTMLElement) {
+    const user = userEvent.setup();
+    button.focus();
+    await user.keyboard('{Enter}');
+  }
+
+  it('opening a diff puts the focus on the back button, not on the page', async () => {
+    renderPanel();
+    const row = await screen.findByRole('button', { name: 'src/lib.rs' });
+    await pressEnterOn(row);
+    const back = await screen.findByRole('button', { name: 'git.back' });
+    expect(document.activeElement).toBe(back);
+  });
+
+  it('back to the list puts the focus on the row of the file whose diff was open', async () => {
+    renderPanel();
+    await pressEnterOn(await screen.findByRole('button', { name: 'src/lib.rs' }));
+    await pressEnterOn(await screen.findByRole('button', { name: 'git.back' }));
+
+    const row = await screen.findByRole('button', { name: 'src/lib.rs' });
+    expect(document.activeElement).toBe(row);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it('back from a committed diff focuses the committed row, not a same-path working-tree row', async () => {
+    const withCommitted = baseStatus();
+    withCommitted.committed_files = [{ path: 'src/main.rs', status: 'modified', staged: true }];
+    projectsApi.gitStatus.mockResolvedValue(withCommitted);
+    renderPanel();
+    await pressEnterOn(await screen.findByTitle('git.viewCommittedDiff(src/main.rs)'));
+    await waitFor(() => expect(projectsApi.gitDiff).toHaveBeenCalledWith('p1', 'src/main.rs', true));
+    await pressEnterOn(await screen.findByRole('button', { name: 'git.back' }));
+
+    const committedRow = await screen.findByTitle('git.viewCommittedDiff(src/main.rs)');
+    expect(document.activeElement).toBe(committedRow);
+  });
+
+  it('back to the list focuses the first row when the open file is gone from the list', async () => {
+    const { rerender } = renderPanel();
+    await pressEnterOn(await screen.findByRole('button', { name: 'src/lib.rs' }));
+    await screen.findByRole('button', { name: 'git.back' });
+
+    // The status is refetched while the diff is open and src/lib.rs is gone.
+    projectsApi.gitStatus.mockResolvedValue({
+      ...baseStatus(),
+      files: [{ path: 'src/other.rs', status: 'modified', staged: false }],
+    });
+    rerender(<GitPanel projectId="p2" onClose={onClose} />);
+    await waitFor(() => expect(projectsApi.gitStatus).toHaveBeenCalledWith('p2'));
+
+    await pressEnterOn(screen.getByRole('button', { name: 'git.back' }));
+    const firstRow = await screen.findByRole('button', { name: 'src/other.rs' });
+    expect(document.activeElement).toBe(firstRow);
+  });
+
+  it('scrolls the list only as far as needed to show the row', async () => {
+    const scrollIntoView = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      renderPanel();
+      await pressEnterOn(await screen.findByRole('button', { name: 'src/lib.rs' }));
+      await pressEnterOn(await screen.findByRole('button', { name: 'git.back' }));
+      await waitFor(() => expect(document.activeElement?.textContent).toBe('src/lib.rs'));
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('inside the side-panel shell, the back button in its header gets the focus and back lands on the row', async () => {
+    const leading = document.createElement('div');
+    const meta = document.createElement('div');
+    const actions = document.createElement('div');
+    document.body.append(leading, meta, actions);
+    try {
+      render(
+        <SidePanelHeaderContext.Provider value={{ leading, meta, actions }}>
+          <GitPanel discussionId="d1" />
+        </SidePanelHeaderContext.Provider>,
+      );
+      await pressEnterOn(await screen.findByRole('button', { name: 'src/main.rs' }));
+      const back = await screen.findByRole('button', { name: 'git.back' });
+      expect(leading.contains(back)).toBe(true);
+      expect(document.activeElement).toBe(back);
+
+      await pressEnterOn(back);
+      const row = await screen.findByRole('button', { name: 'src/main.rs' });
+      expect(document.activeElement).toBe(row);
+    } finally {
+      leading.remove();
+      meta.remove();
+      actions.remove();
+    }
   });
 });
 
