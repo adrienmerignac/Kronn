@@ -231,14 +231,29 @@ fn parse_cost_hint(s: &str) -> Option<ModelCostHint> {
     }
 }
 
+/// The English sentence the reconciliation stores for a model absent from the
+/// latest successful live catalogue (read back as a code, KT-2003).
+pub const DISAPPEARED_DETAIL: &str = "absent from the latest successful live catalog";
+
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<CatalogModelEntry> {
     let capabilities_json: String = row.get(10)?;
     let reasoning_modes_json: String = row.get(11)?;
+    let model_id: String = row.get(3)?;
+    let unavailable_reason = row
+        .get::<_, Option<String>>(8)?
+        .as_deref()
+        .map(parse_reason);
+    let unavailable_detail: Option<String> = row.get(9)?;
+    let unavailable_code = crate::core::model_catalog::entry_reason_code(
+        &model_id,
+        unavailable_reason,
+        unavailable_detail.as_deref(),
+    );
     Ok(CatalogModelEntry {
         id: row.get(0)?,
         runtime_target_id: row.get(1)?,
         agent_type: parse_agent_type(&row.get::<_, String>(2)?)?,
-        model_id: row.get(3)?,
+        model_id,
         display_name: row.get(4)?,
         resolved_model: row.get(22)?,
         description: row.get(23)?,
@@ -249,11 +264,9 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<CatalogModelEntry> 
         } else {
             ModelAvailability::Unavailable
         },
-        unavailable_reason: row
-            .get::<_, Option<String>>(8)?
-            .as_deref()
-            .map(parse_reason),
-        unavailable_detail: row.get(9)?,
+        unavailable_reason,
+        unavailable_detail,
+        unavailable_code,
         capabilities: serde_json::from_str(&capabilities_json).unwrap_or_default(),
         reasoning_modes: serde_json::from_str(&reasoning_modes_json).unwrap_or_default(),
         default_reasoning_mode: row.get(12)?,
@@ -689,7 +702,7 @@ pub fn reconcile_listing(
                         "UPDATE model_catalog_entries SET provenance = 'cached', availability = 'unavailable', \
                          unavailable_reason = 'disappeared', unavailable_detail = ?1, last_checked_at = ?2, \
                          updated_at = ?2 WHERE id = ?3",
-                        params!["absent from the latest successful live catalog", now, entry.id],
+                        params![DISAPPEARED_DETAIL, now, entry.id],
                     )?;
                 }
             }
@@ -1483,6 +1496,7 @@ mod tests {
             availability: ModelAvailability::Available,
             unavailable_reason: None,
             unavailable_detail: None,
+            unavailable_code: None,
             capabilities: vec![],
             reasoning_modes: vec![],
             default_reasoning_mode: None,
