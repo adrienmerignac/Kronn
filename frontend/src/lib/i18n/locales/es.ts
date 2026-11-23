@@ -5411,6 +5411,8 @@ const es: TranslationDict = {
   'mcp.kind.mcpTooltip': 'Plugin MCP — el agente usa herramientas dedicadas expuestas por el servidor MCP.',
   'mcp.kind.apiTooltip': 'Plugin API — el agente llama a una API REST vía curl (sin herramientas MCP).',
   'mcp.kind.hybridTooltip': 'Plugin híbrido — expone un MCP y una API REST. El agente elige según necesidad.',
+  'mcp.kind.cli': 'CLI',
+  'mcp.kind.cliTooltip': 'Plugin CLI — envuelve una herramienta de línea de comandos local (fastly, glab, …) que debe instalarse antes en esta máquina.',
   'mcp.pluginKindBadge.cli.label': '⌨ Wrapper CLI',
   'mcp.pluginKindBadge.cli.tooltip': 'Envuelve un binario CLI local. El agente le habla vía MCP, PERO el binario (fastly, glab, …) DEBE estar instalado antes en el host. Se agrupa aparte del MCP puro porque el requisito de instalación es distinto.',
   'mcp.pluginKindBadge.api.label': '🌐 API',

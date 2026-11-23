@@ -5366,6 +5366,8 @@ const zh: TranslationDict = {
   "mcp.kind.mcpTooltip": "MCP插件——代理使用MCP服务器暴露的专用工具。",
   "mcp.kind.apiTooltip": "API插件——代理通过curl调用REST API（无MCP工具）。",
   "mcp.kind.hybridTooltip": "混合插件——同时暴露MCP和REST API。代理选择最佳工具。",
+  "mcp.kind.cli": "CLI",
+  "mcp.kind.cliTooltip": "CLI 插件——封装一个本地命令行工具（fastly、glab 等），必须先安装在本机上。",
   "mcp.pluginKindBadge.cli.label": "⌨ CLI 封装",
   "mcp.pluginKindBadge.cli.tooltip": "封装一个本地 CLI 可执行文件。智能体通过 MCP 与它通信，但该可执行文件（fastly、glab 等）必须先安装在主机上。因安装前提不同，单独归类，不算纯 MCP。",
   "mcp.pluginKindBadge.api.label": "🌐 API",
