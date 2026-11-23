@@ -8,8 +8,10 @@
 // - Tab and Shift+Tab move between its controls and stay inside it;
 // - Escape closes it and gives focus back to the anchor that opened it;
 // - a press outside the anchor and the layer closes it, and focus stays where
-//   the press lands; a press inside a layer opened from it (a Menu, a picker,
-//   a confirmation, each a portal in document.body) is not outside (KT-2014).
+//   the press lands; a press inside a layer opened from it that is on the
+//   stack of open layers (a Menu, a useDialogFocus dialog, another anchored
+//   layer) is not outside (KT-2014). A portal popover that does not call
+//   `registerLayer` (AgentSwitchPicker, DecisionModelPicker today) is outside.
 import { useCallback, useEffect, useRef, type RefCallback, type RefObject } from 'react';
 import { insideLayerAbove, placeFocus, useDialogFocus } from '../../hooks/useDialogFocus';
 import { useAnchoredStyle, type Align, type Anchored, type Placement } from './anchor';

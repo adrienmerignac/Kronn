@@ -33,7 +33,10 @@ const openDialogs: HTMLElement[] = [];
 // is not a press outside the earlier one.
 const openLayers: HTMLElement[] = [];
 
-/** Put `node` on the stack of open layers; the returned function takes it off. */
+/** Put `node` on the stack of open layers; the returned function takes it off.
+ *  Dialogs, anchored layers and Menu call it. Any other popover portalled to
+ *  `body` (a picker) must call it while it is open to count as opened from the
+ *  layer under it; otherwise a press in it closes that anchored layer. */
 export function registerLayer(node: HTMLElement): () => void {
   openLayers.push(node);
   return () => {
@@ -42,8 +45,9 @@ export function registerLayer(node: HTMLElement): () => void {
   };
 }
 
-/** `target` sits in a layer opened after `node` (a Menu, a picker or a
- *  confirmation opened from it), even when that layer is a portal elsewhere. */
+/** `target` sits in a layer on the stack opened after `node` (a Menu, a
+ *  dialog or another anchored layer opened from it), even when that layer is
+ *  a portal elsewhere. A popover that never called `registerLayer` is not seen. */
 export function insideLayerAbove(node: HTMLElement, target: Node): boolean {
   const index = openLayers.lastIndexOf(node);
   return index >= 0 && openLayers.some((layer, i) => i > index && layer.contains(target));

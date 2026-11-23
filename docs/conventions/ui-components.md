@@ -70,7 +70,7 @@ every dialog and drawer
 Focus, Tab trap, Escape and focus return come from `useDialogFocus`: one
 Escape closes one layer, the innermost first; when the focus is lost to
 `body` (its control was removed) the top layer of the stack answers, modal or
-not `[src: file: frontend/src/hooks/useDialogFocus.ts:98#useDialogFocus]`.
+not `[src: file: frontend/src/hooks/useDialogFocus.ts:102#useDialogFocus]`.
 A `Tooltip` costs an Escape only when the user put it there: opened by the
 pointer, or by a focus the user moved (Tab, the arrows), and with no layer
 opened above the one holding its anchor. That Escape hides it and stops, the
@@ -78,7 +78,7 @@ dialog around stays open. A focus a layer places — its initial focus, the
 focus it gives back on close, `Menu` back on its trigger, an anchored layer
 back on its anchor — goes through `placeFocus`; the tooltip it shows stays
 visible but owns no Escape: it hides on it and the key goes on to the layer
-`[src: file: frontend/src/hooks/useDialogFocus.ts:67#placeFocus]`. Every open
+`[src: file: frontend/src/hooks/useDialogFocus.ts:71#placeFocus]`. Every open
 tooltip hides on the same Escape, and activating its anchor (Enter, Space, a
 press) hides it, so a menu trigger's tooltip costs no press on the way out
 `[src: file: frontend/src/components/ui/Tooltip.tsx:33#Tooltip]`.
@@ -597,10 +597,17 @@ native one) or a joined CLI session.
   moves to the layer's first control once it is placed, Tab and Shift+Tab stay
   between its controls, Escape closes it and gives focus back to the control
   that opened it (the counter, the chip), a press outside that control and the
-  layer closes it. A press inside a layer opened from it (a `Menu`, a picker,
-  a confirmation: portals in `body`, on the stack of open layers that
-  `useDialogFocus` keeps) is not outside (KT-2014)
-  `[src: file: frontend/src/hooks/useDialogFocus.ts:47#insideLayerAbove]`.
+  layer closes it. A press inside a layer opened from it is not outside when
+  that layer is on the stack of open layers that `useDialogFocus` keeps: a
+  `Menu`, a `Dialog` / `Drawer` / `ConfirmDialog` (and every other
+  `useDialogFocus` dialog), another anchored layer (KT-2014)
+  `[src: file: frontend/src/hooks/useDialogFocus.ts:51#insideLayerAbove]`.
+  Any other popover rendered in `body` (`AgentSwitchPicker`,
+  `DecisionModelPicker` today) is not on that stack: a press in it closes the
+  anchored layer under it. Before such a popover is opened from an anchored
+  layer, it must call `registerLayer` while it is open
+  `[src: file: frontend/src/hooks/useDialogFocus.ts:40#registerLayer]`; none
+  does yet because no caller nests one.
   A new anchored layer of this kind uses the same hook.
 - **The details header** is a flex row: the full-size identity shrinks
   (`min-width: 0`) and wraps rather than overflows, the model is the part cut
@@ -608,7 +615,7 @@ native one) or a joined CLI session.
   accessible name and the « declared model » row), and the close button never
   shrinks, so it stays inside the 320px layer at every width
   (`styles/components.css`, held by `components/ui/stylesheets.test.ts`).
-`[src: file: frontend/src/components/ui/useAnchoredLayer.ts:32#useAnchoredLayer]`
+`[src: file: frontend/src/components/ui/useAnchoredLayer.ts:34#useAnchoredLayer]`
 `[src: file: frontend/src/components/ParticipantsStrip.tsx:48#ParticipantsStrip]`
 `[src: file: frontend/src/components/HeaderScrollLine.tsx:27#HeaderScrollLine]`
 `[src: file: frontend/src/lib/stripOverflow.ts:5#measureStripOverflow]`
