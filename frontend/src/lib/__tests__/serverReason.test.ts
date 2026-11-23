@@ -3,7 +3,9 @@
 // text is quoted under a localized sentence; an unknown code falls back to
 // the English sentence, never to an empty line or a raw key.
 import { describe, expect, it } from 'vitest';
-import { entryReasonText, fullAccessSettingsPath, serverReasonText } from '../serverReason';
+import {
+  agentsSettingsLinkLabel, entryReasonText, fullAccessRequiredText, fullAccessSettingsPath, serverReasonText,
+} from '../serverReason';
 import { dictionaries } from '../i18n/testing';
 import type { CatalogReasonCode } from '../../types/generated';
 
@@ -29,6 +31,13 @@ const EVERY_CODE: CatalogReasonCode[] = [
   { code: 'model_access_denied', status: 403 },
   { code: 'model_not_chat', model_id: 'flux', capabilities: ['image', 'video'] },
   { code: 'model_not_listed', model_id: 'm-1', agent: 'Codex', version: '0.99.0' },
+  { code: 'agent_cli_missing', agent: 'Claude Code' },
+  { code: 'agent_auth_required', agent: 'Claude Code' },
+  { code: 'catalog_invalid', agent: 'Ollama' },
+  { code: 'catalog_too_large', agent: 'Ollama' },
+  { code: 'discovery_failed', agent: 'Codex' },
+  { code: 'cli_discovery_failed', agent: 'Claude Code' },
+  { code: 'catalog_http_error', agent: 'Ollama', status: 503 },
 ];
 
 describe('serverReasonText (KT-2003)', () => {
@@ -71,6 +80,52 @@ describe('serverReasonText (KT-2003)', () => {
       .toBe('Le fournisseur a renvoyé une erreur : « error: 401 {"message":"bad key"} »');
     expect(serverReasonText(translator('en'), { detail: 'spawn ENOENT', reason: 'cli_missing' }))
       .toBe('The agent\'s CLI cannot be found: “spawn ENOENT”');
+  });
+
+  it('writes a sentence Kronn itself wrote during discovery, with no English quote', () => {
+    const t = translator('fr');
+    const missing = serverReasonText(t, {
+      detail: 'Claude CLI is not installed', reason: 'cli_missing', code: { code: 'agent_cli_missing', agent: 'Claude Code' },
+    });
+    expect(missing).toBe('La CLI de Claude Code n\'est pas installée ou ne peut pas être lancée.');
+    expect(missing).not.toMatch(/«|not installed/);
+    expect(serverReasonText(t, { code: { code: 'agent_auth_required', agent: 'Claude Code' } }))
+      .toBe('Connectez-vous à la CLI de Claude Code pour que Kronn puisse lister ses modèles.');
+    expect(serverReasonText(t, { code: { code: 'catalog_http_error', agent: 'Ollama', status: 503 } }))
+      .toBe('Ollama a répondu HTTP 503 à la demande de la liste des modèles.');
+    expect(serverReasonText(translator('zh'), { code: { code: 'cli_discovery_failed', agent: 'Claude Code' } }))
+      .toContain('--safe-mode');
+  });
+
+  it('keeps both halves of « not found or access denied » in every locale', () => {
+    const halves: Record<Locale, RegExp> = {
+      en: /Not found or access denied \(HTTP 403\)/,
+      fr: /Introuvable ou accès refusé \(HTTP 403\)/,
+      es: /No encontrado o acceso denegado \(HTTP 403\)/,
+      zh: /未找到或访问被拒绝（HTTP 403）/,
+    };
+    for (const locale of LOCALES) {
+      expect(serverReasonText(translator(locale), { code: { code: 'model_not_found', status: 403 } })).toMatch(halves[locale]);
+    }
+  });
+
+  it.each(LOCALES)('says « full access required » in one %s sentence, server refusal and pre-launch warning alike', locale => {
+    const t = translator(locale);
+    const dict = dictionaries[locale] as Record<string, string>;
+    expect(fullAccessRequiredText(t, 'GitHub Copilot')).toBe(serverReasonText(t, { code: EVERY_CODE[0] }));
+    expect(agentsSettingsLinkLabel(t)).toContain(`${dict['nav.config']} › ${dict['config.agents']}`);
+    expect(agentsSettingsLinkLabel(t)).not.toMatch(/\{\d\}/);
+    if (locale === 'zh') {
+      // The word for « agent » in that sentence is the Settings section's own.
+      expect(fullAccessRequiredText(t, 'GitHub Copilot')).toMatch(new RegExp(`选择其他${dict['config.agents']}。$`));
+    }
+  });
+
+  it('follows a rename of the tab in the link that opens the Agents section', () => {
+    const base = translator('fr');
+    const renamed = (key: string, ...args: (string | number)[]) => key === 'nav.config' ? 'Réglages' : base(key, ...args);
+    expect(agentsSettingsLinkLabel(renamed)).toBe('Ouvrir Réglages › Agents');
+    expect(fullAccessRequiredText(renamed, 'OpenCode')).toContain('Activez-le dans Réglages › Agents › OpenCode › Accès complet');
   });
 
   it('falls back to the English sentence for an unknown code, and says nothing when the server said nothing', () => {

@@ -19,12 +19,25 @@ export interface ServerReason {
 }
 
 /**
- * Where an agent's full access is turned on, in the interface's own words:
- * the Settings tab, its Agents section, the agent, the switch. The tab and
- * section labels are the navigation's own keys, so a rename follows.
+ * The Settings tab and its Agents section, in the interface's own words: the
+ * labels are the navigation's own keys, so a rename follows.
  */
+export const agentsSettingsPath = (t: Translate) => [t('nav.config'), t('config.agents')].join(' › ');
+
+/** Where an agent's full access is turned on: the Agents section, the agent, the switch. */
 export const fullAccessSettingsPath = (t: Translate, agent: string) =>
-  [t('nav.config'), t('config.agents'), agent, t('config.fullAccessName')].join(' › ');
+  [agentsSettingsPath(t), agent, t('config.fullAccessName')].join(' › ');
+
+/**
+ * « {agent} runs only with full access… » — one sentence for the server's
+ * refusal and every screen that warns before a launch, so the wording and the
+ * menu path cannot drift. `agent` may be several labels joined by the caller.
+ */
+export const fullAccessRequiredText = (t: Translate, agent: string) =>
+  t('serverReason.fullAccessRequired', agent, fullAccessSettingsPath(t, agent));
+
+/** The label of the link that opens the Agents section of the Settings. */
+export const agentsSettingsLinkLabel = (t: Translate) => t('config.fullAccessRequiredLink', agentsSettingsPath(t));
 
 /** A third-party text, quoted as received after a localized sentence. */
 const quoted = (t: Translate, lead: string, text: string) => t('serverReason.quoted', lead, text);
@@ -35,12 +48,18 @@ type Sentences = {
 
 /** Every code the server can send: a new one does not type-check until it is written here. */
 const SENTENCES: Sentences = {
-  native_full_access_required: (t, c) =>
-    t('serverReason.fullAccessRequired', c.agent, fullAccessSettingsPath(t, c.agent)),
+  native_full_access_required: (t, c) => fullAccessRequiredText(t, c.agent),
   catalog_not_refreshed: t => t('serverReason.catalogNotRefreshed'),
   catalog_refresh_failed: (t, c) => quoted(t, t('serverReason.catalogRefreshFailed'), c.detail),
   catalog_lookup_failed: (t, c) => quoted(t, t('serverReason.catalogLookupFailed'), c.detail),
   discovery_timeout: t => t('serverReason.discoveryTimeout'),
+  agent_cli_missing: (t, c) => t('serverReason.agentCliMissing', c.agent),
+  agent_auth_required: (t, c) => t('serverReason.agentAuthRequired', c.agent),
+  catalog_invalid: (t, c) => t('serverReason.catalogInvalid', c.agent),
+  catalog_too_large: (t, c) => t('serverReason.catalogTooLarge', c.agent),
+  discovery_failed: (t, c) => t('serverReason.discoveryFailed', c.agent),
+  cli_discovery_failed: (t, c) => t('serverReason.cliDiscoveryFailed', c.agent),
+  catalog_http_error: (t, c) => t('serverReason.catalogHttpError', c.agent, c.status),
   discovery_unsupported: t => t('serverReason.discoveryUnsupported'),
   model_disappeared: (t, c) => t('serverReason.modelDisappeared', c.model_id),
   model_disappeared_no_replacement: (t, c) =>

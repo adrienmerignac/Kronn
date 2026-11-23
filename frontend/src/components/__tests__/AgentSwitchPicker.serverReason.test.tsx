@@ -87,6 +87,21 @@ describe('the reason under an unavailable agent, in French (KT-2003)', () => {
     );
   });
 
+  it('writes a discovery sentence Kronn itself wrote in French, with no English quote', async () => {
+    // The Claude CLI missing: the server keeps « Claude CLI is not installed »
+    // and sends its code; nothing of the English sentence reaches the line.
+    list.mockResolvedValue(catalog(refused({
+      reason: 'cli_missing',
+      detail: 'Claude CLI is not installed',
+      detail_code: { code: 'agent_cli_missing', agent: 'GitHub Copilot' },
+    })));
+    await openInFrench();
+    const reason = reasonOf('GitHub Copilot');
+    expect(reason).toHaveTextContent('La CLI de GitHub Copilot n\'est pas installée ou ne peut pas être lancée.');
+    expect(reason.textContent).not.toContain('«');
+    expect(reason.textContent).not.toContain('not installed');
+  });
+
   it('falls back to the English sentence for a code this interface does not know', async () => {
     list.mockResolvedValue(catalog(refused({
       detail: ENGLISH, detail_code: { code: 'a_newer_reason', agent: 'GitHub Copilot' } as unknown as CatalogReasonCode,
