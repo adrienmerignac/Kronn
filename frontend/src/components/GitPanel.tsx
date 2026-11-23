@@ -68,6 +68,17 @@ type PendingFocus =
 const fileRowKey = (path: string, committed: boolean) =>
   `${committed ? 'committed' : 'worktree'}:${path}`;
 
+/** The row and its focus ring (its scroll margin) lie inside the visible part
+ *  of the list's scroll box, itself clipped to the window. */
+const rowInView = (row: HTMLElement, box: HTMLElement | null) => {
+  const margin = parseFloat(getComputedStyle(row).scrollMarginTop) || 0;
+  const rowRect = row.getBoundingClientRect();
+  const boxRect = box?.getBoundingClientRect();
+  const top = Math.max(boxRect?.top ?? 0, 0);
+  const bottom = Math.min(boxRect?.bottom ?? window.innerHeight, window.innerHeight);
+  return rowRect.top - margin >= top && rowRect.bottom + margin <= bottom;
+};
+
 interface Props {
   projectId?: string;
   discussionId?: string;
@@ -162,6 +173,11 @@ export function GitPanel({
   const pendingFocusRef = useRef<PendingFocus | null>(null);
   const backButtonRef = useRef<HTMLButtonElement | null>(null);
   const listExpandToggleRef = useRef<HTMLButtonElement | null>(null);
+  // The list's scroll box is rebuilt on the way back: its offset is kept when
+  // a diff opens and put back before the focus, so the list is where the user
+  // left it (keyboard and mouse alike).
+  const listBodyRef = useRef<HTMLDivElement | null>(null);
+  const listScrollTopRef = useRef(0);
   const fileRowRefs = useRef(new Map<string, HTMLButtonElement>());
   const fileRowRef = (path: string, committed: boolean) => (el: HTMLButtonElement | null) => {
     const key = fileRowKey(path, committed);
@@ -337,6 +353,7 @@ export function GitPanel({
   // the focus stays on them.
   const openDiffFromList = (path: string, committed = false) => {
     pendingFocusRef.current = { kind: 'back' };
+    listScrollTopRef.current = listBodyRef.current?.scrollTop ?? 0;
     void openDiff(path, committed);
   };
 
@@ -363,13 +380,19 @@ export function GitPanel({
       ?? (firstFile && rows.get(fileRowKey(firstFile.path, false)))
       ?? (firstCommitted && rows.get(fileRowKey(firstCommitted.path, true)))
       ?? null;
+    const body = listBodyRef.current;
+    if (body) body.scrollTop = listScrollTopRef.current;
     if (!target) {
       listExpandToggleRef.current?.focus();
       return;
     }
-    // Scroll only as far as needed to show the row, never to centre it.
     target.focus({ preventScroll: true });
-    target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    // Fallback only (file gone, list changed): scroll as far as needed to show
+    // the row with its whole focus ring (the row's scroll margin), never to
+    // centre it.
+    if (!rowInView(target, body)) {
+      target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    }
   }, [diffPath, status]);
 
   // KT-453/461 — "Talk about it in the discussion", fired from
@@ -760,7 +783,7 @@ export function GitPanel({
       )}
 
       {status && !loading && (
-        <div className="git-body">
+        <div className="git-body" ref={listBodyRef}>
           {/* Branch info */}
           <div className="git-branch-bar">
             <GitBranch size={12} />

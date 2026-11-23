@@ -716,10 +716,44 @@ describe('GitPanel — focus between the list and a diff (KT-1989)', () => {
     expect(document.activeElement).toBe(firstRow);
   });
 
-  it('scrolls the list only as far as needed to show the row', async () => {
+  it('back to the list puts the list back at the scroll offset it had when the diff opened, without scrolling to the row', async () => {
     const scrollIntoView = vi.fn();
     const original = HTMLElement.prototype.scrollIntoView;
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    try {
+      const { container } = renderPanel();
+      const row = await screen.findByRole('button', { name: 'src/lib.rs' });
+      const body = container.querySelector('.git-body') as HTMLElement;
+      body.scrollTop = 1666;
+      await pressEnterOn(row);
+      await screen.findByRole('button', { name: 'git.back' });
+      expect(container.querySelector('.git-body')).toBeNull();
+
+      await pressEnterOn(screen.getByRole('button', { name: 'git.back' }));
+      await waitFor(() => expect(document.activeElement?.textContent).toBe('src/lib.rs'));
+      // The list is rebuilt: a new scroll box, put back where the user left it.
+      const rebuilt = container.querySelector('.git-body') as HTMLElement;
+      expect(rebuilt).not.toBe(body);
+      expect(rebuilt.scrollTop).toBe(1666);
+      // The row is in view there: nothing else scrolls.
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('scrolls only as far as needed when the row is not in view at the restored offset', async () => {
+    const scrollIntoView = vi.fn();
+    const originalScroll = HTMLElement.prototype.scrollIntoView;
+    const originalRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    // The scroll box shows 0..400; the row sits below it, at 880..900.
+    HTMLElement.prototype.getBoundingClientRect = function getRect(this: HTMLElement) {
+      const [top, bottom] = this.classList.contains('git-body')
+        ? [0, 400]
+        : this.classList.contains('git-file-btn') ? [880, 900] : [0, 0];
+      return { top, bottom, left: 0, right: 300, width: 300, height: bottom - top, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+    };
     try {
       renderPanel();
       await pressEnterOn(await screen.findByRole('button', { name: 'src/lib.rs' }));
@@ -727,7 +761,8 @@ describe('GitPanel — focus between the list and a diff (KT-1989)', () => {
       await waitFor(() => expect(document.activeElement?.textContent).toBe('src/lib.rs'));
       expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
     } finally {
-      HTMLElement.prototype.scrollIntoView = original;
+      HTMLElement.prototype.scrollIntoView = originalScroll;
+      HTMLElement.prototype.getBoundingClientRect = originalRect;
     }
   });
 
