@@ -55,8 +55,8 @@ interface ParticipantRow {
   agent_type: string;
   /// Optional self-declared model captured at JOIN time. This is durable
   /// metadata, not a live probe: the UI labels it explicitly as such
-  /// (`disc.modelDeclaredAtJoin`, in the chip's tooltip and the details'
-  /// model row — see `declaredAtJoin`).
+  /// (`disc.modelDeclaredAtJoin`, a phrase in the chip's tooltip and a muted
+  /// line under the id in the details' model row — see `declaredAtJoin`).
   model?: string | null;
   conversation_id?: string | null;
   session_id: string | null;
@@ -334,7 +334,8 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
               content={[
                 identityLabel,
                 label,
-                joinModel ? t('disc.modelDeclaredAtJoin', joinModel) : null,
+                // The id is already in the identity: the provenance alone.
+                joinModel ? t('disc.modelDeclaredAtJoin') : null,
                 p.workflow_step ? `${p.workflow_step.workflow_name} › ${p.workflow_step.step_name}` : null,
               ].filter(Boolean).join(' — ')}
             >
@@ -439,17 +440,22 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
                 <dt>{t('disc.participantStatus')}</dt>
                 <dd>{selectedPresenceLabel}</dd>
               </div>
-              <div>
+              {/* KT-2015 — the value is the model id alone, as for every
+               *  participant; for a joined session that declared it, a second
+               *  muted line under it says where it comes from. That id wraps
+               *  and is never cut: the details are where it is read in full. */}
+              <div data-source={selectedDeclaredModel ? 'join' : undefined}>
                 <dt>{t('disc.participantModel')}</dt>
                 <dd
                   className="disc-participant-model"
                   data-state={participantModel(selectedParticipant).kind}
                   data-source={selectedDeclaredModel ? 'join' : undefined}
                 >
-                  {selectedDeclaredModel
-                    ? t('disc.modelDeclaredAtJoin', selectedDeclaredModel)
-                    : agentModelText(participantModel(selectedParticipant), tUi)}
+                  {agentModelText(participantModel(selectedParticipant), tUi)}
                 </dd>
+                {selectedDeclaredModel && (
+                  <dd className="disc-participant-model-source">{t('disc.modelDeclaredAtJoin')}</dd>
+                )}
               </div>
               {selectedParticipant.workflow_step && (
                 <>

@@ -2530,7 +2530,7 @@ const fr: TranslationDict = {
   'disc.resumeSince': 'Depuis',
   'disc.presenceOffline': 'hors ligne · reconnexion requise',
   'disc.presencePaused': 'en pause',
-  'disc.modelDeclaredAtJoin': 'Modèle déclaré au join : {0}',
+  'disc.modelDeclaredAtJoin': 'modèle déclaré en rejoignant la discussion',
   'disc.resumeCli': 'Reprendre',
   'disc.resumeCliCopy': 'Copier la commande : {0}',
   'disc.attemptedModel': 'Modèle tenté : {0}',

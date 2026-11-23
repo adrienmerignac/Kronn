@@ -2520,7 +2520,7 @@ const es: TranslationDict = {
   'disc.resumeSince': 'Desde',
   'disc.presenceOffline': 'sin conexión · requiere reconexión',
   'disc.presencePaused': 'en pausa',
-  'disc.modelDeclaredAtJoin': 'Modelo declarado al unirse: {0}',
+  'disc.modelDeclaredAtJoin': 'modelo declarado al unirse a la discusión',
   'disc.resumeCli': 'Reanudar',
   'disc.resumeCliCopy': 'Copiar comando: {0}',
   'disc.attemptedModel': 'Modelo intentado: {0}',

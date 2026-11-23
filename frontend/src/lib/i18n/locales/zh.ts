@@ -2502,7 +2502,7 @@ const zh: TranslationDict = {
   "disc.resumeSince": "开始时间",
   "disc.presenceOffline": "离线 · 需要重新连接",
   "disc.presencePaused": "已暂停",
-  "disc.modelDeclaredAtJoin": "加入时声明的模型：{0}",
+  "disc.modelDeclaredAtJoin": "加入讨论时声明的模型",
   "disc.resumeCli": "恢复",
   "disc.resumeCliCopy": "复制命令：{0}",
   "disc.attemptedModel": "尝试的模型：{0}",

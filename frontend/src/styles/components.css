@@ -759,6 +759,29 @@ select.input option {
   text-align: right;
 }
 
+/* KT-2015 — a model a joined session declared: the id on the first line, whole
+   (it wraps, never cut), and under it, in the muted role, where it comes from. */
+.disc-participant-details dl > div[data-source='join'] {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 10px;
+  row-gap: 2px;
+}
+
+.disc-participant-details dl > div[data-source='join'] > .disc-participant-model {
+  grid-column: 2;
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.disc-participant-details dl > div[data-source='join'] > .disc-participant-model-source {
+  grid-column: 2;
+  color: var(--kr-text-muted);
+}
+
 /* The invite button is styled by `.disc-chat-header-btn--primary`
    (DiscussionsPage.css); `.disc-participants-invite-btn` is only a selector hook. */
 

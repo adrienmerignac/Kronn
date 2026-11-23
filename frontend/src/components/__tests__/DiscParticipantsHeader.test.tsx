@@ -203,22 +203,34 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
       fireEvent.mouseLeave(anchor);
       return text;
     };
-    expect(tooltipOf(0)).toContain('disc.modelDeclaredAtJoin(claude-sonnet-4-5)');
+    // The provenance is a third part of the tooltip; the id stays said once.
+    const joined = tooltipOf(0) ?? '';
+    expect(joined.split(' — ')[2]).toBe('disc.modelDeclaredAtJoin');
+    expect(joined.split('claude-sonnet-4-5')).toHaveLength(2);
     for (const i of [1, 2, 3]) expect(tooltipOf(i)).not.toContain('disc.modelDeclaredAtJoin');
 
     const modelRow = () => document.querySelector('.disc-participant-model');
+    const sourceLine = () => document.querySelector('.disc-participant-model-source');
     await openParticipant(0);
-    expect(modelRow()).toHaveTextContent('disc.modelDeclaredAtJoin(claude-sonnet-4-5)');
+    // The value is the full id alone; the provenance is a line of its own under it.
+    expect(modelRow()).toHaveTextContent(/^claude-sonnet-4-5$/);
     expect(modelRow()).toHaveAttribute('data-source', 'join');
+    expect(sourceLine()).toHaveTextContent(/^disc\.modelDeclaredAtJoin$/);
+    expect(sourceLine()?.tagName).toBe('DD');
+    expect(sourceLine()?.parentElement).toBe(modelRow()?.parentElement);
     await openParticipant(1);
     expect(modelRow()).toHaveTextContent('ui.agentIdentity.model.notDeclared');
     expect(modelRow()).not.toHaveAttribute('data-source');
+    expect(sourceLine()).toBeNull();
     await openParticipant(2);
     expect(modelRow()).toHaveTextContent(/^devstral$/);
     expect(modelRow()).not.toHaveAttribute('data-source');
+    expect(sourceLine()).toBeNull();
     await openParticipant(3);
     expect(modelRow()).toHaveTextContent(/^kiro-model$/);
     expect(modelRow()).not.toHaveAttribute('data-source');
+    expect(sourceLine()).toBeNull();
+    expect(document.body.textContent).not.toContain('disc.modelDeclaredAtJoin');
   });
 
   it('keeps the file\'s contract on the declared JOIN model in line with the UI, in four locales (KT-2015)', () => {
@@ -226,7 +238,10 @@ describe('DiscParticipantsHeader — 0.8.6 phase 2', () => {
     expect(source).toMatch(/captured at JOIN time[\s\S]*labels it explicitly as such[\s\S]*disc\.modelDeclaredAtJoin/);
     for (const locale of ['en', 'fr', 'es', 'zh']) {
       const file = readFileSync(`src/lib/i18n/locales/${locale}.ts`, 'utf8');
-      expect(file, locale).toMatch(/['"]disc\.modelDeclaredAtJoin['"]:\s*['"][^'"\n]*\{0\}/);
+      // One phrase, without the id: the row and the tooltip already show it.
+      const phrase = file.match(/['"]disc\.modelDeclaredAtJoin['"]:\s*(['"])([^'"\n]+)\1/)?.[2];
+      expect(phrase, locale).toBeTruthy();
+      expect(phrase, locale).not.toContain('{0}');
     }
   });
 
