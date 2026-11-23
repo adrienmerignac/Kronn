@@ -27,11 +27,11 @@ drives a task execution (0.15.0 adds `DelegateSubtasks`).
   within the concurrency, budget and escalation limits, and, with
   `auto_continue`, launches the next launchable task after each integration
   under the idempotency key `campaign-auto:<run>:<task>`.
-  `[src: file: backend/src/db/orchestration.rs:1741-1881#campaign_task_candidates]`
+  `[src: file: backend/src/db/orchestration.rs:1728-1868#campaign_task_candidates]`
   `[src: file: backend/src/api/orchestration.rs:4914-5014#advance_campaign_after_integration]`
 - **Worker resolution.** Explicit override, then the campaign default worker,
   then the principal discussion's identity.
-  `[src: file: backend/src/db/orchestration.rs:1515-1543#resolve_campaign_worker]`
+  `[src: file: backend/src/db/orchestration.rs:1538-1566#resolve_campaign_worker]`
 - **Review contract.** `ReviewDecisionV1` with a verdict `approve |
   request_changes`, the reviewed HEAD, findings and DoD verifications.
   `decide_review` bumps the round on `request_changes`, sends the findings to
@@ -39,8 +39,8 @@ drives a task execution (0.15.0 adds `DelegateSubtasks`).
   is spent. `[src: file: backend/src/models/orchestration.rs:2038-2044#ReviewVerdict]`
   `[src: file: backend/src/models/orchestration.rs:2081-2104#ReviewDecisionV1]`
   `[src: file: backend/src/api/orchestration.rs:9374-9381#decide_review]`
-  `[src: file: backend/src/db/orchestration.rs:4827-4836#ReviewCheckpoint]`
-  `[src: file: backend/src/db/orchestration.rs:4861-4873#ReviewCheckpointOutcome]`
+  `[src: file: backend/src/db/orchestration.rs:4851-4860#ReviewCheckpoint]`
+  `[src: file: backend/src/db/orchestration.rs:4890-4902#ReviewCheckpointOutcome]`
 - **Reassignment** is its own operation (`reassign_execution`), and a human
   decision has `human_review`. `[src: file: backend/src/api/orchestration.rs:16039-16051#reassign_execution]`
   `[src: file: backend/src/api/orchestration.rs:20141-20150#human_review]`
@@ -81,7 +81,7 @@ branch. Checked against the code:
   `[src: file: backend/src/api/orchestration.rs:16540-16553#principal_is_authorized]`
   `[src: file: backend/src/api/orchestration.rs:16684-16726#room_agent_is_authorized]`
   `[src: file: backend/src/api/orchestration.rs:8262-8269#deliver_worker_manifest]`
-  `[src: file: backend/src/db/orchestration.rs:4779-4786#EscalationDelivery]`
+  `[src: file: backend/src/db/orchestration.rs:4803-4810#EscalationDelivery]`
 - A workflow run works in its own worktree on branch
   `kronn/<workflow>/<run8>`. `[src: file: backend/src/workflows/workspace.rs:1168-1171#build_branch_name]`
 
