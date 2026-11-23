@@ -5359,6 +5359,7 @@ const zh: TranslationDict = {
   "mcp.cat.other": "其他",
   "mcp.official": "官方",
   "mcp.community": "社区",
+  "mcp.alreadyAdded": "已添加",
   "mcp.kind.mcp": "MCP",
   "mcp.kind.api": "API",
   "mcp.kind.hybrid": "MCP + API",

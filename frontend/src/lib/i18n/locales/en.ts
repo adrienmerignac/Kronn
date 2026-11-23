@@ -5404,6 +5404,7 @@ const en: TranslationDict = {
   'mcp.cat.other': 'Other',
   'mcp.official': 'Official',
   'mcp.community': 'Community',
+  'mcp.alreadyAdded': 'Already added',
   'mcp.kind.mcp': 'MCP',
   'mcp.kind.api': 'API',
   'mcp.kind.hybrid': 'MCP + API',

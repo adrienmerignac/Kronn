@@ -5416,6 +5416,7 @@ const fr: TranslationDict = {
   'mcp.cat.other': 'Autres',
   'mcp.official': 'Officiel',
   'mcp.community': 'Communautaire',
+  'mcp.alreadyAdded': 'Déjà ajouté',
   // Plugin kind badges + filter
   'mcp.kind.mcp': 'MCP',
   'mcp.kind.api': 'API',

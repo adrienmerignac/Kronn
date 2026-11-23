@@ -307,6 +307,16 @@
   background: var(--kr-bg-hover);
   cursor: pointer;
   transition: border-color 0.15s, transform 0.1s;
+  /* KT-2006 review — a card scrolled into view (Tab, or the way back from
+     its step) keeps its whole focus ring (2px offset + 2px outline, 4px
+     halo) inside the grid: the browser otherwise scrolls it flush to the
+     edge of the scroll box. */
+  scroll-margin: var(--kr-sp-4);
+}
+
+.mcp-registry-card-installed-mark {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
 .mcp-registry-card:hover {
