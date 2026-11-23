@@ -575,6 +575,23 @@
   margin-left: auto;
 }
 
+/* KT-1996 — armed with its impact, the actions take a line of their own under
+   the run summary, and the sentence wraps inside the card at any width. */
+.wf-card-footer:has(.kr-confirm-delete-impact) {
+  flex-wrap: wrap;
+}
+
+.wf-card-footer:has(.kr-confirm-delete-impact) .wf-card-actions {
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.wf-card-actions .kr-confirm-delete {
+  justify-content: flex-end;
+}
+
 .wf-card-run-btn,
 .wf-card-delete-btn {
   display: inline-flex;
