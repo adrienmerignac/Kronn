@@ -54,7 +54,9 @@ interface ParticipantRow {
   id: number;
   agent_type: string;
   /// Optional self-declared model captured at JOIN time. This is durable
-  /// metadata, not a live probe: the UI labels it explicitly as such.
+  /// metadata, not a live probe: the UI labels it explicitly as such
+  /// (`disc.modelDeclaredAtJoin`, in the chip's tooltip and the details'
+  /// model row — see `declaredAtJoin`).
   model?: string | null;
   conversation_id?: string | null;
   session_id: string | null;
@@ -117,6 +119,16 @@ function participantRole(p: ParticipantRow, mainAgent?: string): AgentIdentityRo
  *  CLI session and « default model of <agent> » for a native one. */
 function participantModel(p: ParticipantRow): AgentIdentityModel {
   return agentModel(p.model, isNative(p) || p.workflow_step ? 'providerDefault' : 'notDeclared');
+}
+
+/** KT-2015 — the model a joined CLI session declared at join, if any. It was
+ *  captured once, at join, and may differ from the model of its last reply: the
+ *  tooltip and the details say so. A native agent and a workflow step declare
+ *  nothing at join, so they have none. */
+function declaredAtJoin(p: ParticipantRow): string | null {
+  if (isNative(p) || p.workflow_step) return null;
+  const model = participantModel(p);
+  return model.kind === 'id' ? model.id : null;
 }
 
 const mentionOf = (agentType: string) =>
@@ -276,6 +288,7 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
     && !selectedParticipant.workflow_step
     ? resumeCommandFor(selectedParticipant.agent_type, selectedParticipant.conversation_id)
     : null;
+  const selectedDeclaredModel = selectedParticipant ? declaredAtJoin(selectedParticipant) : null;
   const selectedDisplayName = selectedParticipant ? mentionOf(selectedParticipant.agent_type) : null;
   // The main agent first; the others keep the server's order.
   const ordered = [...participants].sort((a, b) =>
@@ -314,12 +327,14 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
           const identity = identityOf(p);
           // The full model id: the chip cuts it past 17 characters.
           const identityLabel = agentIdentityText(identity, tUi);
+          const joinModel = declaredAtJoin(p);
           const open = () => setSelectedParticipantId(current => current === p.id ? null : p.id);
           const chip = (
             <Tooltip
               content={[
                 identityLabel,
                 label,
+                joinModel ? t('disc.modelDeclaredAtJoin', joinModel) : null,
                 p.workflow_step ? `${p.workflow_step.workflow_name} › ${p.workflow_step.step_name}` : null,
               ].filter(Boolean).join(' — ')}
             >
@@ -426,8 +441,14 @@ export function DiscParticipantsHeader({ discId, t, refreshKey = 0, mainAgent }:
               </div>
               <div>
                 <dt>{t('disc.participantModel')}</dt>
-                <dd className="disc-participant-model" data-state={participantModel(selectedParticipant).kind}>
-                  {agentModelText(participantModel(selectedParticipant), tUi)}
+                <dd
+                  className="disc-participant-model"
+                  data-state={participantModel(selectedParticipant).kind}
+                  data-source={selectedDeclaredModel ? 'join' : undefined}
+                >
+                  {selectedDeclaredModel
+                    ? t('disc.modelDeclaredAtJoin', selectedDeclaredModel)
+                    : agentModelText(participantModel(selectedParticipant), tUi)}
                 </dd>
               </div>
               {selectedParticipant.workflow_step && (
